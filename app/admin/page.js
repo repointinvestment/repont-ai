@@ -2,16 +2,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-// 계정 목록 (auth/route.js와 동일하게 유지)
-const ACCOUNTS = [
-  { id: 'admin', name: '관리자', role: 'admin', status: '활성' },
-  { id: 'staff01', name: '직원1', role: '직원', status: '활성' },
-  { id: 'staff02', name: '직원2', role: '직원', status: '활성' },
-]
-
 export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
+  const [accounts, setAccounts] = useState([])
 
   useEffect(() => {
     const stored = localStorage.getItem('repoint_user')
@@ -19,6 +13,7 @@ export default function AdminPage() {
     const u = JSON.parse(stored)
     if (u.role !== 'admin') { router.push('/chat'); return }
     setUser(u)
+    fetch('/api/users').then(r => r.json()).then(data => setAccounts(data.users))
   }, [])
 
   const handleLogout = () => {
@@ -30,7 +25,6 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-      {/* Header */}
       <div style={{ background: '#0f3460', color: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontWeight: 700, fontSize: 16 }}>💼 리포인트파트너스 — 관리자</span>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -42,7 +36,7 @@ export default function AdminPage() {
       <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 24px' }}>
         <h2 style={{ color: '#1a1a2e', marginBottom: 8 }}>직원 계정 관리</h2>
         <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>
-          직원 추가/삭제는 <strong>app/api/auth/route.js</strong> 파일의 USERS 목록을 수정하세요.
+          직원 추가/삭제는 <strong>app/api/auth/route.js</strong> 파일의 USERS 목록만 수정하면 자동 반영됩니다.
         </p>
 
         <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
@@ -56,7 +50,7 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {ACCOUNTS.map((acc, i) => (
+              {accounts.map((acc, i) => (
                 <tr key={i} style={{ borderTop: '1px solid #f0f0f0' }}>
                   <td style={{ padding: '14px 20px', fontSize: 14 }}>{acc.name}</td>
                   <td style={{ padding: '14px 20px', fontSize: 14, color: '#666' }}>{acc.id}</td>
@@ -64,7 +58,7 @@ export default function AdminPage() {
                     <span style={{ background: acc.role === 'admin' ? '#e8f0fe' : '#f0f4ff', color: acc.role === 'admin' ? '#1a73e8' : '#555', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{acc.role}</span>
                   </td>
                   <td style={{ padding: '14px 20px', fontSize: 14 }}>
-                    <span style={{ background: '#e6f9f0', color: '#1a8a4a', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{acc.status}</span>
+                    <span style={{ background: '#e6f9f0', color: '#1a8a4a', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>활성</span>
                   </td>
                 </tr>
               ))}
