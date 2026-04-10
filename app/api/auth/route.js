@@ -1,7 +1,7 @@
 // 직원 계정 관리 (여기서 추가/삭제)
 // 퇴사자 계정은 아래 목록에서 삭제하면 됩니다
 const USERS = [
-  { id: 'ceorepoint', pw: '!@#tnghks33', name: '관리자', role: 'ceo' },
+  { id: 'ceorepoint', pw: '!@#tnghks33', name: '관리자', role: 'admin' },
   { id: 'repoint1', pw: '!flvhdlsxm33', name: '직원1', role: 'manager' },
   { id: 'repoint2', pw: '!flvhdlsxm33', name: '직원2', role: 'manager' },
 ]
