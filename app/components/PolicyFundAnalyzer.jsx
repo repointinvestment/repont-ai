@@ -28,13 +28,21 @@ const INDUSTRIES = [
   "기타",
 ];
 
+const SOJINGONG_TYPES = [
+  { key: "sinYong", label: "신용취약소상공인자금" },
+  { key: "hyuksin", label: "혁신성장촉진자금" },
+  { key: "jaedo", label: "재도전특별자금" },
+  { key: "ilsi", label: "일시적경영애로자금" },
+  { key: "etc", label: "기타 소진공 직접대출" },
+];
+
 const formatNum = (v) => {
   if (!v) return "";
   return Number(v.replace(/[^0-9]/g, "")).toLocaleString();
 };
 const parseNum = (v) => Number(String(v).replace(/[^0-9]/g, "")) || 0;
 
-export default function PolicyFundAnalyzer() {
+export default function PolicyFundAnalyzer({ onAIAnalysis }) {
   const [form, setForm] = useState({
     industry: "",
     bizAge: "",
@@ -42,9 +50,11 @@ export default function PolicyFundAnalyzer() {
     employees: "",
     creditKCB: "",
     creditNICE: "",
+    sojingongLoans: { sinYong: "", hyuksin: "", jaedo: "", ilsi: "", etc: "" },
     loans: {
-      sojingong: "",
       jaedan: "",
+      jaedanDate: "",
+      jaedanRegion: "",
       shinbo: "",
       gibo: "",
       jungjingong: "",
@@ -67,6 +77,7 @@ export default function PolicyFundAnalyzer() {
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
   const setLoan = (key, val) => setForm((f) => ({ ...f, loans: { ...f.loans, [key]: val } }));
+  const setSojingong = (key, val) => setForm((f) => ({ ...f, sojingongLoans: { ...f.sojingongLoans, [key]: val } }));
   const toggleDevice = (d) =>
     setForm((f) => ({
       ...f,
@@ -84,7 +95,15 @@ export default function PolicyFundAnalyzer() {
     const employeesNum = parseNum(form.employees);
     const creditKCB = parseNum(form.creditKCB);
     const creditNICE = parseNum(form.creditNICE);
-    const sojingongLoan = parseNum(form.loans.sojingong);
+
+    // 소진공 각 자금별 잔액
+    const sinYongLoan = parseNum(form.sojingongLoans.sinYong);
+    const hyuksinLoan = parseNum(form.sojingongLoans.hyuksin);
+    const jaedoLoan = parseNum(form.sojingongLoans.jaedo);
+    const ilsiLoan = parseNum(form.sojingongLoans.ilsi);
+    const etcLoan = parseNum(form.sojingongLoans.etc);
+    const totalSojingong = sinYongLoan + hyuksinLoan + jaedoLoan + ilsiLoan + etcLoan;
+
     const jaedanLoan = parseNum(form.loans.jaedan);
     const shinboLoan = parseNum(form.loans.shinbo);
     const giboLoan = parseNum(form.loans.gibo);
@@ -95,11 +114,33 @@ export default function PolicyFundAnalyzer() {
     const cardLoan = parseNum(form.loans.cardLoan);
     const cashService = parseNum(form.loans.cashService);
 
-    const totalBizLoan = sojingongLoan + jaedanLoan + shinboLoan + giboLoan + jungjingongLoan + bizCreditLoan;
+    const totalBizLoan = totalSojingong + jaedanLoan + shinboLoan + giboLoan + jungjingongLoan + bizCreditLoan;
     const totalPersonalLoan = personal1 + personal2 + cardLoan + cashService;
     const remainingCapacity = salesNum - totalBizLoan;
-    const sojingongRemain = Math.max(0, 10000 - sojingongLoan);
-    const sojingongRemainHyuksin = Math.max(0, 20000 - sojingongLoan);
+
+    // 소진공 잔여한도 계산
+    const sojingongRemain = Math.max(0, 10000 - totalSojingong);
+    const sojingongRemainHyuksin = Math.max(0, 20000 - totalSojingong);
+
+    // 신용취약 추가 가능 여부 (이미 3천 다 쓰면 불가)
+    const sinYongAvailable = sinYongLoan < 3000;
+
+    // 재단 재신청 가능 여부 계산
+    let jaedanCanReapply = true;
+    let jaedanReapplyMsg = "";
+    if (jaedanLoan > 0 && form.loans.jaedanDate) {
+      const receivedDate = new Date(form.loans.jaedanDate);
+      const today = new Date();
+      const diffMonths = (today.getFullYear() - receivedDate.getFullYear()) * 12 + (today.getMonth() - receivedDate.getMonth());
+      const requiredMonths = form.loans.jaedanRegion === "수도권" ? 12 : 6;
+      jaedanCanReapply = diffMonths >= requiredMonths;
+      if (!jaedanCanReapply) {
+        const remaining = requiredMonths - diffMonths;
+        jaedanReapplyMsg = `재단 재신청 불가 — ${form.loans.jaedanRegion === "수도권" ? "수도권 1년" : "지방 6개월"} 기준 미충족 (약 ${remaining}개월 후 가능)`;
+      } else {
+        jaedanReapplyMsg = `재단 재신청 가능 ✅ (${form.loans.jaedanRegion === "수도권" ? "수도권 1년" : "지방 6개월"} 경과)`;
+      }
+    }
 
     const results = [];
     const warnings = [];
@@ -127,9 +168,15 @@ export default function PolicyFundAnalyzer() {
       checks.push(`✅ 업력 ${bizAgeNum}년 (7년 미만) — 매출초과차입금 기준 미적용`);
     }
 
+    if (jaedanReapplyMsg) {
+      jaedanCanReapply ? checks.push(jaedanReapplyMsg) : warnings.push(`⚠️ ${jaedanReapplyMsg}`);
+    }
+
     const canApply = form.taxDelinquent !== "yes" && employeesNum <= maxEmployees && (bizAgeNum < 7 || remainingCapacity >= 0);
     const hasSmartDevice = form.smartDevices.length > 0;
+    const creditScore = creditKCB || creditNICE;
 
+    // 혁신성장촉진자금 일반형
     if (canApply && hasSmartDevice && sojingongRemain > 0) {
       results.push({
         tag: "소진공 직접대출",
@@ -137,7 +184,7 @@ export default function PolicyFundAnalyzer() {
         limit: `최대 ${Math.min(sojingongRemain, 10000).toLocaleString()}만원`,
         rate: "정책자금 기준금리 + 0.4%p",
         period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
-        condition: `스마트기기 보유 ✅`,
+        condition: `스마트기기 보유 ✅ | 소진공 잔여한도 ${sojingongRemain.toLocaleString()}만원`,
         color: "#0f3460",
       });
     }
@@ -148,6 +195,7 @@ export default function PolicyFundAnalyzer() {
       );
     }
 
+    // 혁신성장촉진자금 혁신형
     const isHyuksin = form.exportRecord === "yes" || form.salesGrowth === "yes";
     if (canApply && isHyuksin && hasSmartDevice && sojingongRemainHyuksin > 0) {
       results.push({
@@ -161,6 +209,7 @@ export default function PolicyFundAnalyzer() {
       });
     }
 
+    // 재도전특별자금
     if (canApply && form.hasBankruptcy === "yes" && form.currentBizCount === "1" && bizAgeNum < 7 && sojingongRemain > 0) {
       results.push({
         tag: "소진공 직접대출",
@@ -173,21 +222,25 @@ export default function PolicyFundAnalyzer() {
       });
     }
 
-    const creditScore = creditKCB || creditNICE;
-    if (canApply && creditScore >= 595 && creditScore <= 839) {
+    // 신용취약소상공인
+    if (canApply && sinYongAvailable && creditScore >= 595 && creditScore <= 839) {
+      const remaining = 3000 - sinYongLoan;
       results.push({
         tag: "소진공 직접대출",
         name: "신용취약소상공인자금",
-        limit: "최대 3,000만원",
+        limit: `최대 ${remaining.toLocaleString()}만원`,
         rate: "정책자금 기준금리 + 0.4%p",
         period: "5년 (거치 2년)",
-        condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅`,
+        condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅ | 잔여한도 ${remaining.toLocaleString()}만원`,
         color: "#1565c0",
       });
+    } else if (!sinYongAvailable) {
+      warnings.push("⚠️ 신용취약소상공인자금 3,000만원 한도 소진 — 추가 신청 불가");
     }
 
+    // 신용보증재단
     const jaedanRemain = Math.max(0, 10000 - jaedanLoan);
-    if (canApply && jaedanRemain > 0) {
+    if (canApply && jaedanRemain > 0 && jaedanCanReapply) {
       results.push({
         tag: "간접대출 (보증)",
         name: "신용보증재단",
@@ -199,6 +252,7 @@ export default function PolicyFundAnalyzer() {
       });
     }
 
+    // 신보
     if (canApply && !isRestaurant && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000))) {
       const shinboLimit = isManuf ? Math.floor(salesNum / 4) : Math.floor(salesNum / 6);
       results.push({
@@ -215,7 +269,10 @@ export default function PolicyFundAnalyzer() {
       checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다");
     }
 
-    setResult({ results, warnings, checks, totalBizLoan, totalPersonalLoan, remainingCapacity, sojingongRemain, bizAgeNum });
+    // AI 분석용 고객 정보 요약
+    const customerSummary = `업종: ${form.industry}, 업력: ${bizAgeNum}년, 작년매출: ${salesNum.toLocaleString()}만원, 직원수: ${employeesNum}명, 신용점수: KCB ${creditKCB || "-"} / NICE ${creditNICE || "-"}, 소진공 대출: 신용취약 ${sinYongLoan}만원 / 혁신 ${hyuksinLoan}만원 / 재도전 ${jaedoLoan}만원, 신용보증재단: ${jaedanLoan}만원, 신보: ${shinboLoan}만원, 기보: ${giboLoan}만원, 폐업이력: ${form.hasBankruptcy === "yes" ? "있음" : "없음"}, 사업자수: ${form.currentBizCount || "-"}, 스마트기기: ${hasSmartDevice ? form.smartDevices.join(", ") : "없음"}, 수출: ${form.exportRecord === "yes" ? "있음" : "없음"}, 2년연속매출10%증가: ${form.salesGrowth === "yes" ? "있음" : "없음"}`;
+
+    setResult({ results, warnings, checks, totalBizLoan, totalPersonalLoan, remainingCapacity, sojingongRemain, bizAgeNum, customerSummary });
     setLoading(false);
   };
 
@@ -280,14 +337,56 @@ export default function PolicyFundAnalyzer() {
           </div>
         </div>
 
-        {/* 기대출 - 정책자금 */}
+        {/* 소진공 직접대출 */}
         <div style={sectionStyle}>
-          <div style={sectionTitle}>🏦 기대출 현황 — 정책자금 (만원)</div>
+          <div style={sectionTitle}>🏛️ 소진공 직접대출 현황 (만원)</div>
+          <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 자금 종류별로 구분해서 입력하세요</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {SOJINGONG_TYPES.map(({ key, label }) => (
+              <div key={key}>
+                <label style={labelStyle}>{label}</label>
+                <input placeholder="0" value={form.sojingongLoans[key]} onChange={(e) => setSojingong(key, formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 기대출 - 기타 정책자금 */}
+        <div style={sectionStyle}>
+          <div style={sectionTitle}>🏦 기타 정책자금 및 사업자대출 (만원)</div>
           <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 매출초과차입금 계산에 포함됩니다</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+            {/* 재단 - 날짜/지역 포함 */}
+            <div style={{ gridColumn: "1 / -1", background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
+              <label style={{ ...labelStyle, color: "#0f3460" }}>신용보증재단</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.jaedan} onChange={(e) => setLoan("jaedan", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일</label>
+                  <input type="date" value={form.loans.jaedanDate} onChange={(e) => setLoan("jaedanDate", e.target.value)} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>사업장 지역</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {["수도권", "지방"].map((v) => (
+                      <button key={v} onClick={() => setLoan("jaedanRegion", v)} style={{
+                        flex: 1, padding: "10px 6px",
+                        border: `1.5px solid ${form.loans.jaedanRegion === v ? "#0f3460" : "#e0e0e0"}`,
+                        borderRadius: 8, background: form.loans.jaedanRegion === v ? "#0f3460" : "white",
+                        color: form.loans.jaedanRegion === v ? "white" : "#666",
+                        fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      }}>{v}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {[
-              { key: "sojingong", label: "소진공 (직접대출 잔액)" },
-              { key: "jaedan", label: "신용보증재단" },
               { key: "shinbo", label: "신용보증기금 (신보)" },
               { key: "gibo", label: "기술보증기금 (기보)" },
               { key: "jungjingong", label: "중진공" },
@@ -303,7 +402,7 @@ export default function PolicyFundAnalyzer() {
 
         {/* 기대출 - 개인신용 */}
         <div style={sectionStyle}>
-          <div style={sectionTitle}>💳 기대출 현황 — 개인신용 (만원)</div>
+          <div style={sectionTitle}>💳 개인신용 대출 (만원)</div>
           <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 매출초과차입금 계산에서 제외됩니다 (참고용)</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {[
@@ -336,7 +435,8 @@ export default function PolicyFundAnalyzer() {
                     flex: 1, padding: "9px",
                     border: `1.5px solid ${form.currentBizCount === v ? "#0f3460" : "#e0e0e0"}`,
                     borderRadius: 8, background: form.currentBizCount === v ? "#0f3460" : "white",
-                    color: form.currentBizCount === v ? "white" : "#666", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    color: form.currentBizCount === v ? "white" : "#666",
+                    fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}>
                     {v === "1" ? "1개" : "2개 이상"}
                   </button>
@@ -427,6 +527,19 @@ export default function PolicyFundAnalyzer() {
                 <p style={{ fontSize: 15, color: "#666" }}>입력하신 정보로는 해당되는 자금이 없습니다.</p>
                 <p style={{ fontSize: 13, color: "#999", marginTop: 8 }}>리포인트파트너스에 문의하시면 추가 방법을 안내해드립니다.</p>
               </div>
+            )}
+
+            {/* AI 심층 분석 버튼 */}
+            {onAIAnalysis && (
+              <button onClick={() => onAIAnalysis(result.customerSummary)} style={{
+                width: "100%", padding: 16, marginTop: 8,
+                background: "linear-gradient(135deg, #1a237e, #0f3460)",
+                color: "white", border: "none", borderRadius: 12,
+                fontSize: 16, fontWeight: 700, cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(15,52,96,0.3)",
+              }}>
+                🤖 AI 심층 분석 받기 →
+              </button>
             )}
           </div>
         )}
