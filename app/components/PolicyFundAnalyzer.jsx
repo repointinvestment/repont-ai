@@ -56,7 +56,9 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       jaedanDate: "",
       jaedanRegion: "",
       shinbo: "",
+      shinboDate: "",
       gibo: "",
+      giboDate: "",
       jungjingong: "",
       bizCredit: "",
       personal1: "",
@@ -223,7 +225,8 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     }
 
     // 신용취약소상공인
-    if (canApply && sinYongAvailable && creditScore >= 595 && creditScore <= 839) {
+    const creditEligible = creditScore >= 595 && creditScore <= 839;
+    if (canApply && sinYongAvailable && creditEligible) {
       const remaining = 3000 - sinYongLoan;
       results.push({
         tag: "소진공 직접대출",
@@ -234,8 +237,16 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅ | 잔여한도 ${remaining.toLocaleString()}만원`,
         color: "#1565c0",
       });
-    } else if (!sinYongAvailable) {
-      warnings.push("⚠️ 신용취약소상공인자금 3,000만원 한도 소진 — 추가 신청 불가");
+    } else {
+      if (!sinYongAvailable) {
+        warnings.push("⚠️ 신용취약소상공인자금 — 3,000만원 한도 소진으로 추가 신청 불가");
+      }
+      if (creditScore > 839) {
+        warnings.push(`⚠️ 신용취약소상공인자금 — 신용점수 ${creditScore}점으로 대상 범위(595~839점) 초과, 신청 불가`);
+      }
+      if (creditScore > 0 && creditScore < 595) {
+        warnings.push(`⚠️ 신용취약소상공인자금 — 신용점수 ${creditScore}점으로 최저 기준(595점) 미달, 신청 불가`);
+      }
     }
 
     // 신용보증재단
@@ -252,8 +263,38 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       });
     }
 
+    // 신보 재신청 가능 여부
+    let shinboCanReapply = true;
+    if (shinboLoan > 0 && form.loans.shinboDate) {
+      const shinboDate = new Date(form.loans.shinboDate);
+      const today = new Date();
+      const diffMonths = (today.getFullYear() - shinboDate.getFullYear()) * 12 + (today.getMonth() - shinboDate.getMonth());
+      shinboCanReapply = diffMonths >= 12;
+      if (!shinboCanReapply) {
+        const remaining = 12 - diffMonths;
+        warnings.push(`⚠️ 신용보증기금 재신청 불가 — 1년 기준 미충족 (약 ${remaining}개월 후 가능)`);
+      } else {
+        checks.push(`✅ 신용보증기금 재신청 가능 (1년 경과)`);
+      }
+    }
+
+    // 기보 재신청 가능 여부
+    let giboCanReapply = true;
+    if (giboLoan > 0 && form.loans.giboDate) {
+      const giboDate = new Date(form.loans.giboDate);
+      const today = new Date();
+      const diffMonths = (today.getFullYear() - giboDate.getFullYear()) * 12 + (today.getMonth() - giboDate.getMonth());
+      giboCanReapply = diffMonths >= 12;
+      if (!giboCanReapply) {
+        const remaining = 12 - diffMonths;
+        warnings.push(`⚠️ 기술보증기금 재신청 불가 — 1년 기준 미충족 (약 ${remaining}개월 후 가능)`);
+      } else {
+        checks.push(`✅ 기술보증기금 재신청 가능 (1년 경과)`);
+      }
+    }
+
     // 신보
-    if (canApply && !isRestaurant && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000))) {
+    if (canApply && shinboCanReapply && !isRestaurant && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000))) {
       const shinboLimit = isManuf ? Math.floor(salesNum / 4) : Math.floor(salesNum / 6);
       results.push({
         tag: "간접대출 (보증)",
@@ -386,9 +427,37 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               </div>
             </div>
 
+            {/* 신보 */}
+            <div style={{ background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
+              <label style={{ ...labelStyle, color: "#0f3460" }}>신용보증기금 (신보)</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.shinbo} onChange={(e) => setLoan("shinbo", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <input type="date" value={form.loans.shinboDate} onChange={(e) => setLoan("shinboDate", e.target.value)} style={inputStyle} />
+                </div>
+              </div>
+            </div>
+
+            {/* 기보 */}
+            <div style={{ background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
+              <label style={{ ...labelStyle, color: "#0f3460" }}>기술보증기금 (기보)</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.gibo} onChange={(e) => setLoan("gibo", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <input type="date" value={form.loans.giboDate} onChange={(e) => setLoan("giboDate", e.target.value)} style={inputStyle} />
+                </div>
+              </div>
+            </div>
+
             {[
-              { key: "shinbo", label: "신용보증기금 (신보)" },
-              { key: "gibo", label: "기술보증기금 (기보)" },
               { key: "jungjingong", label: "중진공" },
               { key: "bizCredit", label: "사업자 신용대출 (은행 담보·일반)" },
             ].map(({ key, label }) => (
