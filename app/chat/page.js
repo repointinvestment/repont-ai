@@ -24,6 +24,24 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const handleAIAnalysis = async (customerSummary) => {
+    setTab('chat')
+    const msg = `아래 고객 정보를 바탕으로 심층 분석해주세요:\n\n${customerSummary}`
+    const userMsg = { role: 'user', content: msg }
+    const newMessages = [...messages, userMsg]
+    setMessages(newMessages)
+    setLoading(true)
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: newMessages.filter((m, i) => i > 0) })
+    })
+    const data = await res.json()
+    setMessages([...newMessages, { role: 'assistant', content: data.reply }])
+    setLoading(false)
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return
     const userMsg = { role: 'user', content: input }
@@ -87,7 +105,7 @@ export default function ChatPage() {
 
       {tab === 'form' ? (
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <PolicyFundAnalyzer />
+          <PolicyFundAnalyzer onAIAnalysis={handleAIAnalysis} />
         </div>
       ) : (
         <>
