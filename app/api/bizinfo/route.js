@@ -5,7 +5,7 @@ export async function GET(request) {
   const category = searchParams.get('category') || '금융'
   const pageUnit = searchParams.get('pageUnit') || '100'
 
-  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?hshsKcd=${encodeURIComponent(category)}&dataType=json&pageUnit=${pageUnit}&pageIndex=1&authKey=ra31hj`
+  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?crtfcKey=ra31hj&dataType=json&hashtags=${encodeURIComponent(category)}&pageUnit=${pageUnit}&pageIndex=1`
 
   try {
     const res = await fetch(url)
