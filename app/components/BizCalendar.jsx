@@ -161,7 +161,7 @@ function AnnouncementCard({ item, color, getDday }) {
   const title = item.pbanc_nm || item.pbancNm || item.title || '공고명 없음'
   const org = item.excInstt_nm || item.excInsttNm || item.organ || ''
   const startDate = item.pbancBgngDe || item.reqstBgngDe || ''
-  const endDate = item.pbancEndDe || item.reqstEndDe || ''
+  const endDate = item.pbancEndDe || item.reqstEndDe || (item.reqstBeginEndDe ? item.reqstBeginEndDe.split('~')[1]?.trim() : '') || ''
   const dday = getDday(endDate)
   const ddayColor = dday === '마감' ? '#aaa' : dday === 'D-Day' ? '#ef4444' : parseInt(dday.replace('D-', '')) <= 7 ? '#ef4444' : color
   const link = item.pblancUrl || item.detailUrl || ''
