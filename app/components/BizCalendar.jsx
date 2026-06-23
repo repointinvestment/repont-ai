@@ -42,7 +42,7 @@ export default function BizCalendar() {
 
   const itemsByDay = {}
   items.forEach(item => {
-    const endDate = item.pbancEndDe || item.reqstEndDe || ''
+    const endDate = item.pbancEndDe || item.reqstEndDe || (item.reqstBeginEndDe ? item.reqstBeginEndDe.split('~')[1]?.trim() : '') || ''
     if (!endDate) return
     const d = endDate.replace(/-/g, '').slice(0, 8)
     const itemYear = parseInt(d.slice(0, 4))
