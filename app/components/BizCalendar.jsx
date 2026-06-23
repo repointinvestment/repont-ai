@@ -23,10 +23,10 @@ export default function BizCalendar() {
   const [selectedRegion, setSelectedRegion] = useState('전체')
 
   useEffect(() => {
-    fetchData(selectedCategory)
+    fetchData(selectedCategory, selectedRegion)
   }, [selectedCategory, selectedRegion])
 
-  const fetchData = async (category) => {
+  const fetchData = async (category, region) => {
     setLoading(true)
     try {
       const res = await fetch(`/api/bizinfo?category=${encodeURIComponent(category)}&pageUnit=100`)
@@ -38,10 +38,10 @@ if (selectedCategory === '금융') {
     return POLICY_KEYWORDS.some(keyword => title.includes(keyword))
   })
 }
-      if (selectedRegion !== '전체') {
+if (region !== '전체') {
   list = list.filter(item => {
     const hashtags = item.hashtags || ''
-    return hashtags.includes(selectedRegion)
+    return hashtags.includes(region)
   })
 }
 setItems(Array.isArray(list) ? list : [list])
