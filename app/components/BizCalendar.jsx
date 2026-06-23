@@ -122,7 +122,7 @@ items.forEach(item => {
                     <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? currentCat?.color : '#333', marginBottom: 2 }}>{day}</div>
                     {dayItems.slice(0, 2).map((item, idx) => (
                       <div key={idx} style={{ fontSize: 10, background: currentCat?.color, color: 'white', borderRadius: 3, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.pbanc_nm || item.pbancNm || '공고'}
+                        {item.pblancNm || item.pbanc_nm || item.pbancNm || '공고'}
                       </div>
                     ))}
                     {dayItems.length > 2 && <div style={{ fontSize: 10, color: '#888' }}>+{dayItems.length - 2}</div>}
@@ -161,7 +161,7 @@ items.forEach(item => {
 }
 
 function AnnouncementCard({ item, color, getDday }) {
-  const title = item.pbanc_nm || item.pbancNm || item.title || '공고명 없음'
+  const title = item.pblancNm || item.pbanc_nm || item.pbancNm || item.title || '공고명 없음'
   const org = item.excInstt_nm || item.excInsttNm || item.organ || ''
   const startDate = item.pbancBgngDe || item.reqstBgngDe || ''
   const endDate = item.pbancEndDe || item.reqstEndDe || (item.reqstBeginEndDe ? item.reqstBeginEndDe.split('~')[1]?.trim() : '') || ''
