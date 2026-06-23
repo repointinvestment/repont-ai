@@ -48,20 +48,28 @@ setItems(Array.isArray(list) ? list : [list])
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
- const itemsByDay = {}
+const itemsByDay = {}
 items.forEach(item => {
   const raw = item.reqstBeginEndDe || ''
-  if (!raw.includes('~')) return
-  const endStr = raw.split('~')[1]?.trim()
-  if (!endStr || endStr.length < 8) return
-  const cleaned = endStr.replace(/-/g, '')
-  const itemYear = parseInt(cleaned.slice(0, 4))
-  const itemMonth = parseInt(cleaned.slice(4, 6)) - 1
-  const itemDay = parseInt(cleaned.slice(6, 8))
-  if (isNaN(itemYear) || isNaN(itemMonth) || isNaN(itemDay)) return
-  if (itemYear === year && itemMonth === month) {
-    if (!itemsByDay[itemDay]) itemsByDay[itemDay] = []
-    itemsByDay[itemDay].push(item)
+  
+  if (raw.includes('~')) {
+    const endStr = raw.split('~')[1]?.trim()
+    if (!endStr || endStr.length < 8) return
+    const cleaned = endStr.replace(/-/g, '')
+    const itemYear = parseInt(cleaned.slice(0, 4))
+    const itemMonth = parseInt(cleaned.slice(4, 6)) - 1
+    const itemDay = parseInt(cleaned.slice(6, 8))
+    if (isNaN(itemYear) || isNaN(itemMonth) || isNaN(itemDay)) return
+    if (itemYear === year && itemMonth === month) {
+      if (!itemsByDay[itemDay]) itemsByDay[itemDay] = []
+      itemsByDay[itemDay].push(item)
+    }
+  } else if (raw.includes('예산') || raw.includes('소진') || raw.includes('선착순') || raw.includes('상시')) {
+    // 매일 표시
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (!itemsByDay[d]) itemsByDay[d] = []
+      itemsByDay[d].push(item)
+    }
   }
 })
 
