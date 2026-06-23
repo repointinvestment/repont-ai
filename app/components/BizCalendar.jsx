@@ -115,16 +115,21 @@ items.forEach(item => {
                 return (
                   <div key={day} onClick={() => setSelectedDay(isSelected ? null : day)}
                     style={{
-                      minHeight: 70, padding: '6px 4px', border: '1px solid #f0f0f0', cursor: dayItems.length ? 'pointer' : 'default',
+                      minHeight: 70, maxHeight: 80, overflow: 'hidden', padding: '6px 4px', border: '1px solid #f0f0f0', cursor: dayItems.length ? 'pointer' : 'default',
                       background: isSelected ? `${currentCat?.color}15` : 'white',
                       borderLeft: isSelected ? `3px solid ${currentCat?.color}` : '1px solid #f0f0f0',
                     }}>
                     <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? currentCat?.color : '#333', marginBottom: 2 }}>{day}</div>
                     {dayItems.slice(0, 2).map((item, idx) => (
-                      <div key={idx} style={{ fontSize: 10, background: currentCat?.color, color: 'white', borderRadius: 3, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {item.pblancNm || item.pbanc_nm || item.pbancNm || '공고'}
-                      </div>
-                    ))}
+  <div key={idx} style={{ 
+    fontSize: 10, background: currentCat?.color, color: 'white', 
+    borderRadius: 3, padding: '1px 4px', marginBottom: 2, 
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    maxWidth: '100%'
+  }}>
+    {item.pblancNm || item.pbanc_nm || '공고'}
+  </div>
+))}
                     {dayItems.length > 2 && <div style={{ fontSize: 10, color: '#888' }}>+{dayItems.length - 2}</div>}
                   </div>
                 )
