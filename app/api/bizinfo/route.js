@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
-  const category = searchParams.get('category') || '금융'
+  const category = searchParams.get('category') || ''
   const pageUnit = searchParams.get('pageUnit') || '100'
 
-  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?crtfcKey=ra31hj&dataType=json&hashtags=${encodeURIComponent(category)}&pageUnit=${pageUnit}&pageIndex=1`
+  const categoryParam = category ? `&hashtags=${encodeURIComponent(category)}` : ''
+  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?crtfcKey=ra31hj&dataType=json&pageUnit=${pageUnit}&pageIndex=1${categoryParam}`
 
   try {
     const res = await fetch(url)
