@@ -141,7 +141,7 @@ items.forEach(item => {
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} style={{ minHeight: 70 }} />)}
+              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} style={{ height: 85, overflow: 'hidden' }} />)}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1
                 const dayItems = itemsByDay[day] || []
@@ -150,7 +150,7 @@ items.forEach(item => {
                 return (
                   <div key={day} onClick={() => setSelectedDay(isSelected ? null : day)}
                     style={{
-                      minHeight: 70, maxHeight: 80, overflow: 'hidden', padding: '6px 4px', border: '1px solid #f0f0f0', cursor: dayItems.length ? 'pointer' : 'default',
+                      height: 85, overflow: 'hidden', padding: '6px 4px', border: '1px solid #f0f0f0', cursor: dayItems.length ? 'pointer' : 'default',
                       background: isSelected ? `${currentCat?.color}15` : 'white',
                       borderLeft: isSelected ? `3px solid ${currentCat?.color}` : '1px solid #f0f0f0',
                     }}>
