@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import PolicyFundAnalyzer from '../components/PolicyFundAnalyzer'
+import BizCalendar from '../components/BizCalendar'
 
 export default function ChatPage() {
   const router = useRouter()
@@ -90,6 +91,7 @@ export default function ChatPage() {
         {[
           { key: 'form', label: '📋 항목별 분석' },
           { key: 'chat', label: '💬 AI 채팅 분석' },
+          { key: 'calendar', label: '📅 지원사업 캘린더' },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)} style={{
             padding: '12px 24px', border: 'none', background: 'none',
@@ -103,6 +105,11 @@ export default function ChatPage() {
         ))}
       </div>
 
+{tab === 'calendar' && (
+  <div style={{ flex: 1, overflowY: 'auto' }}>
+    <BizCalendar />
+  </div>
+)}
       {tab === 'form' ? (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <PolicyFundAnalyzer onAIAnalysis={handleAIAnalysis} />
