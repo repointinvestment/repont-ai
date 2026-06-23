@@ -106,7 +106,7 @@ export default function ChatPage() {
       </div>
 
 {tab === 'calendar' && (
-  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>S
+  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
     <BizCalendar />
   </div>
 )}
@@ -116,7 +116,7 @@ export default function ChatPage() {
         </div>
       ) : (
         <>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {tab !== 'calendar' && <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {msg.role === 'assistant' && (
@@ -141,7 +141,7 @@ export default function ChatPage() {
               </div>
             )}
             <div ref={bottomRef} />
-          </div>
+          </div>}
           {tab !== 'calendar' && <div style={{ background: 'white', padding: '16px 24px', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 10, maxWidth: 900, margin: '0 auto' }}>
               <textarea
