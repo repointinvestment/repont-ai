@@ -128,8 +128,8 @@ items.forEach(item => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>불러오는 중...</div>
       ) : view === 'calendar' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ width: '100%', background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 20 }}>
+          <div style={{ flex: '1 1 0', background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
             <div style={{ background: currentCat?.color || '#0f3460', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button onClick={() => setCurrentDate(new Date(year, month - 1))} style={{ background: 'none', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer' }}>‹</button>
               <span style={{ fontWeight: 700, fontSize: 16 }}>{year}년 {month + 1}월</span>
