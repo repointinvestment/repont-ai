@@ -10,6 +10,8 @@ const CATEGORIES = [
   { key: '경영', label: '📊 경영', color: '#be185d' },
 ]
 
+const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자']
+
 export default function BizCalendar() {
   const [selectedCategory, setSelectedCategory] = useState('금융')
   const [items, setItems] = useState([])
