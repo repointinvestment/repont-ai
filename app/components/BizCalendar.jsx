@@ -11,6 +11,7 @@ const CATEGORIES = [
 ]
 
 const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자']
+const REGIONS = ['전체', '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
 
 export default function BizCalendar() {
   const [selectedCategory, setSelectedCategory] = useState('금융')
@@ -19,10 +20,11 @@ export default function BizCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState(null)
   const [view, setView] = useState('calendar')
+  const [selectedRegion, setSelectedRegion] = useState('전체')
 
   useEffect(() => {
     fetchData(selectedCategory)
-  }, [selectedCategory])
+  }, [selectedCategory, selectedRegion])
 
   const fetchData = async (category) => {
     setLoading(true)
@@ -34,6 +36,12 @@ if (selectedCategory === '금융') {
   list = list.filter(item => {
     const title = item.pblancNm || ''
     return POLICY_KEYWORDS.some(keyword => title.includes(keyword))
+  })
+}
+      if (selectedRegion !== '전체') {
+  list = list.filter(item => {
+    const hashtags = item.hashtags || ''
+    return hashtags.includes(selectedRegion)
   })
 }
 setItems(Array.isArray(list) ? list : [list])
@@ -105,7 +113,18 @@ items.forEach(item => {
           <button onClick={() => setView('list')} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, background: view === 'list' ? '#0f3460' : '#f0f0f0', color: view === 'list' ? 'white' : '#555' }}>📋 목록</button>
         </div>
       </div>
-
+<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+  {REGIONS.map(region => (
+    <button key={region} onClick={() => { setSelectedRegion(region); setSelectedDay(null) }}
+      style={{
+        padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+        background: selectedRegion === region ? '#0f3460' : '#f0f0f0',
+        color: selectedRegion === region ? 'white' : '#555',
+      }}>
+      {region}
+    </button>
+  ))}
+</div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#888' }}>불러오는 중...</div>
       ) : view === 'calendar' ? (
