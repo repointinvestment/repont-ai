@@ -106,7 +106,7 @@ export default function ChatPage() {
       </div>
 
 {tab === 'calendar' && (
-  <div style={{ flex: 1, overflowY: 'auto' }}>
+  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>S
     <BizCalendar />
   </div>
 )}
@@ -142,7 +142,7 @@ export default function ChatPage() {
             )}
             <div ref={bottomRef} />
           </div>
-          <div style={{ background: 'white', padding: '16px 24px', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+          {tab !== 'calendar' && <div style={{ background: 'white', padding: '16px 24px', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 10, maxWidth: 900, margin: '0 auto' }}>
               <textarea
                 value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
@@ -159,6 +159,7 @@ export default function ChatPage() {
               </button>
             </div>
           </div>
+                  }
         </>
       )}
     </div>
