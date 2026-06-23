@@ -40,20 +40,22 @@ export default function BizCalendar() {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
-  const itemsByDay = {}
-  items.forEach(item => {
-    const rawDate = item.reqstBeginEndDe || item.pbancEndDe || item.reqstEndDe || ''
-const endDate = rawDate.includes('~') ? rawDate.split('~')[1]?.trim() : rawDate
-    if (!endDate) return
-    const d = endDate.replace(/-/g, '').slice(0, 8)
-    const itemYear = parseInt(d.slice(0, 4))
-    const itemMonth = parseInt(d.slice(4, 6)) - 1
-    const itemDay = parseInt(d.slice(6, 8))
-    if (itemYear === year && itemMonth === month) {
-      if (!itemsByDay[itemDay]) itemsByDay[itemDay] = []
-      itemsByDay[itemDay].push(item)
-    }
-  })
+ const itemsByDay = {}
+items.forEach(item => {
+  const raw = item.reqstBeginEndDe || ''
+  if (!raw.includes('~')) return
+  const endStr = raw.split('~')[1]?.trim()
+  if (!endStr || endStr.length < 8) return
+  const cleaned = endStr.replace(/-/g, '')
+  const itemYear = parseInt(cleaned.slice(0, 4))
+  const itemMonth = parseInt(cleaned.slice(4, 6)) - 1
+  const itemDay = parseInt(cleaned.slice(6, 8))
+  if (isNaN(itemYear) || isNaN(itemMonth) || isNaN(itemDay)) return
+  if (itemYear === year && itemMonth === month) {
+    if (!itemsByDay[itemDay]) itemsByDay[itemDay] = []
+    itemsByDay[itemDay].push(item)
+  }
+})
 
   const selectedItems = selectedDay ? (itemsByDay[selectedDay] || []) : []
   const currentCat = CATEGORIES.find(c => c.key === selectedCategory)
