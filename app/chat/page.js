@@ -71,8 +71,15 @@ export default function ChatPage() {
 
   if (!user) return null
 
+  const NAV_TABS = [
+    { key: 'form',     label: '📋 항목별 분석' },
+    { key: 'chat',     label: '💬 AI 채팅 분석' },
+    { key: 'calendar', label: '📅 캘린더' },
+  ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f5f5' }}>
+      {/* 헤더 */}
       <div style={{ background: '#0f3460', color: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', flexShrink: 0 }}>
         <div>
           <span style={{ fontWeight: 700, fontSize: 16 }}>💼 리포인트파트너스 AI</span>
@@ -87,12 +94,9 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {/* 상단 탭 */}
       <div style={{ background: 'white', borderBottom: '1px solid #e0e0e0', display: 'flex', flexShrink: 0 }}>
-        {[
-          { key: 'form', label: '📋 항목별 분석' },
-          { key: 'chat', label: '💬 AI 채팅 분석' },
-          { key: 'calendar', label: '📅 지원사업 캘린더' },
-        ].map(({ key, label }) => (
+        {NAV_TABS.map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)} style={{
             padding: '12px 24px', border: 'none', background: 'none',
             fontSize: 14, fontWeight: tab === key ? 700 : 400,
@@ -105,18 +109,24 @@ export default function ChatPage() {
         ))}
       </div>
 
-{tab === 'calendar' && (
-  <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-    <BizCalendar />
-  </div>
-)}
-      {tab === 'form' ? (
+      {/* 캘린더 탭 */}
+      {tab === 'calendar' && (
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <BizCalendar />
+        </div>
+      )}
+
+      {/* 항목별 분석 탭 */}
+      {tab === 'form' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <PolicyFundAnalyzer onAIAnalysis={handleAIAnalysis} />
         </div>
-      ) : (
+      )}
+
+      {/* AI 채팅 탭 */}
+      {tab === 'chat' && (
         <>
-          {tab !== 'calendar' && <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {msg.role === 'assistant' && (
@@ -141,8 +151,8 @@ export default function ChatPage() {
               </div>
             )}
             <div ref={bottomRef} />
-          </div>}
-          {tab !== 'calendar' && <div style={{ background: 'white', padding: '16px 24px', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
+          </div>
+          <div style={{ background: 'white', padding: '16px 24px', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 10, maxWidth: 900, margin: '0 auto' }}>
               <textarea
                 value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
@@ -151,7 +161,8 @@ export default function ChatPage() {
                 style={{ flex: 1, padding: '12px 14px', border: '1.5px solid #e0e0e0', borderRadius: 10, fontSize: 14, resize: 'none', outline: 'none', fontFamily: 'inherit' }}
               />
               <button onClick={sendMessage} disabled={loading || !input.trim()} style={{
-                padding: '0 24px', background: loading || !input.trim() ? '#ccc' : '#0f3460',
+                padding: '0 24px',
+                background: loading || !input.trim() ? '#ccc' : '#0f3460',
                 color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700,
                 cursor: loading || !input.trim() ? 'not-allowed' : 'pointer'
               }}>
@@ -159,7 +170,6 @@ export default function ChatPage() {
               </button>
             </div>
           </div>
-                  }
         </>
       )}
     </div>
