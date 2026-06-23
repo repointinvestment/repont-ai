@@ -29,8 +29,14 @@ export default function BizCalendar() {
     try {
       const res = await fetch(`/api/bizinfo?category=${encodeURIComponent(category)}&pageUnit=100`)
       const data = await res.json()
-      const list = data?.jsonArray || []
-      setItems(Array.isArray(list) ? list : [list])
+let list = data?.jsonArray || []
+if (selectedCategory === '금융') {
+  list = list.filter(item => {
+    const title = item.pblancNm || ''
+    return POLICY_KEYWORDS.some(keyword => title.includes(keyword))
+  })
+}
+setItems(Array.isArray(list) ? list : [list])
     } catch (e) {
       setItems([])
     }
