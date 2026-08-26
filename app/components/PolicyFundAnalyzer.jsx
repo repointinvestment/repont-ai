@@ -42,6 +42,65 @@ const formatNum = (v) => {
 };
 const parseNum = (v) => Number(String(v).replace(/[^0-9]/g, "")) || 0;
 
+const sectionStyle = {
+  background: "#FBF7EE", borderRadius: 4, padding: "26px 28px",
+  marginBottom: 18, border: "1px solid #E2D9C4",
+  boxShadow: "0 10px 30px rgba(11,36,64,0.18)",
+};
+const labelStyle = {
+  display: "block", fontSize: 12.5, fontWeight: 600,
+  color: "#5B4A2F", marginBottom: 6, letterSpacing: "0.01em",
+};
+
+// 모듈 최상단에 고정 선언 — 렌더링 함수 안에서 정의하면 매 키 입력마다
+// 새 컴포넌트로 취급되어 입력창이 리마운트되며 포커스가 끊깁니다.
+function Section({ num, icon, title, note, children }) {
+  return (
+    <div style={sectionStyle}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 13, color: "#B4923F", fontWeight: 700, letterSpacing: "0.05em" }}>
+          제{num}항
+        </span>
+        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 17, fontWeight: 700, color: "#1C2B3A" }}>
+          {icon} {title}
+        </span>
+      </div>
+      <div style={{ height: 1, background: "linear-gradient(90deg, #B4923F, transparent)", margin: "10px 0 18px" }} />
+      {note && <p style={{ fontSize: 12, color: "#8A8272", marginTop: -12, marginBottom: 14 }}>{note}</p>}
+      {children}
+    </div>
+  );
+}
+
+function YesNoField({ label, value, onChange }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ display: "flex", gap: 10 }}>
+        {["yes", "no"].map((v) => {
+          const active = value === v;
+          const isYes = v === "yes";
+          return (
+            <button key={v} onClick={() => onChange(v)} style={{
+              flex: 1, padding: "10px 8px", position: "relative",
+              border: `1.5px solid ${active ? (isYes ? "#A23B2E" : "#8A8272") : "#E2D9C4"}`,
+              borderRadius: 6,
+              background: active ? (isYes ? "rgba(162,59,46,0.07)" : "rgba(90,80,60,0.06)") : "#FFFEFB",
+              color: active ? (isYes ? "#A23B2E" : "#5B4A2F") : "#8A8272",
+              fontSize: 13, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'Noto Sans KR', sans-serif",
+              transition: "all 0.15s",
+            }}>
+              {active && isYes && <span style={{ marginRight: 4 }}>●</span>}
+              {v === "yes" ? "있음" : "없음"}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function PolicyFundAnalyzer({ onAIAnalysis }) {
   const [form, setForm] = useState({
     industry: "",
@@ -321,58 +380,6 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     background: "#FFFEFB", color: "#1C2B3A",
     fontFamily: "'Noto Sans KR', sans-serif",
   };
-  const labelStyle = {
-    display: "block", fontSize: 12.5, fontWeight: 600,
-    color: "#5B4A2F", marginBottom: 6, letterSpacing: "0.01em",
-  };
-  const sectionStyle = {
-    background: "#FBF7EE", borderRadius: 4, padding: "26px 28px",
-    marginBottom: 18, border: "1px solid #E2D9C4",
-    boxShadow: "0 10px 30px rgba(11,36,64,0.18)",
-  };
-
-  const YesNoBtn = ({ field, label }) => (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: "flex", gap: 10 }}>
-        {["yes", "no"].map((v) => {
-          const active = form[field] === v;
-          const isYes = v === "yes";
-          return (
-            <button key={v} onClick={() => set(field, v)} style={{
-              flex: 1, padding: "10px 8px", position: "relative",
-              border: `1.5px solid ${active ? (isYes ? "#A23B2E" : "#8A8272") : "#E2D9C4"}`,
-              borderRadius: 6,
-              background: active ? (isYes ? "rgba(162,59,46,0.07)" : "rgba(90,80,60,0.06)") : "#FFFEFB",
-              color: active ? (isYes ? "#A23B2E" : "#5B4A2F") : "#8A8272",
-              fontSize: 13, fontWeight: 700, cursor: "pointer",
-              fontFamily: "'Noto Sans KR', sans-serif",
-              transition: "all 0.15s",
-            }}>
-              {active && isYes && <span style={{ marginRight: 4 }}>●</span>}
-              {v === "yes" ? "있음" : "없음"}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  const Section = ({ num, icon, title, note, children }) => (
-    <div style={sectionStyle}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
-        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 13, color: "#B4923F", fontWeight: 700, letterSpacing: "0.05em" }}>
-          제{num}항
-        </span>
-        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 17, fontWeight: 700, color: "#1C2B3A" }}>
-          {icon} {title}
-        </span>
-      </div>
-      <div style={{ height: 1, background: "linear-gradient(90deg, #B4923F, transparent)", margin: "10px 0 18px" }} />
-      {note && <p style={{ fontSize: 12, color: "#8A8272", marginTop: -12, marginBottom: 14 }}>{note}</p>}
-      {children}
-    </div>
-  );
 
   // 결과 총액 파싱 (제출된 카드들의 "최대 X만원" 합산)
   const totalEligible = result
@@ -560,10 +567,10 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         {/* 추가 조건 */}
         <Section num="5" icon="📌" title="추가 조건 확인">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <YesNoBtn field="taxDelinquent" label="국세·지방세 체납 여부" />
-            <YesNoBtn field="hasBankruptcy" label="과거 폐업 이력" />
-            <YesNoBtn field="exportRecord" label="최근 1년 수출 실적 1천달러 이상" />
-            <YesNoBtn field="salesGrowth" label="2년 연속 매출 10% 이상 증가" />
+            <YesNoField label="국세·지방세 체납 여부" value={form.taxDelinquent} onChange={(v) => set("taxDelinquent", v)} />
+            <YesNoField label="과거 폐업 이력" value={form.hasBankruptcy} onChange={(v) => set("hasBankruptcy", v)} />
+            <YesNoField label="최근 1년 수출 실적 1천달러 이상" value={form.exportRecord} onChange={(v) => set("exportRecord", v)} />
+            <YesNoField label="2년 연속 매출 10% 이상 증가" value={form.salesGrowth} onChange={(v) => set("salesGrowth", v)} />
             <div>
               <label style={labelStyle}>현재 사업자 수 (대표자 명의)</label>
               <div style={{ display: "flex", gap: 8 }}>
