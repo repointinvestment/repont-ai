@@ -35,6 +35,28 @@ async function upsertCredential(customerId, serviceName, plainValue) {
   }
 }
 
+// 소진공, 홈택스 등 서비스명을 자유롭게 지정하는 계정 정보. 아이디는 평문, 비밀번호만 암호화.
+// 비밀번호를 비워두고 저장하면 기존 비밀번호는 유지하고 아이디만 갱신.
+async function upsertNamedCredential(customerId, serviceName, username, plainPassword) {
+  if (!serviceName) return
+  const existing = await sql`
+    SELECT id, password_encrypted FROM customer_credentials
+    WHERE customer_id = ${customerId} AND service_name = ${serviceName}
+  `
+  const encrypted = plainPassword ? encrypt(plainPassword) : (existing[0]?.password_encrypted || '')
+  if (existing.length > 0) {
+    await sql`
+      UPDATE customer_credentials SET username = ${username || ''}, password_encrypted = ${encrypted}
+      WHERE id = ${existing[0].id}
+    `
+  } else {
+    await sql`
+      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+      VALUES (${customerId}, ${serviceName}, ${username || ''}, ${encrypted})
+    `
+  }
+}
+
 // 고객 정보 수정
 export async function PATCH(request, { params }) {
   const { id } = params
@@ -80,6 +102,12 @@ export async function PATCH(request, { params }) {
 
   await upsertCredential(id, '주민등록번호', body.residentNumber)
   await upsertCredential(id, '공동인증서 비밀번호', body.certPassword)
+
+  if (Array.isArray(body.additionalCredentials)) {
+    for (const cred of body.additionalCredentials) {
+      await upsertNamedCredential(id, cred.serviceName, cred.username, cred.password)
+    }
+  }
 
   return NextResponse.json({ customer })
 }

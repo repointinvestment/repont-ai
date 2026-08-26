@@ -235,7 +235,10 @@ export default function CustomerDashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {credentials.map((cred) => (
                 <div key={cred.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
-                  <span style={{ fontSize: 14 }}>{cred.service_name}</span>
+                  <span style={{ fontSize: 14 }}>
+                    {cred.service_name}
+                    {cred.username ? <span style={{ color: '#8A8A85' }}> · {cred.username}</span> : null}
+                  </span>
                   <button
                     type="button"
                     onClick={() => copyCredential(cred)}

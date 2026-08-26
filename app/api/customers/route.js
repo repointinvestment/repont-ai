@@ -51,5 +51,17 @@ export async function POST(request) {
     `
   }
 
+  // 소진공, 홈택스 등 자유롭게 추가한 계정 정보
+  if (Array.isArray(body.additionalCredentials)) {
+    for (const cred of body.additionalCredentials) {
+      if (!cred.serviceName) continue
+      const encrypted = cred.password ? encrypt(cred.password) : ''
+      await sql`
+        INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+        VALUES (${customer.id}, ${cred.serviceName}, ${cred.username || ''}, ${encrypted})
+      `
+    }
+  }
+
   return NextResponse.json({ customer })
 }

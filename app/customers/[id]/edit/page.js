@@ -16,6 +16,17 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [extraCredentials, setExtraCredentials] = useState([]); // [{serviceName, username, password}]
+
+  function addExtraCredential() {
+    setExtraCredentials((prev) => [...prev, { serviceName: '', username: '', password: '' }]);
+  }
+  function updateExtraCredential(index, field, value) {
+    setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  }
+  function removeExtraCredential(index) {
+    setExtraCredentials((prev) => prev.filter((_, i) => i !== index));
+  }
   const [deleting, setDeleting] = useState(false);
   const [credentials, setCredentials] = useState([]);
   const [copyState, setCopyState] = useState({}); // { [credentialId]: '복사됨' | '복사 실패' }
@@ -106,7 +117,7 @@ export default function CustomerDetailPage() {
       const res = await fetch(`/api/customers/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, additionalCredentials: extraCredentials.filter((c) => c.serviceName) }),
       });
       if (!res.ok) throw new Error();
       router.push(`/customers/${params.id}`);
@@ -307,6 +318,26 @@ export default function CustomerDetailPage() {
         공동인증서 비밀번호
         <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="변경 시에만 입력하세요" />
       </label>
+
+      <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보 (소진공, 홈택스 등)</p>
+      {extraCredentials.map((cred, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <label style={{ ...labelStyle, flex: 1 }}>
+            서비스명
+            <input style={inputStyle} value={cred.serviceName} onChange={(e) => updateExtraCredential(i, 'serviceName', e.target.value)} placeholder="예: 소진공" />
+          </label>
+          <label style={{ ...labelStyle, flex: 1 }}>
+            아이디
+            <input style={inputStyle} value={cred.username} onChange={(e) => updateExtraCredential(i, 'username', e.target.value)} />
+          </label>
+          <label style={{ ...labelStyle, flex: 1 }}>
+            비밀번호
+            <input style={inputStyle} value={cred.password} onChange={(e) => updateExtraCredential(i, 'password', e.target.value)} placeholder="변경 시에만 입력" />
+          </label>
+          <button type="button" onClick={() => removeExtraCredential(i)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+        </div>
+      ))}
+      <button type="button" onClick={addExtraCredential} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px dashed #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>+ 계정 추가</button>
 
       {credentials.length > 0 && (
         <>
