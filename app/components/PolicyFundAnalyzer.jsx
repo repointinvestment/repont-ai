@@ -481,7 +481,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div style={{ gridColumn: "1 / -1", background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
               <label style={{ ...labelStyle, color: "#8A5A2E" }}>신용보증재단</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
                 <div>
                   <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
                   <input placeholder="0" value={form.loans.jaedan} onChange={(e) => setLoan("jaedan", formatNum(e.target.value))} style={inputStyle} />
@@ -509,13 +509,13 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
 
             <div style={{ background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
               <label style={{ ...labelStyle, color: "#8A5A2E" }}>신용보증기금 (신보)</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "end" }}>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>잔액 (만원)</label>
                   <input placeholder="0" value={form.loans.shinbo} onChange={(e) => setLoan("shinbo", formatNum(e.target.value))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>최초 수령일 <span style={{ fontWeight: 400 }}>(1년 경과해야 재신청)</span></label>
                   <input type="date" value={form.loans.shinboDate} onChange={(e) => setLoan("shinboDate", e.target.value)} style={inputStyle} />
                 </div>
               </div>
@@ -523,13 +523,13 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
 
             <div style={{ background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
               <label style={{ ...labelStyle, color: "#8A5A2E" }}>기술보증기금 (기보)</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "end" }}>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>잔액 (만원)</label>
                   <input placeholder="0" value={form.loans.gibo} onChange={(e) => setLoan("gibo", formatNum(e.target.value))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>최초 수령일 <span style={{ fontWeight: 400 }}>(1년 경과해야 재신청)</span></label>
                   <input type="date" value={form.loans.giboDate} onChange={(e) => setLoan("giboDate", e.target.value)} style={inputStyle} />
                 </div>
               </div>
