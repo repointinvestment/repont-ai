@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DateYMDInput from "./DateYMDInput";
 
 const SMART_DEVICES = [
@@ -102,7 +102,7 @@ function YesNoField({ label, value, onChange }) {
   );
 }
 
-export default function PolicyFundAnalyzer({ onAIAnalysis }) {
+export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
   const [form, setForm] = useState({
     industry: "",
     bizAge: "",
@@ -136,6 +136,17 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     careerYears: "",
     isFranchise: false,
   });
+
+  // 고객 대시보드에서 넘어온 경우, 이미 입력된 정보로 폼을 채워줌 (한 번만 반영)
+  useEffect(() => {
+    if (!initialData) return;
+    setForm((f) => ({
+      ...f,
+      ...initialData,
+      sojingongLoans: { ...f.sojingongLoans, ...(initialData.sojingongLoans || {}) },
+      loans: { ...f.loans, ...(initialData.loans || {}) },
+    }));
+  }, [initialData]);
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);

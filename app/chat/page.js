@@ -1,17 +1,40 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import PolicyFundAnalyzer from '../components/PolicyFundAnalyzer'
 import BizCalendar from '../components/BizCalendar'
 import { getSession, clearSession } from '@/lib/session'
 
-export default function ChatPage() {
+// 자유 텍스트로 저장된 고객 업종을, AI 진단 폼의 고정 업종 목록 중 가장 가까운 항목으로 매칭
+function matchIndustryOption(industryText) {
+  if (!industryText) return ''
+  const text = industryText
+  const map = [
+    { keywords: ['음식', '요식', '카페', '외식'], option: '음식점·카페 (요식업)' },
+    { keywords: ['도소매', '유통', '판매', '소매', '도매'], option: '도소매업' },
+    { keywords: ['제조'], option: '제조업' },
+    { keywords: ['건설'], option: '건설업' },
+    { keywords: ['운수'], option: '운수업' },
+    { keywords: ['서비스', '미용', '세탁', '수선'], option: '서비스업 (미용·세탁·수선 등)' },
+    { keywords: ['정보통신', 'IT', '소프트웨어', '컨설팅'], option: '정보통신업 (IT)' },
+    { keywords: ['교육'], option: '교육서비스업' },
+    { keywords: ['부동산'], option: '부동산업' },
+    { keywords: ['농업', '수산', '임업', '농·수·임'], option: '농·수·임업' },
+  ]
+  const found = map.find(({ keywords }) => keywords.some((k) => text.includes(k)))
+  return found ? found.option : '기타'
+}
+
+function ChatPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState(null)
   const [tab, setTab] = useState('form')
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [analyzerInitialData, setAnalyzerInitialData] = useState(null)
+  const [linkedCustomerName, setLinkedCustomerName] = useState('')
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -19,6 +42,38 @@ export default function ChatPage() {
     if (!u) { router.push('/'); return }
     setUser(u)
     setMessages([{ role: 'assistant', content: `안녕하세요 ${u.name}님! 👋\n\n고객 정보를 입력해주시면 맞는 정책자금을 분석해드립니다.\n\n예시: "음식점업, 업력 3년, 작년 매출 8천만원, 신용점수 720점, 기대출 없음, 직원 없음"` }])
+
+    const customerId = searchParams.get('customerId')
+    if (customerId) {
+      fetch(`/api/customers/${customerId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const c = data.customer
+          if (!c) return
+          setLinkedCustomerName(c.owner_name || c.business_name || '')
+          const pfd = c.policy_fund_details || {}
+          setAnalyzerInitialData({
+            industry: matchIndustryOption(c.industry),
+            bizAge: c.business_age_years ? String(c.business_age_years) : '',
+            sales: c.revenue_amount ? String(c.revenue_amount) : '',
+            employees: c.employee_count ? String(c.employee_count) : '',
+            creditKCB: c.credit_kcb ? String(c.credit_kcb) : '',
+            creditNICE: c.credit_nice ? String(c.credit_nice) : '',
+            sojingongLoans: pfd.sojingongLoans || undefined,
+            loans: pfd.loans || undefined,
+            hasBankruptcy: pfd.hasBankruptcy || '',
+            currentBizCount: pfd.currentBizCount || '',
+            smartDevices: pfd.smartDevices || [],
+            exportRecord: pfd.exportRecord || '',
+            salesGrowth: pfd.salesGrowth || '',
+            taxDelinquent: pfd.taxDelinquent || '',
+            hasPatent: c.has_patent ? 'yes' : '',
+            careerYears: c.owner_career_years ? String(c.owner_career_years) : '',
+            isFranchise: !!pfd.isFranchise,
+          })
+        })
+        .catch(() => {})
+    }
   }, [])
 
   useEffect(() => {
@@ -120,7 +175,12 @@ export default function ChatPage() {
       {/* 항목별 분석 탭 */}
       {tab === 'form' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <PolicyFundAnalyzer onAIAnalysis={handleAIAnalysis} />
+          {linkedCustomerName && (
+            <div style={{ maxWidth: 800, margin: '16px auto 0', padding: '10px 16px', background: '#E1F5EE', color: '#085041', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+              ✅ {linkedCustomerName} 고객님의 정보를 불러왔습니다. 비어있는 항목은 확인 후 채워주세요.
+            </div>
+          )}
+          <PolicyFundAnalyzer onAIAnalysis={handleAIAnalysis} initialData={analyzerInitialData} />
         </div>
       )}
 
@@ -174,5 +234,13 @@ export default function ChatPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={null}>
+      <ChatPageInner />
+    </Suspense>
   )
 }

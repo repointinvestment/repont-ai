@@ -571,7 +571,7 @@ export default function CustomerDashboardPage() {
         <div style={{ marginBottom: 32 }}>
           <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px', color: '#2A2925' }}>작성 서비스</p>
           <div
-            onClick={() => router.push('/chat')}
+            onClick={() => router.push(`/chat?customerId=${params.id}`)}
             style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}
           >
             <span style={{ fontSize: 24 }}>🤖</span>
