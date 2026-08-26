@@ -314,36 +314,118 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     setLoading(false);
   };
 
-  const inputStyle = { width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, boxSizing: "border-box", outline: "none", background: "white" };
-  const labelStyle = { display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: 6 };
-  const sectionStyle = { background: "white", borderRadius: 12, padding: "20px 24px", marginBottom: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" };
-  const sectionTitle = { fontSize: 15, fontWeight: 700, color: "#0f3460", marginBottom: 16, paddingBottom: 10, borderBottom: "2px solid #f0f0f0" };
+  const inputStyle = {
+    width: "100%", padding: "11px 13px",
+    border: "1.5px solid #E2D9C4", borderRadius: 6,
+    fontSize: 14, boxSizing: "border-box", outline: "none",
+    background: "#FFFEFB", color: "#1C2B3A",
+    fontFamily: "'Noto Sans KR', sans-serif",
+  };
+  const labelStyle = {
+    display: "block", fontSize: 12.5, fontWeight: 600,
+    color: "#5B4A2F", marginBottom: 6, letterSpacing: "0.01em",
+  };
+  const sectionStyle = {
+    background: "#FBF7EE", borderRadius: 4, padding: "26px 28px",
+    marginBottom: 18, border: "1px solid #E2D9C4",
+    boxShadow: "0 10px 30px rgba(11,36,64,0.18)",
+  };
 
   const YesNoBtn = ({ field, label }) => (
     <div>
       <label style={labelStyle}>{label}</label>
-      <div style={{ display: "flex", gap: 8 }}>
-        {["yes", "no"].map((v) => (
-          <button key={v} onClick={() => set(field, v)} style={{
-            flex: 1, padding: "9px",
-            border: `1.5px solid ${form[field] === v ? "#0f3460" : "#e0e0e0"}`,
-            borderRadius: 8, background: form[field] === v ? "#0f3460" : "white",
-            color: form[field] === v ? "white" : "#666", fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>
-            {v === "yes" ? "있음" : "없음"}
-          </button>
-        ))}
+      <div style={{ display: "flex", gap: 10 }}>
+        {["yes", "no"].map((v) => {
+          const active = form[field] === v;
+          const isYes = v === "yes";
+          return (
+            <button key={v} onClick={() => set(field, v)} style={{
+              flex: 1, padding: "10px 8px", position: "relative",
+              border: `1.5px solid ${active ? (isYes ? "#A23B2E" : "#8A8272") : "#E2D9C4"}`,
+              borderRadius: 6,
+              background: active ? (isYes ? "rgba(162,59,46,0.07)" : "rgba(90,80,60,0.06)") : "#FFFEFB",
+              color: active ? (isYes ? "#A23B2E" : "#5B4A2F") : "#8A8272",
+              fontSize: 13, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'Noto Sans KR', sans-serif",
+              transition: "all 0.15s",
+            }}>
+              {active && isYes && <span style={{ marginRight: 4 }}>●</span>}
+              {v === "yes" ? "있음" : "없음"}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 
+  const Section = ({ num, icon, title, note, children }) => (
+    <div style={sectionStyle}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 13, color: "#B4923F", fontWeight: 700, letterSpacing: "0.05em" }}>
+          제{num}항
+        </span>
+        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 17, fontWeight: 700, color: "#1C2B3A" }}>
+          {icon} {title}
+        </span>
+      </div>
+      <div style={{ height: 1, background: "linear-gradient(90deg, #B4923F, transparent)", margin: "10px 0 18px" }} />
+      {note && <p style={{ fontSize: 12, color: "#8A8272", marginTop: -12, marginBottom: 14 }}>{note}</p>}
+      {children}
+    </div>
+  );
+
+  // 결과 총액 파싱 (제출된 카드들의 "최대 X만원" 합산)
+  const totalEligible = result
+    ? result.results.reduce((sum, r) => {
+        const m = r.limit.match(/[\d,]+/);
+        return sum + (m ? Number(m[0].replace(/,/g, "")) : 0);
+      }, 0)
+    : 0;
+
   return (
-    <div style={{ padding: "24px 0", fontFamily: "Arial, sans-serif" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
+    <div style={{
+      background: "linear-gradient(180deg, #0B2440 0%, #0E2C4C 100%)",
+      borderRadius: 16, padding: "40px 0 56px",
+      fontFamily: "'Noto Sans KR', sans-serif",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+        @keyframes pfHeroRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pfStampIn {
+          0% { opacity: 0; transform: scale(1.6) rotate(-24deg); }
+          55% { opacity: 1; transform: scale(0.94) rotate(-11deg); }
+          75% { transform: scale(1.04) rotate(-13deg); }
+          100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+        }
+        @keyframes pfCardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pf-hero { animation: pfHeroRise 0.6s ease both; }
+        .pf-stamp { animation: pfStampIn 0.7s cubic-bezier(.2,1.4,.4,1) both; }
+        .pf-card-in { animation: pfCardIn 0.45s ease both; }
+      `}</style>
+
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 24px" }}>
+
+        {/* 히어로 */}
+        <div className="pf-hero" style={{ textAlign: "center", marginBottom: 40 }}>
+          <p style={{
+            fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.25em",
+            color: "#B4923F", fontWeight: 700, marginBottom: 10,
+          }}>
+            자 금 비 서 · 정 책 자 금 진 단
+          </p>
+          <h1 style={{
+            fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(24px, 4vw, 34px)",
+            color: "#FBF7EE", fontWeight: 700, margin: 0, lineHeight: 1.4,
+          }}>
+            지금, 받을 수 있는 정책자금은<br />얼마일까요?
+          </h1>
+          <p style={{ fontSize: 14, color: "#8FA6C0", marginTop: 12 }}>
+            아래 정보를 입력하시면 실제 심사 기준으로 신청 가능한 자금을 진단해드립니다
+          </p>
+        </div>
 
         {/* 기본정보 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>📋 기본 정보</div>
+        <Section num="1" icon="📋" title="기본 정보">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <label style={labelStyle}>업종</label>
@@ -373,49 +455,43 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               <input type="number" placeholder="예: 750" value={form.creditNICE} onChange={(e) => set("creditNICE", e.target.value)} style={inputStyle} />
             </div>
           </div>
-        </div>
+        </Section>
 
         {/* 소진공 직접대출 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>🏛️ 소진공 직접대출 현황 (만원)</div>
-          <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 자금 종류별로 구분해서 입력하세요</p>
+        <Section num="2" icon="🏛" title="소진공 직접대출 현황 (만원)" note="※ 자금 종류별로 구분해서 입력하세요">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {SOJINGONG_TYPES.map(({ key, label }) => (
               <div key={key}>
                 <label style={labelStyle}>{label}</label>
-                <input placeholder="0" value={form.sojingongLoans[key]} onChange={(e) => setSojingong(key, formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                <input placeholder="0" value={form.sojingongLoans[key]} onChange={(e) => setSojingong(key, formatNum(e.target.value))} style={inputStyle} />
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* 기대출 - 기타 정책자금 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>🏦 기타 정책자금 및 사업자대출 (만원)</div>
-          <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 매출초과차입금 계산에 포함됩니다</p>
+        {/* 기타 정책자금 */}
+        <Section num="3" icon="🏦" title="기타 정책자금 및 사업자대출 (만원)" note="※ 매출초과차입금 계산에 포함됩니다">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-            {/* 재단 - 날짜/지역 포함 */}
-            <div style={{ gridColumn: "1 / -1", background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
-              <label style={{ ...labelStyle, color: "#0f3460" }}>신용보증재단</label>
+            <div style={{ gridColumn: "1 / -1", background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
+              <label style={{ ...labelStyle, color: "#8A5A2E" }}>신용보증재단</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
-                  <input placeholder="0" value={form.loans.jaedan} onChange={(e) => setLoan("jaedan", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.jaedan} onChange={(e) => setLoan("jaedan", formatNum(e.target.value))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일</label>
                   <input type="date" value={form.loans.jaedanDate} onChange={(e) => setLoan("jaedanDate", e.target.value)} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>사업장 지역</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>사업장 지역</label>
                   <div style={{ display: "flex", gap: 6 }}>
                     {["수도권", "지방"].map((v) => (
                       <button key={v} onClick={() => setLoan("jaedanRegion", v)} style={{
                         flex: 1, padding: "10px 6px",
-                        border: `1.5px solid ${form.loans.jaedanRegion === v ? "#0f3460" : "#e0e0e0"}`,
-                        borderRadius: 8, background: form.loans.jaedanRegion === v ? "#0f3460" : "white",
-                        color: form.loans.jaedanRegion === v ? "white" : "#666",
+                        border: `1.5px solid ${form.loans.jaedanRegion === v ? "#0B2440" : "#E2D9C4"}`,
+                        borderRadius: 6, background: form.loans.jaedanRegion === v ? "#0B2440" : "#FFFEFB",
+                        color: form.loans.jaedanRegion === v ? "#FBF7EE" : "#5B4A2F",
                         fontSize: 13, fontWeight: 600, cursor: "pointer",
                       }}>{v}</button>
                     ))}
@@ -424,31 +500,29 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               </div>
             </div>
 
-            {/* 신보 */}
-            <div style={{ background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
-              <label style={{ ...labelStyle, color: "#0f3460" }}>신용보증기금 (신보)</label>
+            <div style={{ background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
+              <label style={{ ...labelStyle, color: "#8A5A2E" }}>신용보증기금 (신보)</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
-                  <input placeholder="0" value={form.loans.shinbo} onChange={(e) => setLoan("shinbo", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.shinbo} onChange={(e) => setLoan("shinbo", formatNum(e.target.value))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일 (1년 경과해야 재신청)</label>
                   <input type="date" value={form.loans.shinboDate} onChange={(e) => setLoan("shinboDate", e.target.value)} style={inputStyle} />
                 </div>
               </div>
             </div>
 
-            {/* 기보 */}
-            <div style={{ background: "#f8f9ff", borderRadius: 10, padding: 16 }}>
-              <label style={{ ...labelStyle, color: "#0f3460" }}>기술보증기금 (기보)</label>
+            <div style={{ background: "rgba(180,146,63,0.08)", borderRadius: 6, padding: 16, border: "1px solid #E2D9C4" }}>
+              <label style={{ ...labelStyle, color: "#8A5A2E" }}>기술보증기금 (기보)</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>잔액 (만원)</label>
-                  <input placeholder="0" value={form.loans.gibo} onChange={(e) => setLoan("gibo", formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>잔액 (만원)</label>
+                  <input placeholder="0" value={form.loans.gibo} onChange={(e) => setLoan("gibo", formatNum(e.target.value))} style={inputStyle} />
                 </div>
                 <div>
-                  <label style={{ ...labelStyle, fontSize: 12 }}>최초 수령일 (1년 경과해야 재신청)</label>
+                  <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일 (1년 경과해야 재신청)</label>
                   <input type="date" value={form.loans.giboDate} onChange={(e) => setLoan("giboDate", e.target.value)} style={inputStyle} />
                 </div>
               </div>
@@ -460,16 +534,14 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
             ].map(({ key, label }) => (
               <div key={key}>
                 <label style={labelStyle}>{label}</label>
-                <input placeholder="0" value={form.loans[key]} onChange={(e) => setLoan(key, formatNum(e.target.value))} style={{ ...inputStyle, borderColor: "#cce0ff" }} />
+                <input placeholder="0" value={form.loans[key]} onChange={(e) => setLoan(key, formatNum(e.target.value))} style={inputStyle} />
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
-        {/* 기대출 - 개인신용 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>💳 개인신용 대출 (만원)</div>
-          <p style={{ fontSize: 12, color: "#888", marginTop: -8, marginBottom: 14 }}>※ 매출초과차입금 계산에서 제외됩니다 (참고용)</p>
+        {/* 개인신용 */}
+        <Section num="4" icon="💳" title="개인신용 대출 (만원)" note="※ 매출초과차입금 계산에서 제외됩니다 (참고용)">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {[
               { key: "personal1", label: "1금융권 신용대출" },
@@ -483,11 +555,10 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* 추가 조건 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>📌 추가 조건 확인</div>
+        <Section num="5" icon="📌" title="추가 조건 확인">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <YesNoBtn field="taxDelinquent" label="국세·지방세 체납 여부" />
             <YesNoBtn field="hasBankruptcy" label="과거 폐업 이력" />
@@ -498,10 +569,10 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               <div style={{ display: "flex", gap: 8 }}>
                 {["1", "2+"].map((v) => (
                   <button key={v} onClick={() => set("currentBizCount", v)} style={{
-                    flex: 1, padding: "9px",
-                    border: `1.5px solid ${form.currentBizCount === v ? "#0f3460" : "#e0e0e0"}`,
-                    borderRadius: 8, background: form.currentBizCount === v ? "#0f3460" : "white",
-                    color: form.currentBizCount === v ? "white" : "#666",
+                    flex: 1, padding: "10px 8px",
+                    border: `1.5px solid ${form.currentBizCount === v ? "#0B2440" : "#E2D9C4"}`,
+                    borderRadius: 6, background: form.currentBizCount === v ? "#0B2440" : "#FFFEFB",
+                    color: form.currentBizCount === v ? "#FBF7EE" : "#5B4A2F",
                     fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}>
                     {v === "1" ? "1개" : "2개 이상"}
@@ -510,99 +581,132 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               </div>
             </div>
           </div>
-        </div>
+        </Section>
 
         {/* 스마트기기 */}
-        <div style={sectionStyle}>
-          <div style={sectionTitle}>🔧 스마트기기 보유 현황 (해당하는 것 모두 선택)</div>
+        <Section num="6" icon="🔧" title="스마트기기 보유 현황 (해당하는 것 모두 선택)">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {SMART_DEVICES.map((d) => (
               <button key={d} onClick={() => toggleDevice(d)} style={{
-                padding: "7px 14px",
-                border: `1.5px solid ${form.smartDevices.includes(d) ? "#0f3460" : "#e0e0e0"}`,
-                borderRadius: 20, background: form.smartDevices.includes(d) ? "#0f3460" : "white",
-                color: form.smartDevices.includes(d) ? "white" : "#555",
-                fontSize: 13, cursor: "pointer", fontWeight: form.smartDevices.includes(d) ? 600 : 400,
+                padding: "8px 14px",
+                border: `1.5px solid ${form.smartDevices.includes(d) ? "#0B2440" : "#E2D9C4"}`,
+                borderRadius: 20, background: form.smartDevices.includes(d) ? "#0B2440" : "#FFFEFB",
+                color: form.smartDevices.includes(d) ? "#FBF7EE" : "#5B4A2F",
+                fontSize: 12.5, cursor: "pointer", fontWeight: form.smartDevices.includes(d) ? 700 : 500,
               }}>
                 {d}
               </button>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* 분석 버튼 */}
         <button onClick={analyze} disabled={loading || !form.industry} style={{
-          width: "100%", padding: 16,
-          background: loading || !form.industry ? "#ccc" : "#0f3460",
-          color: "white", border: "none", borderRadius: 12,
-          fontSize: 16, fontWeight: 700,
+          width: "100%", padding: 18, marginTop: 6,
+          background: loading || !form.industry ? "#3D4E63" : "linear-gradient(135deg, #A23B2E, #7E2C22)",
+          color: "#FBF7EE", border: "none", borderRadius: 6,
+          fontSize: 16, fontWeight: 700, letterSpacing: "0.05em",
           cursor: loading || !form.industry ? "not-allowed" : "pointer",
-          marginBottom: 24,
+          marginBottom: 8,
+          fontFamily: "'Noto Serif KR', serif",
+          boxShadow: loading || !form.industry ? "none" : "0 8px 24px rgba(162,59,46,0.35)",
         }}>
-          {loading ? "분석 중..." : "🔍 정책자금 분석하기"}
+          {loading ? "진단 중..." : "정책자금 진단 결과 확인하기"}
         </button>
 
         {/* 결과 */}
         {result && (
-          <div>
+          <div style={{ marginTop: 36 }}>
+
+            {/* 인증서 헤더 + 도장 */}
+            <div className="pf-card-in" style={{
+              background: "#FBF7EE", borderRadius: 4, padding: "36px 32px 28px",
+              border: "1px solid #E2D9C4", position: "relative", overflow: "hidden",
+              boxShadow: "0 16px 40px rgba(11,36,64,0.3)", marginBottom: 18, textAlign: "center",
+            }}>
+              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.3em", color: "#B4923F", fontWeight: 700, marginBottom: 8 }}>
+                정 책 자 금 진 단 결 과
+              </p>
+              <p style={{ fontSize: 13, color: "#8A8272", marginBottom: 4 }}>진단 가능 총액</p>
+              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(36px, 6vw, 52px)", fontWeight: 900, color: "#0B2440", margin: "4px 0 0", letterSpacing: "-0.01em" }}>
+                {totalEligible.toLocaleString()}<span style={{ fontSize: "0.4em", fontWeight: 700, marginLeft: 6 }}>만원</span>
+              </p>
+              <p style={{ fontSize: 13, color: "#8A8272", marginTop: 8 }}>
+                신청 가능한 정책자금 {result.results.length}건 확인됨
+              </p>
+
+              <div className="pf-stamp" style={{
+                position: "absolute", top: 20, right: 24,
+                width: 84, height: 84, borderRadius: "50%",
+                border: "3px double #A23B2E", display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#A23B2E", transform: "rotate(-12deg)",
+              }}>
+                <div style={{ textAlign: "center", lineHeight: 1.2 }}>
+                  <div style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 900 }}>진단</div>
+                  <div style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 900 }}>완료</div>
+                </div>
+              </div>
+            </div>
+
             {result.warnings.length > 0 && (
-              <div style={{ background: "#fff3e0", border: "1.5px solid #ffb74d", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
-                {result.warnings.map((w, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 14, color: "#e65100" }}>{w}</p>)}
+              <div className="pf-card-in" style={{ background: "rgba(162,59,46,0.08)", border: "1px solid rgba(162,59,46,0.35)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+                {result.warnings.map((w, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#A23B2E" }}>{w}</p>)}
               </div>
             )}
             {result.checks.length > 0 && (
-              <div style={{ background: "#f1f8e9", border: "1.5px solid #aed581", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
-                {result.checks.map((c, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 14, color: "#33691e" }}>{c}</p>)}
+              <div className="pf-card-in" style={{ background: "rgba(180,146,63,0.08)", border: "1px solid rgba(180,146,63,0.35)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+                {result.checks.map((c, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#5B4A2F" }}>{c}</p>)}
               </div>
             )}
             {result.bizAgeNum >= 7 && (
-              <div style={{ background: "#e3f2fd", border: "1.5px solid #90caf9", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
-                <p style={{ margin: 0, fontSize: 14, color: "#0d47a1", fontWeight: 600 }}>📊 매출초과차입금 계산</p>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#1565c0" }}>사업자대출 합계: {result.totalBizLoan.toLocaleString()}만원 | 잔여 가능: {result.remainingCapacity.toLocaleString()}만원</p>
-                {result.totalPersonalLoan > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>개인신용대출 {result.totalPersonalLoan.toLocaleString()}만원은 계산 제외</p>}
+              <div className="pf-card-in" style={{ background: "rgba(11,36,64,0.06)", border: "1px solid rgba(11,36,64,0.2)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 13.5, color: "#0B2440", fontWeight: 700 }}>매출초과차입금 계산</p>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#3D4E63" }}>사업자대출 합계 {result.totalBizLoan.toLocaleString()}만원 · 잔여 가능 {result.remainingCapacity.toLocaleString()}만원</p>
+                {result.totalPersonalLoan > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8A8272" }}>개인신용대출 {result.totalPersonalLoan.toLocaleString()}만원은 계산 제외</p>}
               </div>
             )}
+
             {result.results.length > 0 ? (
-              <>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "#0f3460", marginBottom: 12 }}>🎯 신청 가능한 자금 ({result.results.length}개)</p>
+              <div style={{ background: "#FBF7EE", borderRadius: 4, border: "1px solid #E2D9C4", overflow: "hidden", boxShadow: "0 10px 30px rgba(11,36,64,0.18)" }}>
                 {result.results.map((r, i) => (
-                  <div key={i} style={{ background: "white", borderRadius: 12, padding: "18px 20px", marginBottom: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.06)", borderLeft: `4px solid ${r.color}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div key={i} className="pf-card-in" style={{
+                    padding: "20px 26px",
+                    borderBottom: i < result.results.length - 1 ? "1px solid #E2D9C4" : "none",
+                    animationDelay: `${i * 0.06}s`,
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                       <div>
-                        <span style={{ fontSize: 11, background: "#f0f4ff", color: r.color, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{r.tag}</span>
-                        <p style={{ margin: "6px 0 0", fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>{r.name}</p>
+                        <p style={{ margin: 0, fontFamily: "'Noto Serif KR', serif", fontSize: 12, color: "#B4923F", fontWeight: 700 }}>
+                          제{i + 1}호 · {r.tag}
+                        </p>
+                        <p style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 700, color: "#1C2B3A", fontFamily: "'Noto Serif KR', serif" }}>{r.name}</p>
                       </div>
-                      <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: r.color }}>{r.limit}</p>
+                      <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: r.color, whiteSpace: "nowrap" }}>{r.limit}</p>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
-                      <div style={{ background: "#f8f9fa", borderRadius: 6, padding: "8px 10px" }}>
-                        <p style={{ margin: 0, fontSize: 11, color: "#888" }}>금리</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 600, color: "#444" }}>{r.rate}</p>
-                      </div>
-                      <div style={{ background: "#f8f9fa", borderRadius: 6, padding: "8px 10px" }}>
-                        <p style={{ margin: 0, fontSize: 11, color: "#888" }}>상환기간</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 13, fontWeight: 600, color: "#444" }}>{r.period}</p>
-                      </div>
+                    <div style={{ display: "flex", gap: 20, marginTop: 10 }}>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>금리 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.rate}</span></p>
+                      <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>상환기간 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.period}</span></p>
                     </div>
-                    <p style={{ margin: "10px 0 0", fontSize: 12, color: "#666", background: "#f0f4ff", padding: "6px 10px", borderRadius: 6 }}>✅ {r.condition}</p>
+                    <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#5B4A2F" }}>✅ {r.condition}</p>
                   </div>
                 ))}
-              </>
+              </div>
             ) : (
-              <div style={{ background: "white", borderRadius: 12, padding: 24, textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                <p style={{ fontSize: 15, color: "#666" }}>입력하신 정보로는 해당되는 자금이 없습니다.</p>
-                <p style={{ fontSize: 13, color: "#999", marginTop: 8 }}>리포인트파트너스에 문의하시면 추가 방법을 안내해드립니다.</p>
+              <div className="pf-card-in" style={{ background: "#FBF7EE", borderRadius: 4, padding: 28, textAlign: "center", border: "1px solid #E2D9C4" }}>
+                <p style={{ fontSize: 15, color: "#5B4A2F" }}>입력하신 정보로는 해당되는 자금이 없습니다.</p>
+                <p style={{ fontSize: 13, color: "#8A8272", marginTop: 8 }}>리포인트파트너스에 문의하시면 추가 방법을 안내해드립니다.</p>
               </div>
             )}
 
             {/* AI 심층 분석 버튼 */}
             {onAIAnalysis && (
               <button onClick={() => onAIAnalysis(result.customerSummary)} style={{
-                width: "100%", padding: 16, marginTop: 8,
-                background: "linear-gradient(135deg, #1a237e, #0f3460)",
-                color: "white", border: "none", borderRadius: 12,
-                fontSize: 16, fontWeight: 700, cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(15,52,96,0.3)",
+                width: "100%", padding: 17, marginTop: 16,
+                background: "linear-gradient(135deg, #0B2440, #15304F)",
+                color: "#FBF7EE", border: "1px solid #B4923F", borderRadius: 6,
+                fontSize: 15.5, fontWeight: 700, cursor: "pointer",
+                boxShadow: "0 8px 24px rgba(11,36,64,0.35)",
+                fontFamily: "'Noto Serif KR', serif",
               }}>
                 🤖 AI 심층 분석 받기 →
               </button>
