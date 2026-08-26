@@ -64,8 +64,10 @@ export default function CustomerDashboardPage() {
     }
   }
 
-  async function handleFileUpload(e) {
-    const selected = Array.from(e.target.files || []);
+  const [dragActive, setDragActive] = useState(false);
+
+  async function uploadFiles(fileList) {
+    const selected = Array.from(fileList || []);
     if (selected.length === 0) return;
     setUploading(true);
     try {
@@ -87,8 +89,27 @@ export default function CustomerDashboardPage() {
       setError(err.message || '파일 업로드 중 오류가 발생했습니다.');
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
+  }
+
+  async function handleFileUpload(e) {
+    await uploadFiles(e.target.files);
+    e.target.value = '';
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    setDragActive(true);
+  }
+  function handleDragLeave(e) {
+    e.preventDefault();
+    setDragActive(false);
+  }
+  async function handleDrop(e) {
+    e.preventDefault();
+    setDragActive(false);
+    if (uploading) return;
+    await uploadFiles(e.dataTransfer.files);
   }
 
   async function handleFileOpen(f) {
@@ -105,6 +126,29 @@ export default function CustomerDashboardPage() {
       window.open(objectUrl, '_blank');
     } catch (err) {
       setError('파일을 여는 중 오류가 발생했습니다.');
+    }
+  }
+
+  async function handleFileDownload(f) {
+    try {
+      const res = await fetch(`/api/customers/${params.id}/files/${f.id}/download`, {
+        headers: {
+          'x-consultant-id': user?.username || '',
+          'x-consultant-role': user?.role || '',
+        },
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = f.file_name; // 원본 파일명·확장자 그대로 저장
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError('파일을 다운로드하는 중 오류가 발생했습니다.');
     }
   }
 
@@ -292,31 +336,56 @@ export default function CustomerDashboardPage() {
               <input type="file" multiple accept=".pdf,.hwp,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp" onChange={handleFileUpload} disabled={uploading} style={{ display: 'none' }} />
             </label>
           </div>
-          {files.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#B0AEA5', margin: 0 }}>아직 업로드된 파일이 없습니다. 사업계획서, 재무제표, 스캔본 등을 올려보세요.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {files.map((f) => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleFileOpen(f)}
-                    style={{ fontSize: 14, color: '#2A2925', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  >
-                    📄 {f.file_name}
-                  </button>
-                  <span style={{ fontSize: 12, color: '#B0AEA5', marginRight: 12 }}>{formatSize(f.size_bytes)}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleFileDelete(f.id)}
-                    style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E4B3A5', background: '#fff', color: '#A32D2D', fontSize: 12, cursor: 'pointer' }}
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{
+              border: dragActive ? '2px dashed #D85A30' : '2px dashed transparent',
+              borderRadius: 10,
+              background: dragActive ? '#FFF6F2' : 'transparent',
+              padding: dragActive ? 12 : 0,
+              transition: 'all 0.15s',
+            }}
+          >
+            {files.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#B0AEA5', margin: 0, padding: dragActive ? 0 : '4px 0' }}>
+                {dragActive ? '여기에 놓으면 업로드됩니다' : '아직 업로드된 파일이 없습니다. 사업계획서, 재무제표, 스캔본 등을 끌어다 놓거나 업로드해보세요.'}
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {files.map((f) => (
+                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleFileOpen(f)}
+                      style={{ fontSize: 14, color: '#2A2925', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      📄 {f.file_name}
+                    </button>
+                    <span style={{ fontSize: 12, color: '#B0AEA5', marginRight: 12 }}>{formatSize(f.size_bytes)}</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleFileDownload(f)}
+                        style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', color: '#2A2925', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        다운로드
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFileDelete(f.id)}
+                        style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E4B3A5', background: '#fff', color: '#A32D2D', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ marginBottom: 32 }}>
