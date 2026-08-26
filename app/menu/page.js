@@ -6,7 +6,7 @@ import AppHeader from '../components/AppHeader'
 
 const CARDS = {
   chat: { icon: '🤖', title: 'AI 상담', desc: '정책자금 항목별 분석 · AI 채팅 · 캘린더', path: '/chat' },
-  customers: { icon: '📋', title: '고객관리 (CRM)', desc: '고객 등록 · 조회 · 진행 현황 관리', path: '/customers' },
+  customers: { icon: '📋', title: '고객관리', desc: '고객 등록 · 조회 · 진행 현황 관리', path: '/customers' },
   admin: { icon: '⚙️', title: '계정 관리', desc: '직원/수강생 계정 목록 확인', path: '/admin' },
 }
 
