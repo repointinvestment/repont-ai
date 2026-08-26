@@ -131,6 +131,8 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     exportRecord: "",
     salesGrowth: "",
     taxDelinquent: "",
+    hasPatent: "",
+    careerYears: "",
   });
 
   const [result, setResult] = useState(null);
@@ -247,6 +249,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
         condition: `스마트기기 보유 ✅ | 소진공 잔여한도 ${sojingongRemain.toLocaleString()}만원`,
         color: "#0f3460",
+        institution: "소진공",
       });
     }
     if (!hasSmartDevice && canApply) {
@@ -264,6 +267,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
         condition: form.exportRecord === "yes" ? "수출 실적 1천달러 이상 ✅" : "2년 연속 매출 10% 증가 ✅",
         color: "#0f3460",
+        institution: "소진공",
       });
     }
 
@@ -277,6 +281,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
         condition: "폐업이력 ✅ + 사업자 1개 ✅ + 업력 7년 미만 ✅",
         color: "#0f3460",
+        institution: "소진공",
       });
     }
 
@@ -292,6 +297,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "5년 (거치 2년)",
         condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅ | 잔여한도 ${remaining.toLocaleString()}만원`,
         color: "#1565c0",
+        institution: "소진공",
       });
     } else {
       if (!sinYongAvailable) {
@@ -316,6 +322,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "은행별 상이",
         condition: `잔여 보증한도 ${jaedanRemain.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
         color: "#2e7d32",
+        institution: "신용보증재단",
       });
     }
 
@@ -360,10 +367,37 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         period: "은행별 상이",
         condition: `매출 ÷ ${isManuf ? 4 : 6} = ${shinboLimit.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
         color: "#2e7d32",
+        institution: "신용보증기금(신보)",
       });
     }
     if (isRestaurant) {
       checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다");
+    }
+
+    // 기보: 핵심 조건은 특허보유 또는 대표자 경력 10년 이상 (매출/업종 기준 아님)
+    const careerYearsNum = parseNum(form.careerYears);
+    const giboCore = [];
+    if (form.hasPatent === "yes") giboCore.push("특허보유");
+    if (careerYearsNum >= 10) giboCore.push(`대표자 경력 ${careerYearsNum}년`);
+    if (canApply && giboCanReapply && !isRestaurant && giboCore.length > 0) {
+      const giboRemainAmt = Math.max(0, 10000 - giboLoan);
+      results.push({
+        tag: "간접대출 (보증)",
+        name: "기술보증기금 (기보)",
+        limit: giboRemainAmt > 0 ? `잔여 보증한도 ${giboRemainAmt.toLocaleString()}만원` : "금액 상담 필요",
+        rate: "은행 대출금리 적용",
+        period: "은행별 상이",
+        condition: `충족 요건: ${giboCore.join(", ")} ※ 재단/신보/기보 중 1개만 선택`,
+        color: "#6a1b9a",
+        institution: "기술보증기금(기보)",
+      });
+    } else if (canApply && !isRestaurant && giboCore.length === 0) {
+      checks.push("ℹ️ 기술보증기금(기보) — 특허보유 또는 대표자 경력 10년 이상 조건 확인 필요");
+    }
+
+    // 중진공: 정확한 심사 기준 미확정 — 별도 상담 필요로만 안내
+    if (canApply) {
+      checks.push("ℹ️ 중진공(중소벤처기업진흥공단) — 기준 확인 필요, 상담 시 별도 검토");
     }
 
     // AI 분석용 고객 정보 요약
@@ -396,6 +430,25 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       })
     : [];
   const maxSingleAmount = resultAmounts.length > 0 ? Math.max(...resultAmounts) : 0;
+
+  const INSTITUTION_ICONS = {
+    "소진공": "🏛",
+    "신용보증재단": "🏦",
+    "신용보증기금(신보)": "💼",
+    "기술보증기금(기보)": "🔬",
+  };
+  const groupedResults = [];
+  if (result) {
+    result.results.forEach((r, i) => {
+      const key = r.institution || r.tag;
+      let group = groupedResults.find((g) => g.key === key);
+      if (!group) {
+        group = { key, icon: INSTITUTION_ICONS[key] || "📋", items: [] };
+        groupedResults.push(group);
+      }
+      group.items.push({ ...r, amount: resultAmounts[i] });
+    });
+  }
 
   return (
     <div style={{
@@ -595,6 +648,11 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 ))}
               </div>
             </div>
+            <YesNoField label="특허 보유 여부 (기보 자격 확인용)" value={form.hasPatent} onChange={(v) => set("hasPatent", v)} />
+            <div>
+              <label style={labelStyle}>대표자 경력 (년, 기보 자격 확인용)</label>
+              <input type="number" placeholder="예: 12" value={form.careerYears} onChange={(e) => set("careerYears", e.target.value)} style={inputStyle} />
+            </div>
           </div>
         </Section>
 
@@ -689,22 +747,31 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 <p style={{ fontSize: 12, color: "#8A8272", margin: "0 0 18px" }}>
                   하나를 선택하면 상담에서 자세히 안내해드려요
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {result.results.map((r, i) => {
-                    const amount = resultAmounts[i];
-                    const pct = maxSingleAmount > 0 ? (amount / maxSingleAmount) * 100 : 0;
-                    return (
-                      <div key={i}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#1C2B3A" }}>{r.name}</span>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: r.color }}>{r.limit}</span>
-                        </div>
-                        <div style={{ height: 10, background: "#EFE8D6", borderRadius: 20, overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 20, transition: "width 0.6s ease" }} />
-                        </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+                  {groupedResults.map((group) => (
+                    <div key={group.key}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ fontSize: 17 }}>{group.icon}</span>
+                        <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 14, fontWeight: 700, color: "#8A5A2E" }}>{group.key}</span>
                       </div>
-                    );
-                  })}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingLeft: 4, borderLeft: "2px solid #E2D9C4", marginLeft: 8 }}>
+                        {group.items.map((r, i) => {
+                          const pct = maxSingleAmount > 0 ? (r.amount / maxSingleAmount) * 100 : 0;
+                          return (
+                            <div key={i} style={{ paddingLeft: 12 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: "#1C2B3A" }}>{r.name}</span>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: r.color }}>{r.limit}</span>
+                              </div>
+                              <div style={{ height: 10, background: "#EFE8D6", borderRadius: 20, overflow: "hidden" }}>
+                                <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 20, transition: "width 0.6s ease" }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -728,27 +795,37 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
             )}
 
             {result.results.length > 0 ? (
-              <div style={{ background: "#FBF7EE", borderRadius: 4, border: "1px solid #E2D9C4", overflow: "hidden", boxShadow: "0 10px 30px rgba(11,36,64,0.18)" }}>
-                {result.results.map((r, i) => (
-                  <div key={i} className="pf-card-in" style={{
-                    padding: "20px 26px",
-                    borderBottom: i < result.results.length - 1 ? "1px solid #E2D9C4" : "none",
-                    animationDelay: `${i * 0.06}s`,
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                      <div>
-                        <p style={{ margin: 0, fontFamily: "'Noto Serif KR', serif", fontSize: 12, color: "#B4923F", fontWeight: 700 }}>
-                          제{i + 1}호 · {r.tag}
-                        </p>
-                        <p style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 700, color: "#1C2B3A", fontFamily: "'Noto Serif KR', serif" }}>{r.name}</p>
-                      </div>
-                      <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: r.color, whiteSpace: "nowrap" }}>{r.limit}</p>
+              <div>
+                {groupedResults.map((group, gi) => (
+                  <div key={group.key} style={{ marginBottom: gi < groupedResults.length - 1 ? 18 : 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, paddingLeft: 4 }}>
+                      <span style={{ fontSize: 18 }}>{group.icon}</span>
+                      <span style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 700, color: "#FBF7EE" }}>{group.key}</span>
                     </div>
-                    <div style={{ display: "flex", gap: 20, marginTop: 10 }}>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>금리 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.rate}</span></p>
-                      <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>상환기간 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.period}</span></p>
+                    <div style={{ background: "#FBF7EE", borderRadius: 4, border: "1px solid #E2D9C4", overflow: "hidden", boxShadow: "0 10px 30px rgba(11,36,64,0.18)" }}>
+                      {group.items.map((r, i) => (
+                        <div key={i} className="pf-card-in" style={{
+                          padding: "20px 26px",
+                          borderBottom: i < group.items.length - 1 ? "1px solid #E2D9C4" : "none",
+                          animationDelay: `${i * 0.06}s`,
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                            <div>
+                              <p style={{ margin: 0, fontFamily: "'Noto Serif KR', serif", fontSize: 12, color: "#B4923F", fontWeight: 700 }}>
+                                {r.tag}
+                              </p>
+                              <p style={{ margin: "4px 0 0", fontSize: 17, fontWeight: 700, color: "#1C2B3A", fontFamily: "'Noto Serif KR', serif" }}>{r.name}</p>
+                            </div>
+                            <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: r.color, whiteSpace: "nowrap" }}>{r.limit}</p>
+                          </div>
+                          <div style={{ display: "flex", gap: 20, marginTop: 10 }}>
+                            <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>금리 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.rate}</span></p>
+                            <p style={{ margin: 0, fontSize: 12.5, color: "#8A8272" }}>상환기간 <span style={{ color: "#3D4E63", fontWeight: 600 }}>{r.period}</span></p>
+                          </div>
+                          <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#5B4A2F" }}>✅ {r.condition}</p>
+                        </div>
+                      ))}
                     </div>
-                    <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "#5B4A2F" }}>✅ {r.condition}</p>
                   </div>
                 ))}
               </div>
