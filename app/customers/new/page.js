@@ -281,7 +281,7 @@ export default function NewCustomerPage() {
           <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="공동인증서 비밀번호" />
         </label>
 
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 0' }}>추가 계정 정보</p>
         {extraCredentials.map((cred, i) => (
           cred.confirmed ? (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #E4E2DB', borderRadius: 8, background: '#FAFAF8' }}>

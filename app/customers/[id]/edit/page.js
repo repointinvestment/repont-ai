@@ -25,24 +25,55 @@ export default function CustomerDetailPage() {
   function updateExtraCredential(index, field, value) {
     setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
   }
-  function removeExtraCredential(index) {
+  async function removeExtraCredential(index) {
+    const cred = extraCredentials[index];
+    if (cred.credentialId) {
+      try {
+        await fetch(`/api/credentials/${cred.credentialId}`, {
+          method: 'DELETE',
+          headers: {
+            'x-consultant-id': user?.username || '',
+            'x-consultant-role': user?.role || '',
+          },
+        });
+      } catch (err) {
+        setError('삭제 중 오류가 발생했습니다.');
+        return;
+      }
+    }
     setExtraCredentials((prev) => prev.filter((_, i) => i !== index));
   }
-  function confirmExtraCredential(index) {
+  async function confirmExtraCredential(index) {
     const cred = extraCredentials[index];
     if (!cred.serviceName) {
       setError('서비스명을 먼저 선택해주세요.');
       return;
     }
     setError(null);
-    setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, confirmed: true } : c)));
+    try {
+      const res = await fetch(`/api/customers/${params.id}/credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceName: cred.serviceName,
+          username: cred.username,
+          password: cred.password,
+          secondaryPassword: cred.secondaryPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '저장 실패');
+      setExtraCredentials((prev) => prev.map((c, i) => (
+        i === index ? { ...c, confirmed: true, credentialId: data.credential.id, username: data.credential.username, password: '', secondaryPassword: '' } : c
+      )));
+    } catch (err) {
+      setError(err.message || '계정 정보 저장 중 오류가 발생했습니다.');
+    }
   }
   function editExtraCredential(index) {
     setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, confirmed: false } : c)));
   }
   const [deleting, setDeleting] = useState(false);
-  const [credentials, setCredentials] = useState([]);
-  const [copyState, setCopyState] = useState({}); // { [credentialId]: '복사됨' | '복사 실패' }
 
   useEffect(() => {
     const session = getSession();
@@ -51,25 +82,6 @@ export default function CustomerDetailPage() {
     setUser(session);
   }, []);
 
-  async function copyCredential(cred) {
-    try {
-      const res = await fetch(`/api/credentials/${cred.id}/copy`, {
-        method: 'POST',
-        headers: {
-          'x-consultant-id': user?.username || '',
-          'x-consultant-role': user?.role || '',
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error();
-      await navigator.clipboard.writeText(data.value);
-      setCopyState((s) => ({ ...s, [cred.id]: '복사됨' }));
-      setTimeout(() => setCopyState((s) => ({ ...s, [cred.id]: null })), 2000);
-    } catch (err) {
-      setCopyState((s) => ({ ...s, [cred.id]: '복사 실패' }));
-    }
-  }
-
   useEffect(() => {
     async function load() {
       try {
@@ -77,9 +89,20 @@ export default function CustomerDetailPage() {
         const data = await res.json();
         if (!res.ok) throw new Error();
         const c = data.customer;
+        const FIXED_NAMES = ['주민등록번호', '공동인증서 비밀번호'];
         fetch(`/api/customers/${params.id}/credentials`)
           .then((r) => r.json())
-          .then((d) => setCredentials(d.credentials || []))
+          .then((d) => {
+            const others = (d.credentials || []).filter((cred) => !FIXED_NAMES.includes(cred.service_name));
+            setExtraCredentials(others.map((cred) => ({
+              serviceName: cred.service_name,
+              username: cred.username || '',
+              password: '',
+              secondaryPassword: '',
+              confirmed: true,
+              credentialId: cred.id,
+            })));
+          })
           .catch(() => {});
         setForm({
           businessName: c.business_name || '',
@@ -126,18 +149,13 @@ export default function CustomerDetailPage() {
   }
 
   async function handleSave() {
-    const incompleteCred = extraCredentials.find((c) => !c.serviceName && (c.username || c.password || c.secondaryPassword));
-    if (incompleteCred) {
-      setError('추가 계정 정보에 아이디/비밀번호를 입력하셨다면, 서비스명도 선택해주세요.');
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
       const res = await fetch(`/api/customers/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, additionalCredentials: extraCredentials.filter((c) => c.serviceName) }),
+        body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error();
       router.push(`/customers/${params.id}`);
@@ -345,7 +363,8 @@ export default function CustomerDetailPage() {
         <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="변경 시에만 입력하세요" />
       </label>
 
-      <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보</p>
+      <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '20px 0 10px' }}>추가 계정 정보</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {extraCredentials.map((cred, i) => (
         cred.confirmed ? (
           <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #E4E2DB', borderRadius: 8, background: '#FAFAF8' }}>
@@ -411,44 +430,8 @@ export default function CustomerDetailPage() {
         </div>
         )
       ))}
-      <button type="button" onClick={addExtraCredential} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px dashed #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>+ 계정 추가</button>
-
-      {credentials.length > 0 && (
-        <>
-          <p style={sectionTitle}>계정 정보</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {credentials.map((cred) => (
-              <div
-                key={cred.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  border: '1px solid #E4E2DB',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{cred.service_name}</span>
-                <button
-                  type="button"
-                  onClick={() => copyCredential(cred)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid #D3D1C7',
-                    background: copyState[cred.id] === '복사됨' ? '#E6F1FB' : '#fff',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {copyState[cred.id] || '복사'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <button type="button" onClick={addExtraCredential} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px dashed #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer', marginTop: 4 }}>+ 계정 추가</button>
+      </div>
 
       {error && <p style={{ fontSize: 13, color: '#A32D2D', margin: '16px 0 0' }}>{error}</p>}
 
