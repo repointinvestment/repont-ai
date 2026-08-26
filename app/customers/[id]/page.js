@@ -24,6 +24,9 @@ export default function CustomerDashboardPage() {
   const [copyState, setCopyState] = useState({});
   const [files, setFiles] = useState([]);
   const [statusHistory, setStatusHistory] = useState([]);
+  const [planDrafts, setPlanDrafts] = useState({});
+  const [planLoading, setPlanLoading] = useState({});
+  const [planCopyState, setPlanCopyState] = useState({});
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -116,6 +119,50 @@ export default function CustomerDashboardPage() {
     setDragActive(false);
     if (uploading) return;
     await uploadFiles(e.dataTransfer.files);
+  }
+
+  async function generatePlan(fundName, index) {
+    setPlanLoading((s) => ({ ...s, [index]: true }));
+    try {
+      const pfd = customer.policy_fund_details || {};
+      const res = await fetch('/api/business-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fundName,
+          customer: {
+            ownerName: customer.owner_name,
+            businessName: customer.business_name,
+            industry: customer.industry,
+            bizAge: customer.business_age_years,
+            businessContent: customer.business_content,
+            revenue: customer.revenue_amount,
+            creditNice: customer.credit_nice,
+            creditKcb: customer.credit_kcb,
+            employeeCount: customer.employee_count,
+            smartDevices: pfd.smartDevices || [],
+            hasPatent: customer.has_patent,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      setPlanDrafts((s) => ({ ...s, [index]: data.draft }));
+    } catch (err) {
+      setError('사업계획서 초안 생성 중 오류가 발생했습니다.');
+    } finally {
+      setPlanLoading((s) => ({ ...s, [index]: false }));
+    }
+  }
+
+  async function copyPlan(index) {
+    try {
+      await navigator.clipboard.writeText(planDrafts[index]);
+      setPlanCopyState((s) => ({ ...s, [index]: '복사됨' }));
+      setTimeout(() => setPlanCopyState((s) => ({ ...s, [index]: null })), 2000);
+    } catch (err) {
+      setPlanCopyState((s) => ({ ...s, [index]: '복사 실패' }));
+    }
   }
 
   async function handleFileOpen(f) {
@@ -320,17 +367,41 @@ export default function CustomerDashboardPage() {
                 {(() => {
                   const amounts = analysis.results.map((r) => Number((r.limit.match(/[\d,]+/) || ['0'])[0].replace(/,/g, '')));
                   return analysis.results.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, border: `1px solid ${r.color}22`, borderLeft: `4px solid ${r.color}`, borderRadius: 8, padding: '12px 16px' }}>
-                      <DonutGauge percent={r.cap ? (amounts[i] / r.cap) * 100 : 100} color={r.color} size={60} stroke={7} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: `${r.color}15`, color: r.color, fontWeight: 700 }}>{r.tag}</span>
-                          <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{r.name}</p>
+                    <div key={i} style={{ border: `1px solid ${r.color}22`, borderLeft: `4px solid ${r.color}`, borderRadius: 8, padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <DonutGauge percent={r.cap ? (amounts[i] / r.cap) * 100 : 100} color={r.color} size={60} stroke={7} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: `${r.color}15`, color: r.color, fontWeight: 700 }}>{r.tag}</span>
+                            <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{r.name}</p>
+                          </div>
+                          <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: r.color }}>{r.limit}</p>
+                          <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>{r.condition}</p>
+                          <p style={{ fontSize: 11, color: '#B0AEA5', margin: '4px 0 0' }}>{r.rate} · {r.period}</p>
                         </div>
-                        <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: r.color }}>{r.limit}</p>
-                        <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>{r.condition}</p>
-                        <p style={{ fontSize: 11, color: '#B0AEA5', margin: '4px 0 0' }}>{r.rate} · {r.period}</p>
+                        <button
+                          type="button"
+                          onClick={() => generatePlan(r.name, i)}
+                          disabled={planLoading[i]}
+                          style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '📝 사업계획서 초안'}
+                        </button>
                       </div>
+                      {planDrafts[i] && (
+                        <div style={{ marginTop: 12, background: '#FAF9F6', border: '1px solid #E4E2DB', borderRadius: 8, padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => copyPlan(i)}
+                              style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: planCopyState[i] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 12, cursor: 'pointer' }}
+                            >
+                              {planCopyState[i] || '전체 복사'}
+                            </button>
+                          </div>
+                          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7, color: '#2A2925', margin: 0 }}>{planDrafts[i]}</pre>
+                        </div>
+                      )}
                     </div>
                   ));
                 })()}
