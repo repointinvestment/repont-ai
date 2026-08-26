@@ -121,65 +121,76 @@ export default function CustomersPage() {
         <p style={{ fontSize: 14, color: '#8A8A85' }}>등록된 고객이 없습니다.</p>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {customers.map((c) => {
-          const style = STAGE_STYLE[c.status] || STAGE_STYLE['상담중'];
-          return (
-                     <div
-            key={c.id}
-            onClick={() => router.push(`/customers/${c.id}`)}
-            style={{
-              cursor: 'pointer',
-              background: '#fff',
-                border: '1px solid #E4E2DB',
-                borderRadius: 12,
-                padding: '14px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {Object.keys(STAGE_STYLE).map((stage) => {
+        const stageCustomers = customers.filter((c) => (c.status || '상담중') === stage);
+        if (stageCustomers.length === 0) return null;
+        const style = STAGE_STYLE[stage];
+        return (
+          <div key={stage} style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: style.ring }} />
+              <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{stage}</p>
+              <span style={{ fontSize: 13, color: '#8A8A85' }}>{stageCustomers.length}명</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {stageCustomers.map((c) => (
                 <div
+                  key={c.id}
+                  onClick={() => router.push(`/customers/${c.id}`)}
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: style.bg,
+                    cursor: 'pointer',
+                    background: '#fff',
+                    border: '1px solid #E4E2DB',
+                    borderRadius: 12,
+                    padding: '14px 16px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 500,
-                    fontSize: 13,
-                    color: style.text,
+                    justifyContent: 'space-between',
                   }}
                 >
-                  {c.owner_name ? c.owner_name.slice(0, 2) : '고객'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        background: style.bg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 500,
+                        fontSize: 13,
+                        color: style.text,
+                      }}
+                    >
+                      {c.owner_name ? c.owner_name.slice(0, 2) : '고객'}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
+                        {c.owner_name || '이름 미입력'} {c.business_name ? `· ${c.business_name}` : ''}
+                      </p>
+                      <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
+                        {c.industry || ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      background: style.bg,
+                      color: style.text,
+                    }}
+                  >
+                    {stage}
+                  </span>
                 </div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
-                    {c.owner_name || '이름 미입력'} {c.business_name ? `· ${c.business_name}` : ''}
-                  </p>
-                  <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
-                    {c.status || '상담중'}
-                  </p>
-                </div>
-              </div>
-              <span
-                style={{
-                  fontSize: 12,
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  background: style.bg,
-                  color: style.text,
-                }}
-              >
-                {c.status || '상담중'}
-              </span>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
     </div>
   );
