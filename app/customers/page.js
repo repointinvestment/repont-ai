@@ -154,11 +154,11 @@ export default function CustomersPage() {
                     color: style.text,
                   }}
                 >
-                  {c.name ? c.name.slice(0, 2) : '고객'}
+                  {c.owner_name ? c.owner_name.slice(0, 2) : '고객'}
                 </div>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
-                    {c.name} {c.business_name ? `· ${c.business_name}` : ''}
+                    {c.owner_name || '이름 미입력'} {c.business_name ? `· ${c.business_name}` : ''}
                   </p>
                   <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
                     {c.status || '상담중'}
