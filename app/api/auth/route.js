@@ -1,16 +1,30 @@
-// 직원 계정 관리 (여기서 추가/삭제)
-// 퇴사자 계정은 아래 목록에서 삭제하면 됩니다
-const USERS = [
-  { id: 'ceorepoint', pw: '!@#tnghks33', name: '관리자', role: 'admin' },
-  { id: 'repoint1', pw: '!flvhdlsxm33', name: '직원1', role: 'manager' },
-  { id: 'repoint2', pw: '!flvhdlsxm33', name: '직원2', role: 'manager' },
-]
+// app/api/auth/route.js
+// DB accounts 테이블 기준 로그인. 직원(consultant/admin)과 수강생(student) 계정이 모두 여기서 인증됩니다.
+import { sql } from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import { NextResponse } from 'next/server'
 
 export async function POST(req) {
   const { id, pw } = await req.json()
-  const user = USERS.find(u => u.id === id && u.pw === pw)
-  if (user) {
-    return Response.json({ ok: true, user: { id: user.id, name: user.name, role: user.role } })
+
+  if (!id || !pw) {
+    return NextResponse.json({ ok: false }, { status: 400 })
   }
-  return Response.json({ ok: false })
+
+  const rows = await sql`SELECT * FROM accounts WHERE username = ${id}`
+  const account = rows[0]
+
+  if (!account) {
+    return NextResponse.json({ ok: false })
+  }
+
+  const matches = await bcrypt.compare(pw, account.password_hash)
+  if (!matches) {
+    return NextResponse.json({ ok: false })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    user: { username: account.username, name: account.name, role: account.role },
+  })
 }

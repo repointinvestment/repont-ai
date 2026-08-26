@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import AppHeader from '../components/AppHeader';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13', ring: '#D85A30' },
@@ -12,17 +14,23 @@ const STAGE_STYLE = {
 
 export default function CustomersPage() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const session = getSession();
+    if (!session) { router.push('/'); return; }
+    if (session.role === 'student') { router.push('/menu'); return; } // 수강생은 CRM 접근 불가
+    setUser(session);
+
     async function loadCustomers() {
       try {
         const res = await fetch('/api/customers', {
           headers: {
-            'x-consultant-id': localStorage.getItem('consultantId') || '',
-            'x-consultant-role': localStorage.getItem('consultantRole') || '',
+            'x-consultant-id': session.username,
+            'x-consultant-role': session.role,
           },
         });
         const data = await res.json();
@@ -36,6 +44,8 @@ export default function CustomersPage() {
     loadCustomers();
   }, []);
 
+  if (!user) return null;
+
   const stageCounts = customers.reduce((acc, c) => {
     const stage = c.status || '상담중';
     acc[stage] = (acc[stage] || 0) + 1;
@@ -43,6 +53,8 @@ export default function CustomersPage() {
   }, {});
 
   return (
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <AppHeader user={user} />
     <div style={{ padding: '32px 40px', maxWidth: 960, margin: '0 auto' }}>
       <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
         오늘 기준 실시간 갱신
@@ -168,6 +180,7 @@ export default function CustomersPage() {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }

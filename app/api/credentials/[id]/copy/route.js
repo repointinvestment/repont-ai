@@ -11,7 +11,7 @@ export async function POST(request, { params }) {
   const role = request.headers.get('x-consultant-role')
 
   const rows = await sql`
-    SELECT cc.id, cc.credential_type, cc.encrypted_value, c.consultant_id
+    SELECT cc.id, cc.service_name, cc.password_encrypted, c.consultant_id
     FROM customer_credentials cc
     JOIN customers c ON c.id = cc.customer_id
     WHERE cc.id = ${id}
@@ -29,10 +29,10 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 })
   }
 
-  const decryptedValue = decrypt(credential.encrypted_value)
+  const decryptedValue = decrypt(credential.password_encrypted)
 
   return NextResponse.json({
-    credentialType: credential.credential_type,
+    credentialType: credential.service_name,
     value: decryptedValue,
   })
 }

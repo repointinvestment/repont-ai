@@ -1,12 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import AppHeader from '../../components/AppHeader';
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 
 export default function NewCustomerPage() {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const session = getSession();
+    if (!session) { router.push('/'); return; }
+    if (session.role === 'student') { router.push('/menu'); return; }
+    setUser(session);
+  }, []);
+
   const [form, setForm] = useState({
     ownerName: '',
     businessName: '',
@@ -48,7 +59,7 @@ export default function NewCustomerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-consultant-id': localStorage.getItem('consultantId') || '',
+          'x-consultant-id': user?.username || '',
         },
         body: JSON.stringify(form),
       });
@@ -76,7 +87,11 @@ export default function NewCustomerPage() {
   const row = { display: 'flex', gap: 12 };
   const half = { flex: 1 };
 
+  if (!user) return null;
+
   return (
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <AppHeader user={user} />
     <div style={{ padding: '32px 40px', maxWidth: 640, margin: '0 auto' }}>
       <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>고객 등록</p>
       <h1 style={{ fontSize: 24, fontWeight: 500, margin: '0 0 16px' }}>
@@ -234,6 +249,7 @@ export default function NewCustomerPage() {
           </button>
         </div>
       </form>
+    </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: '리포인트파트너스 AI 자금분석',
+  title: '자금비서',
   description: '정책자금 AI 컨설턴트',
 }
 

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import AppHeader from '../../components/AppHeader';
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 const STATUS_OPTIONS = ['상담중', '서류준비', '심사중', '완료'];
@@ -9,11 +11,40 @@ const STATUS_OPTIONS = ['상담중', '서류준비', '심사중', '완료'];
 export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const [user, setUser] = useState(null);
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [credentials, setCredentials] = useState([]);
+  const [copyState, setCopyState] = useState({}); // { [credentialId]: '복사됨' | '복사 실패' }
+
+  useEffect(() => {
+    const session = getSession();
+    if (!session) { router.push('/'); return; }
+    if (session.role === 'student') { router.push('/menu'); return; }
+    setUser(session);
+  }, []);
+
+  async function copyCredential(cred) {
+    try {
+      const res = await fetch(`/api/credentials/${cred.id}/copy`, {
+        method: 'POST',
+        headers: {
+          'x-consultant-id': user?.username || '',
+          'x-consultant-role': user?.role || '',
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      await navigator.clipboard.writeText(data.value);
+      setCopyState((s) => ({ ...s, [cred.id]: '복사됨' }));
+      setTimeout(() => setCopyState((s) => ({ ...s, [cred.id]: null })), 2000);
+    } catch (err) {
+      setCopyState((s) => ({ ...s, [cred.id]: '복사 실패' }));
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -22,6 +53,10 @@ export default function CustomerDetailPage() {
         const data = await res.json();
         if (!res.ok) throw new Error();
         const c = data.customer;
+        fetch(`/api/customers/${params.id}/credentials`)
+          .then((r) => r.json())
+          .then((d) => setCredentials(d.credentials || []))
+          .catch(() => {});
         setForm({
           businessName: c.business_name || '',
           businessType: c.business_type || '',
@@ -101,14 +136,27 @@ export default function CustomerDetailPage() {
   const row = { display: 'flex', gap: 12 };
   const half = { flex: 1 };
 
+  if (!user) return null;
   if (loading) {
-    return <div style={{ padding: 40, fontSize: 14, color: '#8A8A85' }}>불러오는 중...</div>;
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        <AppHeader user={user} />
+        <div style={{ padding: 40, fontSize: 14, color: '#8A8A85' }}>불러오는 중...</div>
+      </div>
+    );
   }
   if (!form) {
-    return <div style={{ padding: 40, fontSize: 14, color: '#A32D2D' }}>{error || '고객 정보를 찾을 수 없습니다.'}</div>;
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        <AppHeader user={user} />
+        <div style={{ padding: 40, fontSize: 14, color: '#A32D2D' }}>{error || '고객 정보를 찾을 수 없습니다.'}</div>
+      </div>
+    );
   }
 
   return (
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <AppHeader user={user} />
     <div style={{ padding: '32px 40px', maxWidth: 640, margin: '0 auto' }}>
       <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>고객 상세</p>
       <h1 style={{ fontSize: 24, fontWeight: 500, margin: '0 0 16px' }}>
@@ -216,6 +264,43 @@ export default function CustomerDetailPage() {
         <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
       </label>
 
+      {credentials.length > 0 && (
+        <>
+          <p style={sectionTitle}>계정 정보</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {credentials.map((cred) => (
+              <div
+                key={cred.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  border: '1px solid #E4E2DB',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{cred.service_name}</span>
+                <button
+                  type="button"
+                  onClick={() => copyCredential(cred)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #D3D1C7',
+                    background: copyState[cred.id] === '복사됨' ? '#E6F1FB' : '#fff',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {copyState[cred.id] || '복사'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {error && <p style={{ fontSize: 13, color: '#A32D2D', margin: '16px 0 0' }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
@@ -264,6 +349,7 @@ export default function CustomerDetailPage() {
           {deleting ? '삭제 중...' : '고객 삭제'}
         </button>
       </div>
+    </div>
     </div>
   );
 }

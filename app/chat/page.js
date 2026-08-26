@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import PolicyFundAnalyzer from '../components/PolicyFundAnalyzer'
 import BizCalendar from '../components/BizCalendar'
+import { getSession, clearSession } from '@/lib/session'
 
 export default function ChatPage() {
   const router = useRouter()
@@ -14,9 +15,8 @@ export default function ChatPage() {
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('repoint_user')
-    if (!stored) { router.push('/'); return }
-    const u = JSON.parse(stored)
+    const u = getSession()
+    if (!u) { router.push('/'); return }
     setUser(u)
     setMessages([{ role: 'assistant', content: `안녕하세요 ${u.name}님! 👋\n\n고객 정보를 입력해주시면 맞는 정책자금을 분석해드립니다.\n\n예시: "음식점업, 업력 3년, 작년 매출 8천만원, 신용점수 720점, 기대출 없음, 직원 없음"` }])
   }, [])
@@ -61,7 +61,7 @@ export default function ChatPage() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('repoint_user')
+    clearSession()
     router.push('/')
   }
 
@@ -81,9 +81,9 @@ export default function ChatPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f5f5' }}>
       {/* 헤더 */}
       <div style={{ background: '#0f3460', color: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', flexShrink: 0 }}>
-        <div>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>💼 리포인트파트너스 AI</span>
-          <span style={{ marginLeft: 12, fontSize: 13, opacity: 0.8 }}>정책자금 분석 시스템</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }} onClick={() => router.push('/menu')}>
+          <span style={{ fontWeight: 700, fontSize: 16 }}>💼 자금비서</span>
+          <span style={{ fontSize: 13, opacity: 0.8 }}>정책자금 분석 시스템</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ fontSize: 13 }}>{user.name}</span>

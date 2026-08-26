@@ -1,11 +1,11 @@
-// auth/route.js의 USERS와 동일하게 유지
-const USERS = [
-  { id: 'ceorpoint', name: '관리자', role: 'admin' },
-  { id: 'repoint1', name: '직원1', role: 'staff' },
-  { id: 'repoint2', name: '직원2', role: 'staff' },
-]
+// app/api/users/route.js
+// 관리자 화면(계정 목록)에서 사용. DB accounts 테이블 기준.
+import { sql } from '@/lib/db'
+import { NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const users = USERS.map(({ id, name, role }) => ({ id, name, role }))
-  return Response.json({ users })
+  const users = await sql`SELECT username, name, role, created_at FROM accounts ORDER BY created_at ASC`
+  return NextResponse.json({ users })
 }
