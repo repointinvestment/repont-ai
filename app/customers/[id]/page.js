@@ -21,6 +21,8 @@ export default function CustomerDashboardPage() {
   const [customer, setCustomer] = useState(null);
   const [credentials, setCredentials] = useState([]);
   const [copyState, setCopyState] = useState({});
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -42,6 +44,7 @@ export default function CustomerDashboardPage() {
           .then((r) => r.json())
           .then((d) => setCredentials(d.credentials || []))
           .catch(() => {});
+        loadFiles();
       } catch (err) {
         setError('고객 정보를 불러오지 못했습니다.');
       } finally {
@@ -50,6 +53,59 @@ export default function CustomerDashboardPage() {
     }
     load();
   }, [params.id]);
+
+  async function loadFiles() {
+    try {
+      const res = await fetch(`/api/customers/${params.id}/files`);
+      const data = await res.json();
+      setFiles(data.files || []);
+    } catch (err) {
+      // 조용히 무시 — 파일 목록은 부가 정보라 전체 화면 에러로 띄우지 않음
+    }
+  }
+
+  async function handleFileUpload(e) {
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of selected) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`/api/customers/${params.id}/files`, {
+          method: 'POST',
+          headers: { 'x-consultant-id': user?.username || '' },
+          body: formData,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || '업로드 실패');
+        }
+      }
+      await loadFiles();
+    } catch (err) {
+      setError(err.message || '파일 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handleFileDelete(fileId) {
+    if (!confirm('이 파일을 삭제하시겠어요?')) return;
+    try {
+      await fetch(`/api/customers/${params.id}/files/${fileId}`, { method: 'DELETE' });
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    } catch (err) {
+      setError('파일 삭제 중 오류가 발생했습니다.');
+    }
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? `${mb.toFixed(1)}MB` : `${Math.round(bytes / 1024)}KB`;
+  }
 
   async function copyCredential(cred) {
     try {
@@ -192,6 +248,38 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* 파일 보관함 */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>파일 보관함</p>
+            <label style={{ fontSize: 13, padding: '6px 14px', borderRadius: 6, background: uploading ? '#D3D1C7' : '#D85A30', color: '#fff', cursor: uploading ? 'default' : 'pointer' }}>
+              {uploading ? '업로드 중...' : '파일 업로드'}
+              <input type="file" multiple accept=".pdf,.hwp,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp" onChange={handleFileUpload} disabled={uploading} style={{ display: 'none' }} />
+            </label>
+          </div>
+          {files.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#B0AEA5', margin: 0 }}>아직 업로드된 파일이 없습니다. 사업계획서, 재무제표, 스캔본 등을 올려보세요.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {files.map((f) => (
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
+                  <a href={f.blob_url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: '#2A2925', textDecoration: 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    📄 {f.file_name}
+                  </a>
+                  <span style={{ fontSize: 12, color: '#B0AEA5', marginRight: 12 }}>{formatSize(f.size_bytes)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleFileDelete(f.id)}
+                    style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #E4B3A5', background: '#fff', color: '#A32D2D', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div style={{ marginBottom: 32 }}>
           <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px', color: '#2A2925' }}>작성 서비스</p>
