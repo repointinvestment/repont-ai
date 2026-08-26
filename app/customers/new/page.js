@@ -6,6 +6,7 @@ import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
+const SERVICE_PRESETS = ['소진공', '홈택스', '4대보험', '정부24', '아이핀'];
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -43,13 +44,15 @@ export default function NewCustomerPage() {
     hasRndCenter: false,
     hasVentureCert: false,
     ownerCareerYears: '',
+    hasWomanBizCert: false,
+    hasSojinkongGoodRepayment: false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [extraCredentials, setExtraCredentials] = useState([]); // [{serviceName, username, password}]
 
   function addExtraCredential() {
-    setExtraCredentials((prev) => [...prev, { serviceName: '', username: '', password: '' }]);
+    setExtraCredentials((prev) => [...prev, { serviceName: '', username: '', password: '', secondaryPassword: '' }]);
   }
   function updateExtraCredential(index, field, value) {
     setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
@@ -67,6 +70,11 @@ export default function NewCustomerPage() {
     e.preventDefault();
     if (!form.ownerName) {
       setError('대표자명을 입력해주세요.');
+      return;
+    }
+    const incompleteCred = extraCredentials.find((c) => !c.serviceName && (c.username || c.password || c.secondaryPassword));
+    if (incompleteCred) {
+      setError('추가 계정 정보에 아이디/비밀번호를 입력하셨다면, 서비스명도 선택해주세요.');
       return;
     }
     setSaving(true);
@@ -238,6 +246,12 @@ export default function NewCustomerPage() {
             <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제 (소진공 가점)
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasWomanBizCert" checked={form.hasWomanBizCert} onChange={handleChange} /> 여성기업확인서 (소진공 가점)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasSojinkongGoodRepayment" checked={form.hasSojinkongGoodRepayment} onChange={handleChange} /> 소진공 직접대출 성실상환 이력 (소진공 가점)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소 (가점)
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
@@ -255,22 +269,50 @@ export default function NewCustomerPage() {
           <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="공동인증서 비밀번호" />
         </label>
 
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보 (소진공, 홈택스 등)</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보</p>
         {extraCredentials.map((cred, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <label style={{ ...labelStyle, flex: 1 }}>
-              서비스명
-              <input style={inputStyle} value={cred.serviceName} onChange={(e) => updateExtraCredential(i, 'serviceName', e.target.value)} placeholder="예: 소진공" />
-            </label>
-            <label style={{ ...labelStyle, flex: 1 }}>
-              아이디
-              <input style={inputStyle} value={cred.username} onChange={(e) => updateExtraCredential(i, 'username', e.target.value)} />
-            </label>
-            <label style={{ ...labelStyle, flex: 1 }}>
-              비밀번호
-              <input style={inputStyle} value={cred.password} onChange={(e) => updateExtraCredential(i, 'password', e.target.value)} />
-            </label>
-            <button type="button" onClick={() => removeExtraCredential(i)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, border: '1px solid #E4E2DB', borderRadius: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <label style={{ ...labelStyle, flex: 1 }}>
+                서비스명
+                <select
+                  style={inputStyle}
+                  value={SERVICE_PRESETS.includes(cred.serviceName) || cred.serviceName === '' ? cred.serviceName : '기타'}
+                  onChange={(e) => updateExtraCredential(i, 'serviceName', e.target.value === '기타' ? '' : e.target.value)}
+                >
+                  <option value="">선택하세요</option>
+                  {SERVICE_PRESETS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  <option value="기타">기타(직접입력)</option>
+                </select>
+              </label>
+              <button type="button" onClick={() => removeExtraCredential(i)} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+            </div>
+            {cred.serviceName === '' && (
+              <label style={labelStyle}>
+                서비스명 직접입력 (드롭다운에 없는 경우)
+                <input style={inputStyle} value="" onChange={(e) => updateExtraCredential(i, 'serviceName', e.target.value)} placeholder="예: 정부24" />
+              </label>
+            )}
+            {!SERVICE_PRESETS.includes(cred.serviceName) && cred.serviceName !== '' && (
+              <label style={labelStyle}>
+                서비스명 직접입력
+                <input style={inputStyle} value={cred.serviceName} onChange={(e) => updateExtraCredential(i, 'serviceName', e.target.value)} placeholder="예: 정부24" />
+              </label>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <label style={{ ...labelStyle, flex: 1 }}>
+                아이디
+                <input style={inputStyle} value={cred.username} onChange={(e) => updateExtraCredential(i, 'username', e.target.value)} />
+              </label>
+              <label style={{ ...labelStyle, flex: 1 }}>
+                비밀번호
+                <input style={inputStyle} value={cred.password} onChange={(e) => updateExtraCredential(i, 'password', e.target.value)} />
+              </label>
+              <label style={{ ...labelStyle, flex: 1 }}>
+                2차 비밀번호 (아이핀 등, 선택)
+                <input style={inputStyle} value={cred.secondaryPassword} onChange={(e) => updateExtraCredential(i, 'secondaryPassword', e.target.value)} />
+              </label>
+            </div>
           </div>
         ))}
         <button type="button" onClick={addExtraCredential} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px dashed #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>+ 계정 추가</button>

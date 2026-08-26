@@ -124,22 +124,25 @@ export default function CustomerDashboardPage() {
     return mb >= 1 ? `${mb.toFixed(1)}MB` : `${Math.round(bytes / 1024)}KB`;
   }
 
-  async function copyCredential(cred) {
+  async function copyCredential(cred, field = 'password') {
+    const stateKey = field === 'secondary' ? `${cred.id}-2` : `${cred.id}`;
     try {
       const res = await fetch(`/api/credentials/${cred.id}/copy`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'x-consultant-id': user?.username || '',
           'x-consultant-role': user?.role || '',
         },
+        body: JSON.stringify({ field }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error();
       await navigator.clipboard.writeText(data.value);
-      setCopyState((s) => ({ ...s, [cred.id]: '복사됨' }));
-      setTimeout(() => setCopyState((s) => ({ ...s, [cred.id]: null })), 2000);
+      setCopyState((s) => ({ ...s, [stateKey]: '복사됨' }));
+      setTimeout(() => setCopyState((s) => ({ ...s, [stateKey]: null })), 2000);
     } catch (err) {
-      setCopyState((s) => ({ ...s, [cred.id]: '복사 실패' }));
+      setCopyState((s) => ({ ...s, [stateKey]: '복사 실패' }));
     }
   }
 
@@ -256,13 +259,24 @@ export default function CustomerDashboardPage() {
                     {cred.service_name}
                     {cred.username ? <span style={{ color: '#8A8A85' }}> · {cred.username}</span> : null}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => copyCredential(cred)}
-                    style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: copyState[cred.id] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 13, cursor: 'pointer' }}
-                  >
-                    {copyState[cred.id] || '복사'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => copyCredential(cred, 'password')}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: copyState[cred.id] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 13, cursor: 'pointer' }}
+                    >
+                      {copyState[cred.id] || '비밀번호 복사'}
+                    </button>
+                    {cred.has_secondary && (
+                      <button
+                        type="button"
+                        onClick={() => copyCredential(cred, 'secondary')}
+                        style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: copyState[`${cred.id}-2`] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 13, cursor: 'pointer' }}
+                      >
+                        {copyState[`${cred.id}-2`] || '2차 비밀번호 복사'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

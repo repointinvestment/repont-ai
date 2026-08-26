@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request, { params }) {
   const { id } = params
   const rows = await sql`
-    SELECT id, service_name, username
+    SELECT id, service_name, username, (secondary_password_encrypted IS NOT NULL) AS has_secondary
     FROM customer_credentials
     WHERE customer_id = ${id}
     ORDER BY id ASC
