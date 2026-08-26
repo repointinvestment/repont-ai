@@ -189,4 +189,45 @@ export default function NewCustomerPage() {
           주민등록번호
           <input style={inputStyle} name="residentNumber" value={form.residentNumber} onChange={handleChange} placeholder="예: 851217-2379713" />
         </label>
-        <label
+        <label style={labelStyle}>
+          공동인증서 비밀번호
+          <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="공동인증서 비밀번호" />
+        </label>
+
+        {error && <p style={{ fontSize: 13, color: '#A32D2D', margin: 0 }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button
+            type="submit"
+            disabled={saving}
+            style={{
+              padding: '10px 18px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#D85A30',
+              color: '#fff',
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            {saving ? '등록 중...' : '등록하기'}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/customers')}
+            style={{
+              padding: '10px 18px',
+              borderRadius: 8,
+              border: '1px solid #D3D1C7',
+              background: '#fff',
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            취소
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
