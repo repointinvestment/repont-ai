@@ -93,7 +93,7 @@ export default function NewCustomerPage() {
           </label>
           <label style={{ ...labelStyle, ...half }}>
             업체명
-            <input style={inputStyle} name="businessName" value={form.businessName} onChange={handleChange} placeholder="예: 리포인트파트너스" />
+            <input style={inputStyle} name="businessName" value={form.businessName} onChange={handleChange} placeholder="예: 00상사" />
           </label>
         </div>
         <div style={row}>
