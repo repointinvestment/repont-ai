@@ -16,7 +16,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const consultantId = request.headers.get('x-consultant-id')
+  const rawConsultantId = request.headers.get('x-consultant-id')
+  const consultantId = rawConsultantId ? rawConsultantId : null
   const body = await request.json()
 
   const [customer] = await sql`
