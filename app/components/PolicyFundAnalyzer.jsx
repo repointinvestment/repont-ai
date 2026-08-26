@@ -381,13 +381,15 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     fontFamily: "'Noto Sans KR', sans-serif",
   };
 
-  // 결과 총액 파싱 (제출된 카드들의 "최대 X만원" 합산)
-  const totalEligible = result
-    ? result.results.reduce((sum, r) => {
+  // 기관/자금별 개별 금액 파싱 (합산하지 않음 — 재단/신보/기보는 1개만 선택 가능하고,
+  // 소진공 자금들은 같은 총한도 풀을 공유하므로 단순 합산은 실제와 다릅니다)
+  const resultAmounts = result
+    ? result.results.map((r) => {
         const m = r.limit.match(/[\d,]+/);
-        return sum + (m ? Number(m[0].replace(/,/g, "")) : 0);
-      }, 0)
-    : 0;
+        return m ? Number(m[0].replace(/,/g, "")) : 0;
+      })
+    : [];
+  const maxSingleAmount = resultAmounts.length > 0 ? Math.max(...resultAmounts) : 0;
 
   return (
     <div style={{
@@ -627,7 +629,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
 
             {/* 인증서 헤더 + 도장 */}
             <div className="pf-card-in" style={{
-              background: "#FBF7EE", borderRadius: 4, padding: "40px 32px 32px",
+              background: "#FBF7EE", borderRadius: 4, padding: "36px 32px 30px",
               border: "1px solid #E2D9C4", position: "relative", overflow: "hidden",
               boxShadow: "0 16px 40px rgba(11,36,64,0.3)", marginBottom: 18, textAlign: "center",
             }}>
@@ -641,36 +643,18 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 <div key={i} style={{ position: "absolute", width: 20, height: 20, borderStyle: "solid", borderColor: "#B4923F", ...pos }} />
               ))}
 
-              {/* 숫자 뒤 은은한 광채 */}
-              <div style={{
-                position: "absolute", top: "38%", left: "50%", transform: "translate(-50%, -50%)",
-                width: 320, height: 180, borderRadius: "50%",
-                background: "radial-gradient(ellipse, rgba(180,146,63,0.16), transparent 70%)",
-                pointerEvents: "none",
-              }} />
-
-              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.3em", color: "#B4923F", fontWeight: 700, marginBottom: 8, position: "relative" }}>
+              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.3em", color: "#B4923F", fontWeight: 700, marginBottom: 10, position: "relative" }}>
                 정 책 자 금 진 단 결 과
               </p>
-              <p style={{ fontSize: 12.5, color: "#8A8272", marginBottom: 6, letterSpacing: "0.15em", position: "relative" }}>
-                ✦&nbsp;&nbsp;진단 가능 총액&nbsp;&nbsp;✦
-              </p>
               <p style={{
-                fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(40px, 7vw, 58px)", fontWeight: 900,
-                color: "#0B2440", margin: "4px 0 0", letterSpacing: "-0.01em", position: "relative",
-                textShadow: "0 2px 0 rgba(180,146,63,0.25)",
+                fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(20px, 3.4vw, 27px)", fontWeight: 700,
+                color: "#0B2440", margin: 0, position: "relative", lineHeight: 1.5,
               }}>
-                {totalEligible.toLocaleString()}<span style={{ fontSize: "0.38em", fontWeight: 700, marginLeft: 6 }}>만원</span>
+                최대 <span style={{ color: "#A23B2E" }}>{maxSingleAmount.toLocaleString()}만원</span>까지 신청 가능
               </p>
-
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, margin: "16px auto 0", width: 180, position: "relative" }}>
-                <div style={{ flex: 1, height: 1, background: "#B4923F" }} />
-                <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#B4923F" }} />
-                <div style={{ flex: 1, height: 1, background: "#B4923F" }} />
-              </div>
-
-              <p style={{ fontSize: 13, color: "#8A8272", marginTop: 14, position: "relative" }}>
-                신청 가능한 정책자금 {result.results.length}건 확인됨
+              <p style={{ fontSize: 13, color: "#8A8272", marginTop: 10, position: "relative", lineHeight: 1.7 }}>
+                신청 가능한 정책자금 {result.results.length}건 확인됨 — 재단·신보·기보는 1개만,<br />
+                소진공 자금은 총한도를 공유하니 아래에서 비교 후 상담을 통해 선택하세요
               </p>
 
               <div className="pf-stamp" style={{
@@ -685,6 +669,39 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 </div>
               </div>
             </div>
+
+            {/* 기관별 비교 그래프 */}
+            {result.results.length > 0 && (
+              <div className="pf-card-in" style={{
+                background: "#FBF7EE", borderRadius: 4, padding: "24px 28px",
+                border: "1px solid #E2D9C4", marginBottom: 18,
+                boxShadow: "0 10px 30px rgba(11,36,64,0.18)",
+              }}>
+                <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 700, color: "#1C2B3A", margin: "0 0 4px" }}>
+                  기관별 비교
+                </p>
+                <p style={{ fontSize: 12, color: "#8A8272", margin: "0 0 18px" }}>
+                  하나를 선택하면 상담에서 자세히 안내해드려요
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {result.results.map((r, i) => {
+                    const amount = resultAmounts[i];
+                    const pct = maxSingleAmount > 0 ? (amount / maxSingleAmount) * 100 : 0;
+                    return (
+                      <div key={i}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#1C2B3A" }}>{r.name}</span>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: r.color }}>{r.limit}</span>
+                        </div>
+                        <div style={{ height: 10, background: "#EFE8D6", borderRadius: 20, overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 20, transition: "width 0.6s ease" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {result.warnings.length > 0 && (
               <div className="pf-card-in" style={{ background: "#F5E3DF", border: "1px solid #D9A99C", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
