@@ -10,9 +10,9 @@ export async function GET(request) {
   const consultantId = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
 
-  const rows = role === 'admin'
-    ? await sql`SELECT * FROM customers ORDER BY updated_at DESC`
-    : await sql`SELECT * FROM customers WHERE consultant_id = ${consultantId} ORDER BY updated_at DESC`
+const rows = (role === 'admin' || !consultantId)
+  ? await sql`SELECT * FROM customers ORDER BY updated_at DESC`
+  : await sql`SELECT * FROM customers WHERE consultant_id = ${consultantId} ORDER BY updated_at DESC`
 
   return NextResponse.json({ customers: rows })
 }
