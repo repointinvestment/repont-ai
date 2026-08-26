@@ -102,3 +102,168 @@ export default function CustomerDetailPage() {
   const half = { flex: 1 };
 
   if (loading) {
+    return <div style={{ padding: 40, fontSize: 14, color: '#8A8A85' }}>불러오는 중...</div>;
+  }
+  if (!form) {
+    return <div style={{ padding: 40, fontSize: 14, color: '#A32D2D' }}>{error || '고객 정보를 찾을 수 없습니다.'}</div>;
+  }
+
+  return (
+    <div style={{ padding: '32px 40px', maxWidth: 640, margin: '0 auto' }}>
+      <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>고객 상세</p>
+      <h1 style={{ fontSize: 24, fontWeight: 500, margin: '0 0 16px' }}>
+        {form.ownerName || '고객'} 정보 수정
+      </h1>
+
+      <label style={labelStyle}>
+        진행 단계
+        <select style={inputStyle} name="status" value={form.status} onChange={handleChange}>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </label>
+
+      <p style={sectionTitle}>기본 정보</p>
+      <div style={row}>
+        <label style={{ ...labelStyle, ...half }}>
+          대표자명
+          <input style={inputStyle} name="ownerName" value={form.ownerName} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          업체명
+          <input style={inputStyle} name="businessName" value={form.businessName} onChange={handleChange} />
+        </label>
+      </div>
+      <div style={row}>
+        <label style={{ ...labelStyle, ...half }}>
+          연락처
+          <input style={inputStyle} name="phone" value={form.phone} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          이메일
+          <input style={inputStyle} name="email" value={form.email} onChange={handleChange} />
+        </label>
+      </div>
+      <div style={row}>
+        <label style={{ ...labelStyle, ...half }}>
+          업종
+          <input style={inputStyle} name="industry" value={form.industry} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          사업자등록번호
+          <input style={inputStyle} name="bizRegNumber" value={form.bizRegNumber} onChange={handleChange} />
+        </label>
+      </div>
+      <div style={row}>
+        <label style={{ ...labelStyle, ...half }}>
+          사업자등록일
+          <input style={inputStyle} name="establishDate" value={form.establishDate} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          개업연도
+          <input style={inputStyle} name="openDate" value={form.openDate} onChange={handleChange} />
+        </label>
+      </div>
+
+      <p style={sectionTitle}>재무 / 신용 정보</p>
+      <label style={labelStyle}>
+        매출액 (만원)
+        <input style={inputStyle} name="revenueAmount" value={form.revenueAmount} onChange={handleChange} />
+      </label>
+      <div style={row}>
+        <label style={{ ...labelStyle, ...half }}>
+          신용점수 NICE
+          <input style={inputStyle} name="creditNice" value={form.creditNice} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          신용점수 KCB
+          <input style={inputStyle} name="creditKcb" value={form.creditKcb} onChange={handleChange} />
+        </label>
+      </div>
+
+      <p style={sectionTitle}>주소 정보</p>
+      <div style={row}>
+        <label style={{ ...labelStyle, flex: 2 }}>
+          사업장 소재지
+          <input style={inputStyle} name="address" value={form.address} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          사업장 소유형태
+          <select style={inputStyle} name="addressOwnership" value={form.addressOwnership} onChange={handleChange}>
+            {OWNERSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+      </div>
+      <div style={row}>
+        <label style={{ ...labelStyle, flex: 2 }}>
+          거주지
+          <input style={inputStyle} name="residenceAddress" value={form.residenceAddress} onChange={handleChange} />
+        </label>
+        <label style={{ ...labelStyle, ...half }}>
+          거주지 소유형태
+          <select style={inputStyle} name="residenceOwnership" value={form.residenceOwnership} onChange={handleChange}>
+            {OWNERSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <p style={sectionTitle}>대출 / 메모</p>
+      <label style={labelStyle}>
+        대출현황
+        <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="loanStatus" value={form.loanStatus} onChange={handleChange} />
+      </label>
+      <label style={labelStyle}>
+        기타 메모
+        <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
+      </label>
+
+      {error && <p style={{ fontSize: 13, color: '#A32D2D', margin: '16px 0 0' }}>{error}</p>}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            padding: '10px 18px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#D85A30',
+            color: '#fff',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          {saving ? '저장 중...' : '저장하기'}
+        </button>
+        <button
+          onClick={() => router.push('/customers')}
+          style={{
+            padding: '10px 18px',
+            borderRadius: 8,
+            border: '1px solid #D3D1C7',
+            background: '#fff',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          취소
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          style={{
+            padding: '10px 18px',
+            borderRadius: 8,
+            border: '1px solid #F0997B',
+            background: '#fff',
+            color: '#993C1D',
+            fontSize: 14,
+            cursor: 'pointer',
+            marginLeft: 'auto',
+          }}
+        >
+          {deleting ? '삭제 중...' : '고객 삭제'}
+        </button>
+      </div>
+    </div>
+  );
+}
