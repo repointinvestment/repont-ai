@@ -367,6 +367,12 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     }
 
     // AI 분석용 고객 정보 요약
+    const hasSojingongResult = results.some((r) => r.tag === "소진공 직접대출");
+    const hasGuaranteeResult = results.some((r) => r.tag === "간접대출 (보증)");
+    if (hasSojingongResult && hasGuaranteeResult) {
+      checks.push("💡 소진공 직접대출(직접대출)과 재단·신보·기보(간접대출/보증)는 서로 다른 방식이라 타이밍만 맞으면 함께 진행 가능합니다 — 진행 순서는 상담에서 안내해드립니다.");
+    }
+
     const customerSummary = `업종: ${form.industry}, 업력: ${bizAgeNum}년, 작년매출: ${salesNum.toLocaleString()}만원, 직원수: ${employeesNum}명, 신용점수: KCB ${creditKCB || "-"} / NICE ${creditNICE || "-"}, 소진공 대출: 신용취약 ${sinYongLoan}만원 / 혁신 ${hyuksinLoan}만원 / 재도전 ${jaedoLoan}만원, 신용보증재단: ${jaedanLoan}만원, 신보: ${shinboLoan}만원, 기보: ${giboLoan}만원, 폐업이력: ${form.hasBankruptcy === "yes" ? "있음" : "없음"}, 사업자수: ${form.currentBizCount || "-"}, 스마트기기: ${hasSmartDevice ? form.smartDevices.join(", ") : "없음"}, 수출: ${form.exportRecord === "yes" ? "있음" : "없음"}, 2년연속매출10%증가: ${form.salesGrowth === "yes" ? "있음" : "없음"}`;
 
     setResult({ results, warnings, checks, totalBizLoan, totalPersonalLoan, remainingCapacity, sojingongRemain, bizAgeNum, customerSummary });
@@ -653,8 +659,8 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 최대 <span style={{ color: "#A23B2E" }}>{maxSingleAmount.toLocaleString()}만원</span>까지 신청 가능
               </p>
               <p style={{ fontSize: 13, color: "#8A8272", marginTop: 10, position: "relative", lineHeight: 1.7 }}>
-                신청 가능한 정책자금 {result.results.length}건 확인됨 — 재단·신보·기보는 1개만,<br />
-                소진공 자금은 총한도를 공유하니 아래에서 비교 후 상담을 통해 선택하세요
+                신청 가능한 정책자금 {result.results.length}건 확인됨 — 재단·신보·기보 중에는 1개만,<br />
+                소진공 직접대출은 별도로 함께 진행 가능하니 상담에서 순서를 안내해드려요
               </p>
 
               <div className="pf-stamp" style={{
