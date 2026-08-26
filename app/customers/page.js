@@ -46,8 +46,10 @@ export default function CustomersPage() {
 
   if (!user) return null;
 
+  const normalizeStage = (status) => (STAGE_STYLE[status] ? status : '상담중');
+
   const stageCounts = customers.reduce((acc, c) => {
-    const stage = c.status || '상담중';
+    const stage = normalizeStage(c.status);
     acc[stage] = (acc[stage] || 0) + 1;
     return acc;
   }, {});
@@ -122,8 +124,7 @@ export default function CustomersPage() {
       )}
 
       {Object.keys(STAGE_STYLE).map((stage) => {
-        const stageCustomers = customers.filter((c) => (c.status || '상담중') === stage);
-        if (stageCustomers.length === 0) return null;
+        const stageCustomers = customers.filter((c) => normalizeStage(c.status) === stage);
         const style = STAGE_STYLE[stage];
         return (
           <div key={stage} style={{ marginBottom: 24 }}>
@@ -132,6 +133,9 @@ export default function CustomersPage() {
               <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{stage}</p>
               <span style={{ fontSize: 13, color: '#8A8A85' }}>{stageCustomers.length}명</span>
             </div>
+            {stageCustomers.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#B0AEA5', margin: 0 }}>해당 고객이 없습니다.</p>
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {stageCustomers.map((c) => (
                 <div
@@ -188,6 +192,7 @@ export default function CustomersPage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
         );
       })}
