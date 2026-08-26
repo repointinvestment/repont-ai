@@ -91,6 +91,23 @@ export default function CustomerDashboardPage() {
     }
   }
 
+  async function handleFileOpen(f) {
+    try {
+      const res = await fetch(`/api/customers/${params.id}/files/${f.id}/download`, {
+        headers: {
+          'x-consultant-id': user?.username || '',
+          'x-consultant-role': user?.role || '',
+        },
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, '_blank');
+    } catch (err) {
+      setError('파일을 여는 중 오류가 발생했습니다.');
+    }
+  }
+
   async function handleFileDelete(fileId) {
     if (!confirm('이 파일을 삭제하시겠어요?')) return;
     try {
@@ -267,9 +284,13 @@ export default function CustomerDashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {files.map((f) => (
                 <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
-                  <a href={f.blob_url} target="_blank" rel="noreferrer" style={{ fontSize: 14, color: '#2A2925', textDecoration: 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleFileOpen(f)}
+                    style={{ fontSize: 14, color: '#2A2925', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
                     📄 {f.file_name}
-                  </a>
+                  </button>
                   <span style={{ fontSize: 12, color: '#B0AEA5', marginRight: 12 }}>{formatSize(f.size_bytes)}</span>
                   <button
                     type="button"

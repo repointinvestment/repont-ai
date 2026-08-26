@@ -1,4 +1,6 @@
 // app/api/customers/[id]/files/route.js
+// 파일은 Private Blob 저장소에 저장됩니다. blob_url(=pathname)만 DB에 저장하고,
+// 실제 열람은 /api/customers/[id]/files/[fileId]/download 를 통해서만 가능합니다.
 import { sql } from '@/lib/db'
 import { put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
@@ -42,12 +44,12 @@ export async function POST(request, { params }) {
   }
 
   const blob = await put(`customers/${id}/${Date.now()}-${file.name}`, file, {
-    access: 'public',
+    access: 'private',
   })
 
   const [row] = await sql`
     INSERT INTO customer_files (customer_id, file_name, blob_url, size_bytes, uploaded_by)
-    VALUES (${id}, ${file.name}, ${blob.url}, ${file.size || null}, ${uploadedBy})
+    VALUES (${id}, ${file.name}, ${blob.pathname}, ${file.size || null}, ${uploadedBy})
     RETURNING *
   `
 
