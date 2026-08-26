@@ -499,7 +499,12 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <label style={labelStyle}>업종</label>
-              <select value={form.industry} onChange={(e) => set("industry", e.target.value)} style={inputStyle}>
+              <select value={form.industry} onChange={(e) => set("industry", e.target.value)} style={{
+                ...inputStyle,
+                appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%23B4923F' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 36,
+              }}>
                 <option value="">선택하세요</option>
                 {INDUSTRIES.map((i) => <option key={i}>{i}</option>)}
               </select>

@@ -79,30 +79,31 @@ export default function ChatPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f5f5' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');`}</style>
       {/* 헤더 */}
-      <div style={{ background: '#0f3460', color: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', flexShrink: 0 }}>
+      <div style={{ background: '#0B2440', color: '#FBF7EE', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.25)', flexShrink: 0, borderBottom: '1px solid #1C3A5C' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }} onClick={() => router.push('/menu')}>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>💼 자금비서</span>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>정책자금 분석 시스템</span>
+          <span style={{ fontWeight: 700, fontSize: 16, fontFamily: "'Noto Serif KR', serif" }}>💼 자금비서</span>
+          <span style={{ fontSize: 13, opacity: 0.65 }}>정책자금 분석 시스템</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 13 }}>{user.name}</span>
+          <span style={{ fontSize: 13, opacity: 0.85 }}>{user.name}</span>
           {user.role === 'admin' && (
-            <button onClick={() => router.push('/admin')} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>관리자</button>
+            <button onClick={() => router.push('/admin')} style={{ background: 'rgba(251,247,238,0.12)', color: '#FBF7EE', border: '1px solid rgba(180,146,63,0.4)', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>관리자</button>
           )}
-          <button onClick={handleLogout} style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>로그아웃</button>
+          <button onClick={handleLogout} style={{ background: 'rgba(251,247,238,0.08)', color: '#FBF7EE', border: '1px solid rgba(251,247,238,0.2)', borderRadius: 6, padding: '6px 12px', fontSize: 13, cursor: 'pointer' }}>로그아웃</button>
         </div>
       </div>
 
       {/* 상단 탭 */}
-      <div style={{ background: 'white', borderBottom: '1px solid #e0e0e0', display: 'flex', flexShrink: 0 }}>
+      <div style={{ background: '#0E2C4C', borderBottom: '1px solid #1C3A5C', display: 'flex', flexShrink: 0 }}>
         {NAV_TABS.map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)} style={{
             padding: '12px 24px', border: 'none', background: 'none',
-            fontSize: 14, fontWeight: tab === key ? 700 : 400,
-            color: tab === key ? '#0f3460' : '#888',
-            borderBottom: tab === key ? '2px solid #0f3460' : '2px solid transparent',
-            cursor: 'pointer',
+            fontSize: 14, fontWeight: tab === key ? 700 : 500,
+            color: tab === key ? '#E9C979' : 'rgba(251,247,238,0.55)',
+            borderBottom: tab === key ? '2px solid #B4923F' : '2px solid transparent',
+            cursor: 'pointer', fontFamily: "'Noto Sans KR', sans-serif",
           }}>
             {label}
           </button>
