@@ -58,21 +58,43 @@ export default function CustomersPage() {
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
     <AppHeader user={user} />
     <div style={{ padding: '32px 40px', maxWidth: 960, margin: '0 auto' }}>
-      <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
-        오늘 기준 실시간 갱신
-      </p>
-      <h1 style={{ fontSize: 26, fontWeight: 500, lineHeight: 1.4, margin: '0 0 8px', maxWidth: 520 }}>
-        이번 달 신규 상담 {customers.length}건이에요.
-      </h1>
-      <p style={{ fontSize: 14, color: '#5F5E5A', lineHeight: 1.6, margin: '0 0 24px', maxWidth: 560 }}>
-        담당 컨설턴트별 진행 현황을 정리했습니다. 아래에서 고객 상세와 계정정보까지 바로 확인하세요.
-      </p>
 
-      <div style={{ background: '#F7F5F0', borderRadius: 12, padding: '20px', marginBottom: 24 }}>
-        <p style={{ fontSize: 13, color: '#5F5E5A', margin: '0 0 16px' }}>단계별 고객 현황</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+      {/* 개인화된 히어로 배너 */}
+      <div style={{
+        background: 'linear-gradient(135deg, #FAECE7 0%, #F7F5F0 60%)',
+        borderRadius: 16, padding: '28px 32px', marginBottom: 24,
+        display: 'flex', alignItems: 'center', gap: 20,
+        border: '1px solid #EEE6DA',
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%', background: '#D85A30',
+          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 20, fontWeight: 700, flexShrink: 0,
+        }}>
+          {user.name ? user.name.slice(0, 2) : '담당'}
+        </div>
+        <div>
+          <p style={{ fontSize: 12, color: '#8A5A2E', margin: '0 0 4px', letterSpacing: '0.02em' }}>
+            {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })} · 실시간 갱신
+          </p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>
+            {user.name} 컨설턴트님의 고객명단
+          </h1>
+          <p style={{ fontSize: 14, color: '#5F5E5A', margin: 0 }}>
+            이번 달 신규 상담 {customers.length}건 · 아래에서 고객 상세와 계정정보까지 바로 확인하세요
+          </p>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontSize: 13, color: '#5F5E5A', margin: '0 0 12px', fontWeight: 600 }}>단계별 고객 현황</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
           {Object.entries(STAGE_STYLE).map(([stage, style]) => (
-            <div key={stage} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={stage} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              background: '#fff', borderRadius: 12, padding: '16px 18px',
+              border: '1px solid #E4E2DB', boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            }}>
               <div
                 style={{
                   width: 44,
@@ -83,15 +105,16 @@ export default function CustomersPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: style.text,
-                  fontWeight: 500,
-                  fontSize: 14,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  flexShrink: 0,
                 }}
               >
                 {stageCounts[stage] || 0}
               </div>
               <div>
-                <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>{stage}</p>
-                <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{stage}</p>
+                <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>
                   {stageCounts[stage] || 0}명
                 </p>
               </div>
