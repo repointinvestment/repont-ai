@@ -113,10 +113,12 @@ export default function CustomersPage() {
         {customers.map((c) => {
           const style = STAGE_STYLE[c.status] || STAGE_STYLE['상담중'];
           return (
-            <div
-              key={c.id}
-              style={{
-                background: '#fff',
+                     <div
+            key={c.id}
+            onClick={() => router.push(`/customers/${c.id}`)}
+            style={{
+              cursor: 'pointer',
+              background: '#fff',
                 border: '1px solid #E4E2DB',
                 borderRadius: 12,
                 padding: '14px 16px',
