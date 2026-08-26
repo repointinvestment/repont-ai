@@ -8,8 +8,27 @@ export async function GET(request) {
   const consultantId = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
   const rows = (role === 'admin' || !consultantId)
-    ? await sql`SELECT * FROM customers ORDER BY updated_at DESC`
-    : await sql`SELECT * FROM customers WHERE consultant_id = ${consultantId} ORDER BY updated_at DESC`
+    ? await sql`
+        SELECT c.*, h.first_consulted_at
+        FROM customers c
+        LEFT JOIN (
+          SELECT customer_id, MIN(changed_at) AS first_consulted_at
+          FROM customer_status_history
+          GROUP BY customer_id
+        ) h ON h.customer_id = c.id
+        ORDER BY c.updated_at DESC
+      `
+    : await sql`
+        SELECT c.*, h.first_consulted_at
+        FROM customers c
+        LEFT JOIN (
+          SELECT customer_id, MIN(changed_at) AS first_consulted_at
+          FROM customer_status_history
+          GROUP BY customer_id
+        ) h ON h.customer_id = c.id
+        WHERE c.consultant_id = ${consultantId}
+        ORDER BY c.updated_at DESC
+      `
   return NextResponse.json({ customers: rows })
 }
 

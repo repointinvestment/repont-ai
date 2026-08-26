@@ -259,9 +259,14 @@ export default function CustomerDashboardPage() {
             {customer.status || '상담중'}
           </span>
         </div>
-        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 16px' }}>
+        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
           {customer.industry} {customer.phone ? `· ${customer.phone}` : ''} {customer.email ? `· ${customer.email}` : ''}
         </p>
+        {statusHistory.length > 0 && (
+          <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 16px', fontWeight: 600 }}>
+            최초 상담일: {new Date(statusHistory[0].changed_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+          </p>
+        )}
 
         {statusHistory.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 4px', marginBottom: 24 }}>

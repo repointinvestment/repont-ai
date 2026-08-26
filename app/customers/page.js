@@ -175,6 +175,7 @@ export default function CustomersPage() {
                       </p>
                       <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
                         {c.industry || ''}
+                        {c.first_consulted_at ? ` · 최초 상담 ${new Date(c.first_consulted_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}` : ''}
                       </p>
                     </div>
                   </div>
