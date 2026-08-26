@@ -313,9 +313,18 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       }
     }
 
+    // 재단/신보/기보 중복 이용 여부 확인 — 이미 하나를 쓰고 있으면 다른 건 원칙적으로 신규 진행 불가 (대환 등은 상담 필요)
+    const jaedanActive = jaedanLoan > 0;
+    const shinboActive = shinboLoan > 0;
+    const giboActive = giboLoan > 0;
+
     // 신용보증재단
     const jaedanRemain = Math.max(0, 10000 - jaedanLoan);
-    if (canApply && jaedanRemain > 0 && jaedanCanReapply) {
+    if (shinboActive || giboActive) {
+      if (!jaedanActive) {
+        warnings.push(`⚠️ 이미 ${shinboActive ? "신보" : "기보"} 이용 중 — 신용보증재단 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
+      }
+    } else if (canApply && jaedanRemain > 0 && jaedanCanReapply) {
       results.push({
         tag: "간접대출 (보증)",
         name: "신용보증재단",
@@ -359,7 +368,11 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     }
 
     // 신보 (일반 식당은 원칙적으로 대상 아님. 프랜차이즈·가맹점은 매출 기준으로 검토 가능)
-    if (canApply && shinboCanReapply && (!isRestaurant || isFranchiseFood) && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000) || (isFranchiseFood && salesNum >= 50000))) {
+    if (jaedanActive || giboActive) {
+      if (!shinboActive) {
+        warnings.push(`⚠️ 이미 ${jaedanActive ? "신용보증재단" : "기보"} 이용 중 — 신용보증기금(신보) 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
+      }
+    } else if (canApply && shinboCanReapply && (!isRestaurant || isFranchiseFood) && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000) || (isFranchiseFood && salesNum >= 50000))) {
       const shinboLimit = isManuf ? Math.floor(salesNum / 4) : Math.floor(salesNum / 6);
       results.push({
         tag: "간접대출 (보증)",
@@ -376,20 +389,24 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다 (프랜차이즈·가맹점은 별도 검토 가능)");
     }
 
-    // 기보: 핵심 조건은 특허보유 또는 대표자 경력 10년 이상 (매출/업종 기준 아님)
+    // 기보: 핵심 조건은 특허보유 또는 대표자 경력 10년 이상 (매출/업종 기준 아님). 한도는 매출·기술력 등에 따라
+    // 보증 심사 시 결정되므로 특정 금액을 미리 계산해 보여주지 않습니다.
     const careerYearsNum = parseNum(form.careerYears);
     const giboCore = [];
     if (form.hasPatent === "yes") giboCore.push("특허보유");
     if (careerYearsNum >= 10) giboCore.push(`대표자 경력 ${careerYearsNum}년`);
-    if (canApply && giboCanReapply && (!isRestaurant || isFranchiseFood) && giboCore.length > 0) {
-      const giboRemainAmt = Math.max(0, 10000 - giboLoan);
+    if (jaedanActive || shinboActive) {
+      if (!giboActive) {
+        warnings.push(`⚠️ 이미 ${jaedanActive ? "신용보증재단" : "신보"} 이용 중 — 기술보증기금(기보) 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
+      }
+    } else if (canApply && giboCanReapply && (!isRestaurant || isFranchiseFood) && giboCore.length > 0) {
       results.push({
         tag: "간접대출 (보증)",
         name: "기술보증기금 (기보)",
-        limit: giboRemainAmt > 0 ? `잔여 보증한도 ${giboRemainAmt.toLocaleString()}만원` : "금액 상담 필요",
+        limit: "보증 심사 시 결정",
         rate: "은행 대출금리 적용",
         period: "은행별 상이",
-        condition: `충족 요건: ${giboCore.join(", ")} ※ 재단/신보/기보 중 1개만 선택`,
+        condition: `충족 요건: ${giboCore.join(", ")} ※ 재단/신보/기보 중 1개만 선택, 한도는 매출·기술력 등을 종합해 심사 시 결정`,
         color: "#6a1b9a",
         institution: "기술보증기금(기보)",
       });
@@ -432,6 +449,18 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       })
     : [];
   const maxSingleAmount = resultAmounts.length > 0 ? Math.max(...resultAmounts) : 0;
+
+  // 소진공(직접대출)과 보증기관(재단/신보/기보, 택1)은 서로 다른 방식이라 조합 가능하므로
+  // 카테고리별 최고금액을 따로 계산해서 보여줍니다 (전체 합산이나 단일 최댓값은 오해 소지가 있음)
+  const sojingongAmounts = result
+    ? result.results.filter((r) => r.institution === "소진공").map((r, idx) => resultAmounts[result.results.indexOf(r)])
+    : [];
+  const guaranteeAmounts = result
+    ? result.results.filter((r) => r.institution && r.institution !== "소진공").map((r) => resultAmounts[result.results.indexOf(r)]).filter((a) => a > 0)
+    : [];
+  const sojingongBest = sojingongAmounts.length > 0 ? Math.max(...sojingongAmounts) : 0;
+  const guaranteeBest = guaranteeAmounts.length > 0 ? Math.max(...guaranteeAmounts) : 0;
+  const hasGuaranteeNoAmount = result ? result.results.some((r) => r.institution && r.institution !== "소진공" && !resultAmounts[result.results.indexOf(r)]) : false;
 
   const INSTITUTION_ICONS = {
     "소진공": "🏛",
@@ -722,10 +751,21 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 정 책 자 금 진 단 결 과
               </p>
               <p style={{
-                fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(20px, 3.4vw, 27px)", fontWeight: 700,
-                color: "#0B2440", margin: 0, position: "relative", lineHeight: 1.5,
+                fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(18px, 3vw, 24px)", fontWeight: 700,
+                color: "#0B2440", margin: 0, position: "relative", lineHeight: 1.6,
               }}>
-                최대 <span style={{ color: "#A23B2E" }}>{maxSingleAmount.toLocaleString()}만원</span>까지 신청 가능
+                {sojingongBest > 0 && (guaranteeBest > 0 || hasGuaranteeNoAmount) ? (
+                  <>
+                    소진공 최대 <span style={{ color: "#A23B2E" }}>{sojingongBest.toLocaleString()}만원</span>
+                    {" + "}보증기관(택1) {guaranteeBest > 0 ? <>최대 <span style={{ color: "#A23B2E" }}>{guaranteeBest.toLocaleString()}만원</span></> : "심사 시 결정"}
+                  </>
+                ) : sojingongBest > 0 ? (
+                  <>소진공 최대 <span style={{ color: "#A23B2E" }}>{sojingongBest.toLocaleString()}만원</span>까지 신청 가능</>
+                ) : guaranteeBest > 0 ? (
+                  <>보증기관 최대 <span style={{ color: "#A23B2E" }}>{guaranteeBest.toLocaleString()}만원</span>까지 신청 가능</>
+                ) : (
+                  <>진단 결과를 확인해주세요</>
+                )}
               </p>
               <p style={{ fontSize: 13, color: "#8A8272", marginTop: 10, position: "relative", lineHeight: 1.7 }}>
                 신청 가능한 정책자금 {result.results.length}건 확인됨 — 재단·신보·기보 중에는 1개만,<br />
