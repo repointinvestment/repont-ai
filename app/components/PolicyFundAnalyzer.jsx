@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DateYMDInput from "./DateYMDInput";
 
 const SMART_DEVICES = [
   "3D 풋스캐너 / 3D 프린터",
@@ -585,7 +586,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 </div>
                 <div>
                   <label style={{ ...labelStyle, fontSize: 11.5 }}>최초 수령일</label>
-                  <input type="date" value={form.loans.jaedanDate} onChange={(e) => setLoan("jaedanDate", e.target.value)} style={inputStyle} />
+                  <DateYMDInput value={form.loans.jaedanDate} onChange={(v) => setLoan("jaedanDate", v)} inputStyle={inputStyle} />
                 </div>
                 <div>
                   <label style={{ ...labelStyle, fontSize: 11.5 }}>사업장 지역</label>
@@ -613,7 +614,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 </div>
                 <div>
                   <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>최초 수령일 <span style={{ fontWeight: 400 }}>(1년 경과해야 재신청)</span></label>
-                  <input type="date" value={form.loans.shinboDate} onChange={(e) => setLoan("shinboDate", e.target.value)} style={inputStyle} />
+                  <DateYMDInput value={form.loans.shinboDate} onChange={(v) => setLoan("shinboDate", v)} inputStyle={inputStyle} />
                 </div>
               </div>
             </div>
@@ -627,7 +628,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                 </div>
                 <div>
                   <label style={{ ...labelStyle, fontSize: 11.5, minHeight: 30 }}>최초 수령일 <span style={{ fontWeight: 400 }}>(1년 경과해야 재신청)</span></label>
-                  <input type="date" value={form.loans.giboDate} onChange={(e) => setLoan("giboDate", e.target.value)} style={inputStyle} />
+                  <DateYMDInput value={form.loans.giboDate} onChange={(v) => setLoan("giboDate", v)} inputStyle={inputStyle} />
                 </div>
               </div>
             </div>

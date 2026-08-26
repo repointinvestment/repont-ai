@@ -1,4 +1,5 @@
 'use client';
+import DateYMDInput from './DateYMDInput';
 
 const SOJINGONG_TYPES = [
   { key: 'sinYong', label: '신용취약소상공인자금' },
@@ -112,7 +113,7 @@ export default function PolicyFundDetailsFields({ businessAgeYears, onBusinessAg
         </label>
         <label style={{ ...labelStyle, ...halfStyle }}>
           최초 수령일
-          <input type="date" style={inputStyle} value={d.loans.jaedanDate} onChange={(e) => setLoan('jaedanDate', e.target.value)} />
+          <DateYMDInput value={d.loans.jaedanDate} onChange={(v) => setLoan('jaedanDate', v)} inputStyle={inputStyle} />
         </label>
       </div>
       <label style={labelStyle}>
@@ -137,7 +138,7 @@ export default function PolicyFundDetailsFields({ businessAgeYears, onBusinessAg
         </label>
         <label style={{ ...labelStyle, ...halfStyle }}>
           신보 최초 수령일
-          <input type="date" style={inputStyle} value={d.loans.shinboDate} onChange={(e) => setLoan('shinboDate', e.target.value)} />
+          <DateYMDInput value={d.loans.shinboDate} onChange={(v) => setLoan('shinboDate', v)} inputStyle={inputStyle} />
         </label>
       </div>
       <div style={rowStyle}>
@@ -147,7 +148,7 @@ export default function PolicyFundDetailsFields({ businessAgeYears, onBusinessAg
         </label>
         <label style={{ ...labelStyle, ...halfStyle }}>
           기보 최초 수령일
-          <input type="date" style={inputStyle} value={d.loans.giboDate} onChange={(e) => setLoan('giboDate', e.target.value)} />
+          <DateYMDInput value={d.loans.giboDate} onChange={(v) => setLoan('giboDate', v)} inputStyle={inputStyle} />
         </label>
       </div>
 
