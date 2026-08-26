@@ -133,6 +133,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     taxDelinquent: "",
     hasPatent: "",
     careerYears: "",
+    isFranchise: false,
   });
 
   const [result, setResult] = useState(null);
@@ -212,6 +213,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     const isManufacturing = form.industry.includes("제조") || form.industry.includes("건설") || form.industry.includes("운수");
     const maxEmployees = isManufacturing ? 9 : 4;
     const isRestaurant = form.industry.includes("음식점") || form.industry.includes("카페");
+    const isFranchiseFood = isRestaurant && form.isFranchise;
     const isRetail = form.industry.includes("도소매");
     const isManuf = form.industry.includes("제조");
 
@@ -356,8 +358,8 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       }
     }
 
-    // 신보
-    if (canApply && shinboCanReapply && !isRestaurant && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000))) {
+    // 신보 (일반 식당은 원칙적으로 대상 아님. 프랜차이즈·가맹점은 매출 기준으로 검토 가능)
+    if (canApply && shinboCanReapply && (!isRestaurant || isFranchiseFood) && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000) || (isFranchiseFood && salesNum >= 50000))) {
       const shinboLimit = isManuf ? Math.floor(salesNum / 4) : Math.floor(salesNum / 6);
       results.push({
         tag: "간접대출 (보증)",
@@ -370,8 +372,8 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         institution: "신용보증기금(신보)",
       });
     }
-    if (isRestaurant) {
-      checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다");
+    if (isRestaurant && !isFranchiseFood) {
+      checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다 (프랜차이즈·가맹점은 별도 검토 가능)");
     }
 
     // 기보: 핵심 조건은 특허보유 또는 대표자 경력 10년 이상 (매출/업종 기준 아님)
@@ -379,7 +381,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
     const giboCore = [];
     if (form.hasPatent === "yes") giboCore.push("특허보유");
     if (careerYearsNum >= 10) giboCore.push(`대표자 경력 ${careerYearsNum}년`);
-    if (canApply && giboCanReapply && !isRestaurant && giboCore.length > 0) {
+    if (canApply && giboCanReapply && (!isRestaurant || isFranchiseFood) && giboCore.length > 0) {
       const giboRemainAmt = Math.max(0, 10000 - giboLoan);
       results.push({
         tag: "간접대출 (보증)",
@@ -391,7 +393,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         color: "#6a1b9a",
         institution: "기술보증기금(기보)",
       });
-    } else if (canApply && !isRestaurant && giboCore.length === 0) {
+    } else if (canApply && (!isRestaurant || isFranchiseFood) && giboCore.length === 0) {
       checks.push("ℹ️ 기술보증기금(기보) — 특허보유 또는 대표자 경력 10년 이상 조건 확인 필요");
     }
 
@@ -653,6 +655,10 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
               <label style={labelStyle}>대표자 경력 (년, 기보 자격 확인용)</label>
               <input type="number" placeholder="예: 12" value={form.careerYears} onChange={(e) => set("careerYears", e.target.value)} style={inputStyle} />
             </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#5B4A2F", fontWeight: 600 }}>
+              <input type="checkbox" checked={form.isFranchise} onChange={(e) => set("isFranchise", e.target.checked)} />
+              프랜차이즈·가맹점 (요식업인 경우 신보/기보 검토 대상 여부에 영향)
+            </label>
           </div>
         </Section>
 
