@@ -7,11 +7,9 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
   const consultantId = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
-
   const rows = (role === 'admin' || !consultantId)
     ? await sql`SELECT * FROM customers ORDER BY updated_at DESC`
     : await sql`SELECT * FROM customers WHERE consultant_id = ${consultantId} ORDER BY updated_at DESC`
-
   return NextResponse.json({ customers: rows })
 }
 
@@ -41,15 +39,15 @@ export async function POST(request) {
   if (body.residentNumber) {
     const encrypted = encrypt(body.residentNumber)
     await sql`
-      INSERT INTO customer_credentials (customer_id, credential_type, encrypted_value)
-      VALUES (${customer.id}, '주민등록번호', ${encrypted})
+      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+      VALUES (${customer.id}, '주민등록번호', '', ${encrypted})
     `
   }
   if (body.certPassword) {
     const encrypted = encrypt(body.certPassword)
     await sql`
-      INSERT INTO customer_credentials (customer_id, credential_type, encrypted_value)
-      VALUES (${customer.id}, '공동인증서 비밀번호', ${encrypted})
+      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+      VALUES (${customer.id}, '공동인증서 비밀번호', '', ${encrypted})
     `
   }
 
