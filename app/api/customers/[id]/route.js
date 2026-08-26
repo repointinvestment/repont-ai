@@ -64,6 +64,10 @@ export async function PATCH(request, { params }) {
       loan_status = ${body.loanStatus},
       memo = ${body.memo},
       status = ${body.status},
+      has_patent = ${!!body.hasPatent},
+      has_yellow_umbrella = ${!!body.hasYellowUmbrella},
+      has_rnd_center = ${!!body.hasRndCenter},
+      has_venture_cert = ${!!body.hasVentureCert},
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *

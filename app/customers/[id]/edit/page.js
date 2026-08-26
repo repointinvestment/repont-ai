@@ -79,6 +79,10 @@ export default function CustomerDetailPage() {
           status: c.status || '상담중',
           residentNumber: '',
           certPassword: '',
+          hasPatent: c.has_patent || false,
+          hasYellowUmbrella: c.has_yellow_umbrella || false,
+          hasRndCenter: c.has_rnd_center || false,
+          hasVentureCert: c.has_venture_cert || false,
         });
       } catch (err) {
         setError('고객 정보를 불러오지 못했습니다.');
@@ -90,7 +94,8 @@ export default function CustomerDetailPage() {
   }, [params.id]);
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, type, value, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   }
 
   async function handleSave() {
@@ -265,6 +270,25 @@ export default function CustomerDetailPage() {
         기타 메모
         <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
       </label>
+
+      <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
+      <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
+        해당하는 항목을 체크하세요. 하나라도 해당하면 기보 상담이 가능합니다.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증
+        </label>
+      </div>
 
       <p style={sectionTitle}>계정 정보 (암호화 저장)</p>
       <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>

@@ -24,13 +24,13 @@ export async function POST(request) {
       biz_reg_number, establish_date, open_date, address, industry,
       business_content, employee_count, last_year_sales, credit_nice, credit_kcb,
       revenue_amount, address_ownership, residence_address, residence_ownership,
-      loan_status, memo
+      loan_status, memo, has_patent, has_yellow_umbrella, has_rnd_center, has_venture_cert
     ) VALUES (
       ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
       ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
       ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
       ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
-      ${body.loanStatus}, ${body.memo}
+      ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}
     )
     RETURNING *
   `

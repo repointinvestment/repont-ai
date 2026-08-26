@@ -90,7 +90,7 @@ export default function CustomerDashboardPage() {
 
   const stage = STAGE_STYLE[customer.status] || STAGE_STYLE['상담중'];
   const limits = estimateInstitutionLimits(customer);
-  const maxLimit = Math.max(...limits.map((l) => l.limit), 1);
+  const maxLimit = Math.max(...limits.map((l) => l.limit || 0), 1);
 
   const statCard = { background: '#fff', borderRadius: 12, padding: '18px 20px', flex: 1, minWidth: 140 };
   const statLabel = { fontSize: 13, color: '#8A8A85', margin: '0 0 6px' };
@@ -136,11 +136,16 @@ export default function CustomerDashboardPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
             {limits.map((l) => (
-              <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: l.limit === 0 ? 0.45 : 1 }}>
-                <DonutGauge percent={(l.limit / maxLimit) * 100} color={l.limit === 0 ? '#B0AEA5' : '#BA7517'} />
+              <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: l.eligible === false ? 0.45 : 1 }}>
+                <DonutGauge
+                  percent={l.limit ? (l.limit / maxLimit) * 100 : (l.eligible ? 50 : 0)}
+                  color={l.eligible === false ? '#B0AEA5' : '#BA7517'}
+                />
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 2px', color: '#2A2925' }}>{l.name}</p>
-                  <p style={{ fontSize: 13, color: '#5F5E5A', margin: 0 }}>{l.limit > 0 ? `${l.limit.toLocaleString()}만원` : '대상 아님'}</p>
+                  <p style={{ fontSize: 13, color: '#5F5E5A', margin: 0 }}>
+                    {l.limit ? `${l.limit.toLocaleString()}만원` : (l.eligible ? '조건 충족 (금액 상담 필요)' : '대상 아님')}
+                  </p>
                   <p style={{ fontSize: 11, color: '#B0AEA5', margin: '2px 0 0' }}>{l.note}</p>
                 </div>
               </div>

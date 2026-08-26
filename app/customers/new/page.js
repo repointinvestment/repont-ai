@@ -38,12 +38,17 @@ export default function NewCustomerPage() {
     memo: '',
     residentNumber: '',
     certPassword: '',
+    hasPatent: false,
+    hasYellowUmbrella: false,
+    hasRndCenter: false,
+    hasVentureCert: false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, type, value, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
   }
 
   async function handleSubmit(e) {
@@ -204,6 +209,25 @@ export default function NewCustomerPage() {
             placeholder="특이사항, 상담 이력 등 자유롭게 입력"
           />
         </label>
+
+        <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
+        <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
+          해당하는 항목을 체크하세요. 하나라도 해당하면 기보 상담이 가능합니다.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+            <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증
+          </label>
+        </div>
 
         <p style={sectionTitle}>계정 정보 (암호화 저장)</p>
         <label style={labelStyle}>
