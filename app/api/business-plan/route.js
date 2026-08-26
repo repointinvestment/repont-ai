@@ -1,12 +1,12 @@
 // app/api/business-plan/route.js
-// 고객 정보 + 신청하려는 정책자금의 특성을 바탕으로 사업계획서 초안을 생성.
-// 소진공 등 다수 기관이 한글파일 업로드 대신 웹폼 제출로 전환 중이라, 파일이 아닌
-// 화면에 바로 붙여넣을 수 있는 텍스트로 반환합니다.
+// 소진공 공식 신청 서식(붙임2 기업현황 및 사업계획서)의 실제 항목 구조를 그대로 따라
+// 사업계획서 초안을 생성. CRM에 있는 정보는 채우고, 없는 항목은 빈칸(________)으로 남겨둡니다.
+// 파일이 아닌 화면 텍스트로 반환 (웹폼 제출/복사 붙여넣기 용도).
 import OpenAI from 'openai'
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-// 자금별로 사업계획서에 반드시 녹여야 할 강조 포인트.
+// 자금별로 "사업내용/사업개요" 문단에 반드시 녹여야 할 강조 포인트.
 // 새 자금이 추가되면 이 목록에 항목만 추가하면 됩니다.
 const FUND_GUIDANCE = {
   '신용취약소상공인자금': '신청 사업자의 신용점수가 낮아(대략 595~839점 구간) 일반 시중은행권에서 정상적인 신용대출이 어려운 상황임을 자연스럽게 서술하고, 이 자금을 통해 경영 안정과 재기의 발판을 마련하고자 하는 취지를 강조하세요.',
@@ -18,7 +18,173 @@ const FUND_GUIDANCE = {
   '기술보증기금 (기보)': '보유 특허나 대표자의 업력·기술력이 사업의 경쟁력과 어떻게 연결되는지 강조하고, 기보 보증서 기반 은행대출이므로 상환 능력과 사업 안정성도 함께 서술하세요.',
 }
 
-const SYSTEM_PROMPT = `당신은 정책자금 신청용 사업계획서 초안을 작성하는 전문 컨설턴트입니다.
+// fundName -> 어떤 공식 서식을 따를지 결정 (재도전특별자금과 혁신성장촉진자금은 소진공 서식1을 공유)
+function resolveTemplate(fundName) {
+  if (fundName === '신용취약소상공인자금') return 'SOJINKONG_SHORT'
+  if (fundName.startsWith('재도전특별자금') || fundName.startsWith('혁신성장촉진자금')) return 'SOJINKONG_LONG'
+  return 'GENERIC'
+}
+
+function field(label, value, width = 18) {
+  const v = value !== null && value !== undefined && value !== '' ? String(value) : '________'
+  return `${label.padEnd(width, ' ')}: ${v}`
+}
+
+function won(manwon) {
+  if (!manwon) return null
+  return `${(Number(manwon) * 10000).toLocaleString()}원`
+}
+
+async function generateParagraph({ fundName, customer, guidance, minChars, maxChars, instruction }) {
+  const customerSummary = `
+- 대표자명: ${customer.ownerName || '미입력'}
+- 업체명: ${customer.businessName || '미입력'}
+- 업종: ${customer.industry || '미입력'}
+- 업력: ${customer.bizAge ? `${customer.bizAge}년` : '미입력'}
+- 사업 내용: ${customer.businessContent || '미입력'}
+- 최근 매출: ${customer.revenue ? `${Number(customer.revenue).toLocaleString()}만원` : '미입력'}
+- 신용점수: NICE ${customer.creditNice || '-'} / KCB ${customer.creditKcb || '-'}
+- 직원 수: ${customer.employeeCount ?? '미입력'}명
+- 보유 스마트기기: ${customer.smartDevices && customer.smartDevices.length > 0 ? customer.smartDevices.join(', ') : '없음'}
+- 특허보유: ${customer.hasPatent ? '있음' : '없음'}
+`.trim()
+
+  const systemPrompt = `당신은 정책자금 신청용 사업계획서를 작성하는 전문 컨설턴트입니다.
+아래 고객 정보와 자금별 강조 포인트를 반영해 "${fundName}" 신청서의 사업내용 문단만 작성하세요.
+- 정중하고 formal한 사업계획서체(자연스러운 서술문)로 작성
+- 제공된 정보 범위 내에서만 작성하고 확인되지 않은 사실을 지어내지 마세요
+- ${instruction}
+- 분량은 ${minChars}자 ~ ${maxChars}자 사이 (띄어쓰기 포함)
+- 문단 텍스트만 출력하고, 제목이나 안내문은 붙이지 마세요`
+
+  const userMessage = `${customerSummary}\n\n[강조할 점]\n${guidance}`
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    max_tokens: 1200,
+  })
+  return response.choices[0].message.content.trim()
+}
+
+export async function POST(req) {
+  const { customer, fundName } = await req.json()
+  const guidance = FUND_GUIDANCE[fundName] || '이 자금의 세부 요건에 맞춰 사업의 강점을 자연스럽게 강조하세요.'
+  const template = resolveTemplate(fundName)
+
+  if (template === 'SOJINKONG_SHORT') {
+    const paragraph = await generateParagraph({
+      fundName, customer, guidance, minChars: 100, maxChars: 500,
+      instruction: '주 서비스·생산품목의 용도 및 특성(제품/서비스의 주요 내용, 다양성, 인지도 등)을 중심으로 작성',
+    })
+    const monthlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 12)) : null
+
+    const draft = `<신용취약소상공인자금 기업현황 및 사업계획서>
+(소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
+
+1. 필수영업현황 및 사업개요
+${field('주 서비스·생산품목', customer.industry)}
+${field('매출액(월)', monthlyRevenue)}
+${field('주 사용 플랫폼', null)}
+${field('점포 보유현황', null)}
+
+사업개요:
+${paragraph}
+
+2. 대표자 및 실제경영자 경력
+${field('대표자 성명', customer.ownerName)}
+${field('근무 기간', null)}
+${field('근무처', null)}
+${field('담당업무', null)}
+
+3. 필수자금집행계획 (대출신청 금액과 합계가 같아야 함)
+${field('원부자재 구입비', null)}
+${field('생산·판매 및 부대비용', null)}
+${field('판로확보·홍보 등', null)}
+${field('인건비', null)}
+${field('기타', null)}
+
+※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
+
+    return Response.json({ draft })
+  }
+
+  if (template === 'SOJINKONG_LONG') {
+    const paragraph = await generateParagraph({
+      fundName, customer, guidance, minChars: 100, maxChars: 3000,
+      instruction: '자금 신청 주요 내용과 대출금 사용목적, 활용계획을 중심으로 작성',
+    })
+    const ownershipMap = { '자가': '자가', '임대': '임차', '가족소유': '자가(가족소유)' }
+    const ownership = ownershipMap[customer.addressOwnership] || null
+    const monthlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 12)) : null
+    const isJaedojeon = fundName.startsWith('재도전특별자금')
+
+    const draft = `<${fundName.startsWith('재도전') ? '재도전특별자금' : '혁신성장촉진자금'} 기업현황 및 사업계획서>
+(소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
+
+선택1. 회사연혁
+${field('연혁', null, 10)}
+
+필수2. 대표자(대표이사) 및 실제경영자
+${field('성명', customer.ownerName)}
+${field('최종학력(학위)', null)}
+${field('전공', null)}
+${field('동업종 종사기간', customer.bizAge ? `약 ${customer.bizAge}년` : null)}
+
+선택3. 경영진 (대표자·실제경영자 제외)
+${field('명단', null, 10)}
+
+선택4. 조직도 및 업무분장표
+${field('구성', null, 10)}
+
+필수5. 사업장 현황
+${field('소유구분', ownership)}
+
+필수6. 생산 및 판매 현황
+${field('판매방식', null)}
+${field('생산방식', null)}
+${field('가동상황', null)}
+
+필수7. 매출 현황
+${field('현재 매출액(월)', monthlyRevenue)}
+${field('1분기', null)}
+${field('2분기', null)}
+${field('3분기', null)}
+${field('4분기', null)}
+
+선택8. 주요거래처
+${field('거래처 정보', null, 10)}
+
+선택9. 지식재산권 및 인증현황, 수상실적
+${field('지식재산권', customer.hasPatent ? '☑ 특허증' : null)}
+${field('인증·수상', null)}
+
+필수10. 사업계획서
+◦ 필수사업내용 (100자~3,000자)
+${paragraph}
+
+◦ 필수자금집행계획
+${field('원부자재 구입비', null)}
+${field('생산·판매 및 부대비용', null)}
+${field('판로확보·홍보 등', null)}
+${field('인건비', null)}
+${field('기타', null)}
+${isJaedojeon ? `
+선택11. 과거 폐업 기업 현황 (재창업 초기단계·도약형 신청 시)
+${field('업체명', null)}
+${field('폐업일자', null)}
+${field('폐업사유', null)}` : ''}
+
+※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
+
+    return Response.json({ draft })
+  }
+
+  // GENERIC: 아직 공식 서식이 등록되지 않은 기관(재단/신보/기보 등) — 일반 사업계획서 형식으로 작성
+  const systemPrompt = `당신은 정책자금 신청용 사업계획서 초안을 작성하는 전문 컨설턴트입니다.
 아래 제공되는 고객 정보와 신청하려는 자금의 특성을 바탕으로, 실제 제출 가능한 수준의 사업계획서 초안을 작성하세요.
 
 [사업계획서 구성 - 이 순서와 소제목을 그대로 사용]
@@ -33,12 +199,7 @@ const SYSTEM_PROMPT = `당신은 정책자금 신청용 사업계획서 초안�
 - 제공된 고객 정보 범위 내에서만 작성하고, 확인되지 않은 사실을 지어내지 마세요
 - 구체적인 숫자(매출액, 신용점수 등)가 있으면 반드시 인용해 신뢰도를 높이세요
 - "3. 신청 자금 개요 및 신청 사유" 항목에는 아래 안내된 이 자금 특유의 강조 포인트를 반드시 자연스럽게 녹여내세요
-- 마지막에 "※ 이 초안은 참고용이며, 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."라는 안내 문구를 반드시 추가하세요`
-
-export async function POST(req) {
-  const { customer, fundName } = await req.json()
-
-  const guidance = FUND_GUIDANCE[fundName] || '이 자금의 세부 요건에 맞춰 사업의 강점을 자연스럽게 강조하세요.'
+- 마지막에 "※ 이 초안은 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."라는 안내 문구를 반드시 추가하세요`
 
   const customerSummary = `
 - 대표자명: ${customer.ownerName || '미입력'}
@@ -59,7 +220,7 @@ export async function POST(req) {
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
     messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
     max_tokens: 2000,
