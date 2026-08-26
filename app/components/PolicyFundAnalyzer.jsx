@@ -253,6 +253,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: `스마트기기 보유 ✅ | 소진공 잔여한도 ${sojingongRemain.toLocaleString()}만원`,
         color: "#0f3460",
         institution: "소진공",
+        cap: 10000,
       });
     }
     if (!hasSmartDevice && canApply) {
@@ -271,6 +272,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: form.exportRecord === "yes" ? "수출 실적 1천달러 이상 ✅" : "2년 연속 매출 10% 증가 ✅",
         color: "#0f3460",
         institution: "소진공",
+        cap: 20000,
       });
     }
 
@@ -285,6 +287,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: "폐업이력 ✅ + 사업자 1개 ✅ + 업력 7년 미만 ✅",
         color: "#0f3460",
         institution: "소진공",
+        cap: 7000,
       });
     }
 
@@ -301,6 +304,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅ | 잔여한도 ${remaining.toLocaleString()}만원`,
         color: "#1565c0",
         institution: "소진공",
+        cap: 3000,
       });
     } else {
       if (!sinYongAvailable) {
@@ -335,6 +339,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: `잔여 보증한도 ${jaedanRemain.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
         color: "#2e7d32",
         institution: "신용보증재단",
+        cap: 10000,
       });
     }
 
@@ -384,6 +389,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
         condition: `매출 ÷ ${isManuf ? 4 : 6} = ${shinboLimit.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
         color: "#2e7d32",
         institution: "신용보증기금(신보)",
+        cap: null,
       });
     }
     if (isRestaurant && !isFranchiseFood) {
@@ -808,7 +814,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingLeft: 4, borderLeft: "2px solid #E2D9C4", marginLeft: 8 }}>
                         {group.items.map((r, i) => {
-                          const pct = maxSingleAmount > 0 ? (r.amount / maxSingleAmount) * 100 : 0;
+                          const pct = r.cap ? (r.amount / r.cap) * 100 : (r.amount > 0 ? 100 : 0);
                           return (
                             <div key={i} style={{ paddingLeft: 12 }}>
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
@@ -818,6 +824,9 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
                               <div style={{ height: 10, background: "#EFE8D6", borderRadius: 20, overflow: "hidden" }}>
                                 <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 20, transition: "width 0.6s ease" }} />
                               </div>
+                              <p style={{ fontSize: 11, color: "#B0AEA5", margin: "3px 0 0" }}>
+                                {r.cap ? `총한도 ${r.cap.toLocaleString()}만원 중 ${Math.round(pct)}% 신청 가능` : "매출 등 기준에 따라 산정된 금액"}
+                              </p>
                             </div>
                           );
                         })}
