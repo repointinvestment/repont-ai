@@ -77,6 +77,8 @@ export default function CustomerDetailPage() {
           loanStatus: c.loan_status || '',
           memo: c.memo || '',
           status: c.status || '상담중',
+          residentNumber: '',
+          certPassword: '',
         });
       } catch (err) {
         setError('고객 정보를 불러오지 못했습니다.');
@@ -262,6 +264,19 @@ export default function CustomerDetailPage() {
       <label style={labelStyle}>
         기타 메모
         <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
+      </label>
+
+      <p style={sectionTitle}>계정 정보 (암호화 저장)</p>
+      <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
+        보안을 위해 저장된 값은 화면에 표시되지 않습니다. 값을 입력하고 저장하면 새 값으로 교체(또는 신규 등록)됩니다. 비워두면 기존 값이 그대로 유지됩니다.
+      </p>
+      <label style={labelStyle}>
+        주민등록번호
+        <input style={inputStyle} name="residentNumber" value={form.residentNumber} onChange={handleChange} placeholder="변경 시에만 입력하세요" />
+      </label>
+      <label style={labelStyle}>
+        공동인증서 비밀번호
+        <input style={inputStyle} name="certPassword" value={form.certPassword} onChange={handleChange} placeholder="변경 시에만 입력하세요" />
       </label>
 
       {credentials.length > 0 && (

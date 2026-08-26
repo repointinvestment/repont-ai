@@ -1,5 +1,6 @@
 // app/api/customers/[id]/route.js
 import { sql } from '@/lib/db'
+import { encrypt } from '@/lib/crypto'
 import { NextResponse } from 'next/server'
 
 // 고객 1명 상세 조회
@@ -10,6 +11,28 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   }
   return NextResponse.json({ customer: rows[0] })
+}
+
+// 계정정보(주민등록번호/공동인증서 비밀번호) 추가 또는 갱신.
+// 값을 입력한 경우에만 반영: 같은 종류가 이미 있으면 새 값으로 교체, 없으면 새로 추가.
+async function upsertCredential(customerId, serviceName, plainValue) {
+  if (!plainValue) return
+  const encrypted = encrypt(plainValue)
+  const existing = await sql`
+    SELECT id FROM customer_credentials
+    WHERE customer_id = ${customerId} AND service_name = ${serviceName}
+  `
+  if (existing.length > 0) {
+    await sql`
+      UPDATE customer_credentials SET password_encrypted = ${encrypted}
+      WHERE id = ${existing[0].id}
+    `
+  } else {
+    await sql`
+      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+      VALUES (${customerId}, ${serviceName}, '', ${encrypted})
+    `
+  }
 }
 
 // 고객 정보 수정
@@ -49,6 +72,9 @@ export async function PATCH(request, { params }) {
   if (!customer) {
     return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   }
+
+  await upsertCredential(id, '주민등록번호', body.residentNumber)
+  await upsertCredential(id, '공동인증서 비밀번호', body.certPassword)
 
   return NextResponse.json({ customer })
 }
