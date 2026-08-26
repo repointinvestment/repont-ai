@@ -136,18 +136,18 @@ export default function CustomerDashboardPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
             {limits.map((l) => (
-              <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <DonutGauge percent={(l.limit / maxLimit) * 100} />
+              <div key={l.key} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: l.limit === 0 ? 0.45 : 1 }}>
+                <DonutGauge percent={(l.limit / maxLimit) * 100} color={l.limit === 0 ? '#B0AEA5' : '#BA7517'} />
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 2px', color: '#2A2925' }}>{l.name}</p>
-                  <p style={{ fontSize: 13, color: '#5F5E5A', margin: 0 }}>{l.limit.toLocaleString()}만원</p>
+                  <p style={{ fontSize: 13, color: '#5F5E5A', margin: 0 }}>{l.limit > 0 ? `${l.limit.toLocaleString()}만원` : '대상 아님'}</p>
                   <p style={{ fontSize: 11, color: '#B0AEA5', margin: '2px 0 0' }}>{l.note}</p>
                 </div>
               </div>
             ))}
           </div>
           <p style={{ fontSize: 11, color: '#B0AEA5', margin: '20px 0 0', lineHeight: 1.6 }}>
-            * 매출액·업종을 기준으로 한 참고용 추정치이며, 실제 승인 한도는 지역·업력·신용점수 등 심사 기준에 따라 달라질 수 있습니다. 아직 기관별 실사용 금액은 반영되어 있지 않습니다.
+            * AI 상담 시스템에 반영된 기준(매출·업종 요건)을 바탕으로 한 예상치입니다. 업력, 재신청 대기기간, 매출초과차입금 등 개별 조건은 AI 상담에서 추가로 확인해주세요. 기관별 실사용 금액은 아직 반영되어 있지 않습니다.
           </p>
         </div>
 
