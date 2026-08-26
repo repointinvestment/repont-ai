@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../../components/AppHeader';
+import PolicyFundDetailsFields from '../../../components/PolicyFundDetailsFields';
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 const SERVICE_PRESETS = ['소진공', '홈택스', '4대보험', '정부24', '아이핀'];
@@ -14,6 +15,8 @@ export default function CustomerDetailPage() {
   const params = useParams();
   const [user, setUser] = useState(null);
   const [form, setForm] = useState(null);
+  const [businessAgeYears, setBusinessAgeYears] = useState('');
+  const [policyFundDetails, setPolicyFundDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -134,6 +137,8 @@ export default function CustomerDetailPage() {
           hasWomanBizCert: c.has_woman_biz_cert || false,
           hasSojinkongGoodRepayment: c.has_sojinkong_good_repayment || false,
         });
+        setBusinessAgeYears(c.business_age_years || '');
+        setPolicyFundDetails(c.policy_fund_details || {});
       } catch (err) {
         setError('고객 정보를 불러오지 못했습니다.');
       } finally {
@@ -155,7 +160,7 @@ export default function CustomerDetailPage() {
       const res = await fetch(`/api/customers/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, businessAgeYears, policyFundDetails }),
       });
       if (!res.ok) throw new Error();
       router.push(`/customers/${params.id}`);
@@ -320,6 +325,16 @@ export default function CustomerDetailPage() {
         기타 메모
         <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
       </label>
+
+      <PolicyFundDetailsFields
+        businessAgeYears={businessAgeYears}
+        onBusinessAgeYearsChange={setBusinessAgeYears}
+        details={policyFundDetails}
+        onDetailsChange={setPolicyFundDetails}
+        inputStyle={inputStyle}
+        labelStyle={labelStyle}
+        sectionTitle={sectionTitle}
+      />
 
       <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
       <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>

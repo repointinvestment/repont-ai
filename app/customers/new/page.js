@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
+import PolicyFundDetailsFields from '../../components/PolicyFundDetailsFields';
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 const SERVICE_PRESETS = ['소진공', '홈택스', '4대보험', '정부24', '아이핀'];
@@ -47,6 +48,8 @@ export default function NewCustomerPage() {
     hasWomanBizCert: false,
     hasSojinkongGoodRepayment: false,
   });
+  const [businessAgeYears, setBusinessAgeYears] = useState('');
+  const [policyFundDetails, setPolicyFundDetails] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [extraCredentials, setExtraCredentials] = useState([]); // [{serviceName, username, password}]
@@ -98,7 +101,7 @@ export default function NewCustomerPage() {
           'Content-Type': 'application/json',
           'x-consultant-id': user?.username || '',
         },
-        body: JSON.stringify({ ...form, additionalCredentials: extraCredentials.filter((c) => c.serviceName) }),
+        body: JSON.stringify({ ...form, additionalCredentials: extraCredentials.filter((c) => c.serviceName), businessAgeYears, policyFundDetails }),
       });
       if (!res.ok) throw new Error('등록 실패');
       router.push('/customers');
@@ -241,6 +244,16 @@ export default function NewCustomerPage() {
             placeholder="특이사항, 상담 이력 등 자유롭게 입력"
           />
         </label>
+
+        <PolicyFundDetailsFields
+          businessAgeYears={businessAgeYears}
+          onBusinessAgeYearsChange={setBusinessAgeYears}
+          details={policyFundDetails}
+          onDetailsChange={setPolicyFundDetails}
+          inputStyle={inputStyle}
+          labelStyle={labelStyle}
+          sectionTitle={sectionTitle}
+        />
 
         <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
         <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>

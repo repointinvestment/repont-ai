@@ -6,6 +6,7 @@ import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
 import DonutGauge from '../../components/DonutGauge';
 import { estimateInstitutionLimits } from '@/lib/policyFundEstimate';
+import { analyzePolicyFunds } from '@/lib/policyFundAnalysis';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -209,6 +210,27 @@ export default function CustomerDashboardPage() {
   }
 
   const stage = STAGE_STYLE[customer.status] || STAGE_STYLE['상담중'];
+  const hasDetailedData = customer.business_age_years !== null && customer.business_age_years !== undefined;
+  const pfd = customer.policy_fund_details || {};
+  const analysis = hasDetailedData
+    ? analyzePolicyFunds({
+        industry: customer.industry,
+        bizAge: customer.business_age_years,
+        sales: customer.revenue_amount,
+        employees: customer.employee_count,
+        creditKCB: customer.credit_kcb,
+        creditNICE: customer.credit_nice,
+        sojingongLoans: pfd.sojingongLoans,
+        loans: pfd.loans,
+        hasBankruptcy: pfd.hasBankruptcy,
+        currentBizCount: pfd.currentBizCount,
+        smartDevices: pfd.smartDevices,
+        exportRecord: pfd.exportRecord,
+        salesGrowth: pfd.salesGrowth,
+        taxDelinquent: pfd.taxDelinquent,
+        isFranchise: pfd.isFranchise,
+      })
+    : null;
   const limits = estimateInstitutionLimits(customer);
   const maxLimit = Math.max(...limits.map((l) => l.limit || 0), 1);
 
@@ -249,6 +271,51 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
 
+        {hasDetailedData ? (
+          <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>신청 가능한 정책자금</p>
+              <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#E1F5EE', color: '#085041', fontWeight: 700 }}>실제 잔액 기준 정밀 계산</span>
+            </div>
+
+            {analysis.results.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#B0AEA5', margin: 0 }}>현재 조건으로 신청 가능한 상품이 없습니다. 아래 확인사항을 참고해주세요.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {analysis.results.map((r, i) => (
+                  <div key={i} style={{ border: `1px solid ${r.color}22`, borderLeft: `4px solid ${r.color}`, borderRadius: 8, padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: `${r.color}15`, color: r.color, fontWeight: 700 }}>{r.tag}</span>
+                      <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: '#2A2925' }}>{r.name}</p>
+                    </div>
+                    <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: r.color }}>{r.limit}</p>
+                    <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>{r.condition}</p>
+                    <p style={{ fontSize: 11, color: '#B0AEA5', margin: '4px 0 0' }}>{r.rate} · {r.period}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {analysis.checks.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                {analysis.checks.map((c, i) => (
+                  <p key={i} style={{ fontSize: 12, color: '#5F5E5A', margin: '4px 0' }}>{c}</p>
+                ))}
+              </div>
+            )}
+            {analysis.warnings.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                {analysis.warnings.map((w, i) => (
+                  <p key={i} style={{ fontSize: 12, color: '#A32D2D', margin: '4px 0' }}>{w}</p>
+                ))}
+              </div>
+            )}
+
+            <p style={{ fontSize: 11, color: '#B0AEA5', margin: '16px 0 0', lineHeight: 1.6 }}>
+              * 등록된 기관별 실제 잔액과 자격조건을 바탕으로 계산한 결과입니다. 최종 승인 여부는 각 기관 심사에 따라 달라질 수 있습니다.
+            </p>
+          </div>
+        ) : (
         <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>기관별 예상 가능 한도</p>
@@ -272,9 +339,10 @@ export default function CustomerDashboardPage() {
             ))}
           </div>
           <p style={{ fontSize: 11, color: '#B0AEA5', margin: '20px 0 0', lineHeight: 1.6 }}>
-            * AI 상담 시스템에 반영된 기준(매출·업종 요건)을 바탕으로 한 예상치입니다. 업력, 재신청 대기기간, 매출초과차입금 등 개별 조건은 AI 상담에서 추가로 확인해주세요. 기관별 실사용 금액은 아직 반영되어 있지 않습니다.
+            * 매출·업종 기준의 간단 추정치입니다. <button type="button" onClick={() => router.push(`/customers/${params.id}/edit`)} style={{ background: 'none', border: 'none', padding: 0, color: '#D85A30', fontSize: 11, textDecoration: 'underline', cursor: 'pointer' }}>정보 수정</button>에서 기관별 실제 잔액과 자격조건을 입력하시면 정확한 신청 가능 상품과 한도로 바뀝니다.
           </p>
         </div>
+        )}
 
         {(customer.loan_status || customer.memo) && (
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>

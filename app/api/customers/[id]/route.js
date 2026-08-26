@@ -72,6 +72,8 @@ export async function PATCH(request, { params }) {
       owner_career_years = ${body.ownerCareerYears || null},
       has_woman_biz_cert = ${!!body.hasWomanBizCert},
       has_sojinkong_good_repayment = ${!!body.hasSojinkongGoodRepayment},
+      business_age_years = ${body.businessAgeYears || null},
+      policy_fund_details = ${JSON.stringify(body.policyFundDetails || {})},
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *
