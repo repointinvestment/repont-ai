@@ -229,6 +229,8 @@ export default function CustomerDashboardPage() {
         salesGrowth: pfd.salesGrowth,
         taxDelinquent: pfd.taxDelinquent,
         isFranchise: pfd.isFranchise,
+        hasPatent: customer.has_patent,
+        careerYears: customer.owner_career_years,
       })
     : null;
   const limits = estimateInstitutionLimits(customer);
@@ -284,10 +286,9 @@ export default function CustomerDashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {(() => {
                   const amounts = analysis.results.map((r) => Number((r.limit.match(/[\d,]+/) || ['0'])[0].replace(/,/g, '')));
-                  const maxAmount = Math.max(...amounts, 1);
                   return analysis.results.map((r, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, border: `1px solid ${r.color}22`, borderLeft: `4px solid ${r.color}`, borderRadius: 8, padding: '12px 16px' }}>
-                      <DonutGauge percent={(amounts[i] / maxAmount) * 100} color={r.color} size={60} stroke={7} />
+                      <DonutGauge percent={r.cap ? (amounts[i] / r.cap) * 100 : 100} color={r.color} size={60} stroke={7} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 12, background: `${r.color}15`, color: r.color, fontWeight: 700 }}>{r.tag}</span>
