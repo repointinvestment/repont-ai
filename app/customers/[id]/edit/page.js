@@ -20,13 +20,25 @@ export default function CustomerDetailPage() {
   const [extraCredentials, setExtraCredentials] = useState([]); // [{serviceName, username, password}]
 
   function addExtraCredential() {
-    setExtraCredentials((prev) => [...prev, { serviceName: '', username: '', password: '', secondaryPassword: '' }]);
+    setExtraCredentials((prev) => [...prev, { serviceName: '', username: '', password: '', secondaryPassword: '', confirmed: false }]);
   }
   function updateExtraCredential(index, field, value) {
     setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
   }
   function removeExtraCredential(index) {
     setExtraCredentials((prev) => prev.filter((_, i) => i !== index));
+  }
+  function confirmExtraCredential(index) {
+    const cred = extraCredentials[index];
+    if (!cred.serviceName) {
+      setError('서비스명을 먼저 선택해주세요.');
+      return;
+    }
+    setError(null);
+    setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, confirmed: true } : c)));
+  }
+  function editExtraCredential(index) {
+    setExtraCredentials((prev) => prev.map((c, i) => (i === index ? { ...c, confirmed: false } : c)));
   }
   const [deleting, setDeleting] = useState(false);
   const [credentials, setCredentials] = useState([]);
@@ -335,6 +347,18 @@ export default function CustomerDetailPage() {
 
       <p style={{ fontSize: 13, fontWeight: 600, color: '#5F5E5A', margin: '4px 0 -4px' }}>추가 계정 정보</p>
       {extraCredentials.map((cred, i) => (
+        cred.confirmed ? (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: '1px solid #E4E2DB', borderRadius: 8, background: '#FAFAF8' }}>
+            <span style={{ fontSize: 14 }}>
+              ✓ {cred.serviceName}
+              {cred.username ? <span style={{ color: '#8A8A85' }}> · {cred.username}</span> : null}
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" onClick={() => editExtraCredential(i)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>수정</button>
+              <button type="button" onClick={() => removeExtraCredential(i)} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>삭제</button>
+            </div>
+          </div>
+        ) : (
         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, border: '1px solid #E4E2DB', borderRadius: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <label style={{ ...labelStyle, flex: 1 }}>
@@ -377,7 +401,15 @@ export default function CustomerDetailPage() {
               <input style={inputStyle} value={cred.secondaryPassword} onChange={(e) => updateExtraCredential(i, 'secondaryPassword', e.target.value)} placeholder="변경 시에만 입력" />
             </label>
           </div>
+          <button
+            type="button"
+            onClick={() => confirmExtraCredential(i)}
+            style={{ alignSelf: 'flex-end', padding: '8px 16px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, cursor: 'pointer' }}
+          >
+            확인
+          </button>
         </div>
+        )
       ))}
       <button type="button" onClick={addExtraCredential} style={{ alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 8, border: '1px dashed #D3D1C7', background: '#fff', fontSize: 13, cursor: 'pointer' }}>+ 계정 추가</button>
 
