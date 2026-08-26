@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13', ring: '#D85A30' },
@@ -10,6 +11,7 @@ const STAGE_STYLE = {
 };
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,6 +89,7 @@ export default function CustomersPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <p style={{ fontSize: 15, fontWeight: 500, margin: 0 }}>고객 목록</p>
         <button
+          onClick={() => router.push('/customers/new')}
           style={{
             fontSize: 13,
             padding: '8px 14px',
