@@ -37,59 +37,64 @@ export async function POST(request) {
   const consultantId = rawConsultantId ? rawConsultantId : null
   const body = await request.json()
 
-  const [customer] = await sql`
-    INSERT INTO customers (
-      consultant_id, business_name, business_type, owner_name, phone, email,
-      biz_reg_number, establish_date, open_date, address, industry,
-      business_content, employee_count, last_year_sales, credit_nice, credit_kcb,
-      revenue_amount, address_ownership, residence_address, residence_ownership,
-      loan_status, memo, has_patent, has_yellow_umbrella, has_rnd_center, has_venture_cert, owner_career_years,
-      has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status
-    ) VALUES (
-      ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
-      ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
-      ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
-      ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
-      ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${body.ownerCareerYears || null},
-      ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'}
-    )
-    RETURNING *
-  `
-
-  // 진행 단계 이력 첫 기록
-  await sql`
-    INSERT INTO customer_status_history (customer_id, status)
-    VALUES (${customer.id}, ${customer.status || '상담중'})
-  `
-
-  // 주민등록번호 / 공동인증서 비밀번호는 암호화해서 customer_credentials에 별도 저장
-  if (body.residentNumber) {
-    const encrypted = encrypt(body.residentNumber)
-    await sql`
-      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
-      VALUES (${customer.id}, '주민등록번호', '', ${encrypted})
+  try {
+    const [customer] = await sql`
+      INSERT INTO customers (
+        consultant_id, business_name, business_type, owner_name, phone, email,
+        biz_reg_number, establish_date, open_date, address, industry,
+        business_content, employee_count, last_year_sales, credit_nice, credit_kcb,
+        revenue_amount, address_ownership, residence_address, residence_ownership,
+        loan_status, memo, has_patent, has_yellow_umbrella, has_rnd_center, has_venture_cert, owner_career_years,
+        has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status
+      ) VALUES (
+        ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
+        ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
+        ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
+        ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
+        ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${body.ownerCareerYears || null},
+        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'}
+      )
+      RETURNING *
     `
-  }
-  if (body.certPassword) {
-    const encrypted = encrypt(body.certPassword)
-    await sql`
-      INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
-      VALUES (${customer.id}, '공동인증서 비밀번호', '', ${encrypted})
-    `
-  }
 
-  // 소진공, 홈택스 등 자유롭게 추가한 계정 정보
-  if (Array.isArray(body.additionalCredentials)) {
-    for (const cred of body.additionalCredentials) {
-      if (!cred.serviceName) continue
-      const encrypted = cred.password ? encrypt(cred.password) : ''
-      const secondaryEncrypted = cred.secondaryPassword ? encrypt(cred.secondaryPassword) : null
+    // 진행 단계 이력 첫 기록
+    await sql`
+      INSERT INTO customer_status_history (customer_id, status)
+      VALUES (${customer.id}, ${customer.status || '상담중'})
+    `
+
+    // 주민등록번호 / 공동인증서 비밀번호는 암호화해서 customer_credentials에 별도 저장
+    if (body.residentNumber) {
+      const encrypted = encrypt(body.residentNumber)
       await sql`
-        INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted, secondary_password_encrypted)
-        VALUES (${customer.id}, ${cred.serviceName}, ${cred.username || ''}, ${encrypted}, ${secondaryEncrypted})
+        INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+        VALUES (${customer.id}, '주민등록번호', '', ${encrypted})
       `
     }
-  }
+    if (body.certPassword) {
+      const encrypted = encrypt(body.certPassword)
+      await sql`
+        INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted)
+        VALUES (${customer.id}, '공동인증서 비밀번호', '', ${encrypted})
+      `
+    }
 
-  return NextResponse.json({ customer })
+    // 소진공, 홈택스 등 자유롭게 추가한 계정 정보
+    if (Array.isArray(body.additionalCredentials)) {
+      for (const cred of body.additionalCredentials) {
+        if (!cred.serviceName) continue
+        const encrypted = cred.password ? encrypt(cred.password) : ''
+        const secondaryEncrypted = cred.secondaryPassword ? encrypt(cred.secondaryPassword) : null
+        await sql`
+          INSERT INTO customer_credentials (customer_id, service_name, username, password_encrypted, secondary_password_encrypted)
+          VALUES (${customer.id}, ${cred.serviceName}, ${cred.username || ''}, ${encrypted}, ${secondaryEncrypted})
+        `
+      }
+    }
+
+    return NextResponse.json({ customer })
+  } catch (err) {
+    console.error('고객 등록 실패:', err)
+    return NextResponse.json({ error: err.message || '등록 중 오류가 발생했습니다.' }, { status: 500 })
+  }
 }

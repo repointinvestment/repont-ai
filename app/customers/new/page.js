@@ -103,10 +103,13 @@ export default function NewCustomerPage() {
         },
         body: JSON.stringify({ ...form, additionalCredentials: extraCredentials.filter((c) => c.serviceName), businessAgeYears, policyFundDetails }),
       });
-      if (!res.ok) throw new Error('등록 실패');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '등록 실패');
+      }
       router.push('/customers');
     } catch (err) {
-      setError('고객 등록 중 오류가 발생했습니다.');
+      setError(err.message || '고객 등록 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
