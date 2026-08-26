@@ -10,26 +10,106 @@ export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [accounts, setAccounts] = useState([])
+  const [form, setForm] = useState({ username: '', password: '', name: '', role: 'student' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
     const session = getSession()
     if (!session) { router.push('/'); return }
     if (session.role !== 'admin') { router.push('/menu'); return }
     setUser(session)
-    fetch('/api/users').then(r => r.json()).then(data => setAccounts(data.users))
+    loadAccounts()
   }, [])
 
+  function loadAccounts() {
+    fetch('/api/users').then(r => r.json()).then(data => setAccounts(data.users))
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault()
+    setError(null)
+    if (!form.username || !form.password || !form.name) {
+      setError('아이디, 비밀번호, 이름을 모두 입력해주세요.')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '계정 생성 실패')
+      setForm({ username: '', password: '', name: '', role: 'student' })
+      setShowForm(false)
+      loadAccounts()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (!user) return null
+
+  const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 14, boxSizing: 'border-box' }
+  const labelStyle = { fontSize: 13, color: '#5F5E5A', display: 'block', marginBottom: 6 }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
       <AppHeader user={user} />
 
       <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 24px' }}>
-        <h2 style={{ color: '#1a1a2e', marginBottom: 8 }}>계정 관리 (컨설턴트 · 수강생)</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <h2 style={{ color: '#1a1a2e', margin: 0 }}>계정 관리 (컨설턴트 · 수강생)</h2>
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            {showForm ? '닫기' : '+ 계정 추가'}
+          </button>
+        </div>
         <p style={{ color: '#888', fontSize: 14, marginBottom: 24 }}>
-          계정 추가/삭제는 Neon DB의 <strong>accounts</strong> 테이블에서 관리합니다. (db/schema_accounts.sql 참고)
+          새로 만든 계정의 이름은 로그인 후 화면 곳곳(고객명단, 메뉴 등)에 자동으로 반영됩니다.
         </p>
+
+        {showForm && (
+          <form onSubmit={handleCreate} style={{ background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', padding: 24, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <label>
+                <span style={labelStyle}>이름</span>
+                <input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 문수환" />
+              </label>
+              <label>
+                <span style={labelStyle}>역할</span>
+                <select style={inputStyle} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                  <option value="student">수강생</option>
+                  <option value="consultant">컨설턴트</option>
+                  <option value="admin">관리자</option>
+                </select>
+              </label>
+              <label>
+                <span style={labelStyle}>아이디</span>
+                <input style={inputStyle} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="로그인용 아이디" />
+              </label>
+              <label>
+                <span style={labelStyle}>비밀번호</span>
+                <input type="text" style={inputStyle} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="초기 비밀번호" />
+              </label>
+            </div>
+            {error && <p style={{ fontSize: 13, color: '#c0392b', margin: 0 }}>{error}</p>}
+            <button
+              type="submit"
+              disabled={saving}
+              style={{ alignSelf: 'flex-start', padding: '10px 20px', borderRadius: 8, border: 'none', background: saving ? '#ccc' : '#1a1a2e', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}
+            >
+              {saving ? '생성 중...' : '계정 생성'}
+            </button>
+          </form>
+        )}
 
         <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -52,15 +132,6 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div style={{ marginTop: 24, background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10, padding: '16px 20px' }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#795548', fontWeight: 600 }}>📌 계정 추가 방법</p>
-          <p style={{ margin: '8px 0 0', fontSize: 13, color: '#795548', lineHeight: 1.7 }}>
-            1. 비밀번호 해시 생성: <code>node -e "console.log(require('bcryptjs').hashSync('비밀번호', 10))"</code><br/>
-            2. Neon SQL 콘솔에서 accounts 테이블에 INSERT (db/schema_accounts.sql 하단 예시 참고)<br/>
-            3. role은 'admin' · 'consultant' · 'student' 중 하나
-          </p>
         </div>
       </div>
     </div>
