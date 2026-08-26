@@ -627,18 +627,49 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
 
             {/* 인증서 헤더 + 도장 */}
             <div className="pf-card-in" style={{
-              background: "#FBF7EE", borderRadius: 4, padding: "36px 32px 28px",
+              background: "#FBF7EE", borderRadius: 4, padding: "40px 32px 32px",
               border: "1px solid #E2D9C4", position: "relative", overflow: "hidden",
               boxShadow: "0 16px 40px rgba(11,36,64,0.3)", marginBottom: 18, textAlign: "center",
             }}>
-              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.3em", color: "#B4923F", fontWeight: 700, marginBottom: 8 }}>
+              {/* 네 귀퉁이 증서 장식 */}
+              {[
+                { top: 10, left: 10, borderWidth: "3px 0 0 3px" },
+                { top: 10, right: 10, borderWidth: "3px 3px 0 0" },
+                { bottom: 10, left: 10, borderWidth: "0 0 3px 3px" },
+                { bottom: 10, right: 10, borderWidth: "0 3px 3px 0" },
+              ].map((pos, i) => (
+                <div key={i} style={{ position: "absolute", width: 20, height: 20, borderStyle: "solid", borderColor: "#B4923F", ...pos }} />
+              ))}
+
+              {/* 숫자 뒤 은은한 광채 */}
+              <div style={{
+                position: "absolute", top: "38%", left: "50%", transform: "translate(-50%, -50%)",
+                width: 320, height: 180, borderRadius: "50%",
+                background: "radial-gradient(ellipse, rgba(180,146,63,0.16), transparent 70%)",
+                pointerEvents: "none",
+              }} />
+
+              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 12, letterSpacing: "0.3em", color: "#B4923F", fontWeight: 700, marginBottom: 8, position: "relative" }}>
                 정 책 자 금 진 단 결 과
               </p>
-              <p style={{ fontSize: 13, color: "#8A8272", marginBottom: 4 }}>진단 가능 총액</p>
-              <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(36px, 6vw, 52px)", fontWeight: 900, color: "#0B2440", margin: "4px 0 0", letterSpacing: "-0.01em" }}>
-                {totalEligible.toLocaleString()}<span style={{ fontSize: "0.4em", fontWeight: 700, marginLeft: 6 }}>만원</span>
+              <p style={{ fontSize: 12.5, color: "#8A8272", marginBottom: 6, letterSpacing: "0.15em", position: "relative" }}>
+                ✦&nbsp;&nbsp;진단 가능 총액&nbsp;&nbsp;✦
               </p>
-              <p style={{ fontSize: 13, color: "#8A8272", marginTop: 8 }}>
+              <p style={{
+                fontFamily: "'Noto Serif KR', serif", fontSize: "clamp(40px, 7vw, 58px)", fontWeight: 900,
+                color: "#0B2440", margin: "4px 0 0", letterSpacing: "-0.01em", position: "relative",
+                textShadow: "0 2px 0 rgba(180,146,63,0.25)",
+              }}>
+                {totalEligible.toLocaleString()}<span style={{ fontSize: "0.38em", fontWeight: 700, marginLeft: 6 }}>만원</span>
+              </p>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, margin: "16px auto 0", width: 180, position: "relative" }}>
+                <div style={{ flex: 1, height: 1, background: "#B4923F" }} />
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#B4923F" }} />
+                <div style={{ flex: 1, height: 1, background: "#B4923F" }} />
+              </div>
+
+              <p style={{ fontSize: 13, color: "#8A8272", marginTop: 14, position: "relative" }}>
                 신청 가능한 정책자금 {result.results.length}건 확인됨
               </p>
 
@@ -656,20 +687,20 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
             </div>
 
             {result.warnings.length > 0 && (
-              <div className="pf-card-in" style={{ background: "rgba(162,59,46,0.08)", border: "1px solid rgba(162,59,46,0.35)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
-                {result.warnings.map((w, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#A23B2E" }}>{w}</p>)}
+              <div className="pf-card-in" style={{ background: "#F5E3DF", border: "1px solid #D9A99C", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+                {result.warnings.map((w, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#8A2A1F", fontWeight: 600 }}>{w}</p>)}
               </div>
             )}
             {result.checks.length > 0 && (
-              <div className="pf-card-in" style={{ background: "rgba(180,146,63,0.08)", border: "1px solid rgba(180,146,63,0.35)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
-                {result.checks.map((c, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#5B4A2F" }}>{c}</p>)}
+              <div className="pf-card-in" style={{ background: "#F6F1E3", border: "1px solid #D9CC9F", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+                {result.checks.map((c, i) => <p key={i} style={{ margin: i > 0 ? "8px 0 0" : 0, fontSize: 13.5, color: "#4A3A20", fontWeight: 500 }}>{c}</p>)}
               </div>
             )}
             {result.bizAgeNum >= 7 && (
-              <div className="pf-card-in" style={{ background: "rgba(11,36,64,0.06)", border: "1px solid rgba(11,36,64,0.2)", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
+              <div className="pf-card-in" style={{ background: "#E4EAF1", border: "1px solid #B7C4D6", borderRadius: 4, padding: "16px 20px", marginBottom: 14 }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: "#0B2440", fontWeight: 700 }}>매출초과차입금 계산</p>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#3D4E63" }}>사업자대출 합계 {result.totalBizLoan.toLocaleString()}만원 · 잔여 가능 {result.remainingCapacity.toLocaleString()}만원</p>
-                {result.totalPersonalLoan > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#8A8272" }}>개인신용대출 {result.totalPersonalLoan.toLocaleString()}만원은 계산 제외</p>}
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#264569", fontWeight: 500 }}>사업자대출 합계 {result.totalBizLoan.toLocaleString()}만원 · 잔여 가능 {result.remainingCapacity.toLocaleString()}만원</p>
+                {result.totalPersonalLoan > 0 && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#5B6B80" }}>개인신용대출 {result.totalPersonalLoan.toLocaleString()}만원은 계산 제외</p>}
               </div>
             )}
 
