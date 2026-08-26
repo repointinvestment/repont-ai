@@ -23,6 +23,7 @@ export default function CustomerDashboardPage() {
   const [credentials, setCredentials] = useState([]);
   const [copyState, setCopyState] = useState({});
   const [files, setFiles] = useState([]);
+  const [statusHistory, setStatusHistory] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,6 +47,10 @@ export default function CustomerDashboardPage() {
           .then((d) => setCredentials(d.credentials || []))
           .catch(() => {});
         loadFiles();
+        fetch(`/api/customers/${params.id}/status-history`)
+          .then((r) => r.json())
+          .then((d) => setStatusHistory(d.history || []))
+          .catch(() => {});
       } catch (err) {
         setError('고객 정보를 불러오지 못했습니다.');
       } finally {
@@ -254,9 +259,32 @@ export default function CustomerDashboardPage() {
             {customer.status || '상담중'}
           </span>
         </div>
-        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 24px' }}>
+        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 16px' }}>
           {customer.industry} {customer.phone ? `· ${customer.phone}` : ''} {customer.email ? `· ${customer.email}` : ''}
         </p>
+
+        {statusHistory.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 4px', marginBottom: 24 }}>
+            {statusHistory.map((h, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{
+                  fontSize: 12, padding: '5px 12px', borderRadius: 20,
+                  background: (STAGE_STYLE[h.status] || STAGE_STYLE['상담중']).bg,
+                  color: (STAGE_STYLE[h.status] || STAGE_STYLE['상담중']).text,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.5,
+                }}>
+                  <span style={{ fontWeight: 600 }}>{h.status}</span>
+                  <span style={{ fontSize: 10, opacity: 0.75 }}>
+                    {new Date(h.changed_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                  </span>
+                </div>
+                {i < statusHistory.length - 1 && (
+                  <span style={{ margin: '0 4px', color: '#B0AEA5', fontSize: 13 }}>→</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           <div style={statCard}>

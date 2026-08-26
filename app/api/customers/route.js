@@ -25,16 +25,22 @@ export async function POST(request) {
       business_content, employee_count, last_year_sales, credit_nice, credit_kcb,
       revenue_amount, address_ownership, residence_address, residence_ownership,
       loan_status, memo, has_patent, has_yellow_umbrella, has_rnd_center, has_venture_cert, owner_career_years,
-      has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details
+      has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status
     ) VALUES (
       ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
       ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
       ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
       ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
       ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${body.ownerCareerYears || null},
-      ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}
+      ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'}
     )
     RETURNING *
+  `
+
+  // 진행 단계 이력 첫 기록
+  await sql`
+    INSERT INTO customer_status_history (customer_id, status)
+    VALUES (${customer.id}, ${customer.status || '상담중'})
   `
 
   // 주민등록번호 / 공동인증서 비밀번호는 암호화해서 customer_credentials에 별도 저장

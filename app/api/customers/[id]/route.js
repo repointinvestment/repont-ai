@@ -41,6 +41,8 @@ export async function PATCH(request, { params }) {
   const { id } = params
   const body = await request.json()
 
+  const [before] = await sql`SELECT status FROM customers WHERE id = ${id}`
+
   const [customer] = await sql`
     UPDATE customers SET
       business_name = ${body.businessName},
@@ -81,6 +83,14 @@ export async function PATCH(request, { params }) {
 
   if (!customer) {
     return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
+  }
+
+  const newStatus = body.status || '상담중'
+  if (!before || before.status !== newStatus) {
+    await sql`
+      INSERT INTO customer_status_history (customer_id, status)
+      VALUES (${id}, ${newStatus})
+    `
   }
 
   await upsertCredential(id, '주민등록번호', body.residentNumber)
