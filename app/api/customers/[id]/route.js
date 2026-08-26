@@ -68,6 +68,7 @@ export async function PATCH(request, { params }) {
       has_yellow_umbrella = ${!!body.hasYellowUmbrella},
       has_rnd_center = ${!!body.hasRndCenter},
       has_venture_cert = ${!!body.hasVentureCert},
+      owner_career_years = ${body.ownerCareerYears || null},
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *

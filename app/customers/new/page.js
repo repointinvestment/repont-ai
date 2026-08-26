@@ -42,6 +42,7 @@ export default function NewCustomerPage() {
     hasYellowUmbrella: false,
     hasRndCenter: false,
     hasVentureCert: false,
+    ownerCareerYears: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -212,20 +213,24 @@ export default function NewCustomerPage() {
 
         <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
         <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
-          해당하는 항목을 체크하세요. 하나라도 해당하면 기보 상담이 가능합니다.
+          핵심 조건은 특허보유 또는 대표자 경력 10년 이상입니다. 노란우산공제·기업부설연구소·벤처인증은 직접 자격요건은 아니고, 심사 시 가점요소로 참고됩니다.
         </p>
+        <label style={labelStyle}>
+          대표자 경력(년)
+          <input type="number" style={inputStyle} name="ownerCareerYears" value={form.ownerCareerYears} onChange={handleChange} placeholder="예: 12" />
+        </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-            <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제
+            <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제 (소진공 가점)
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-            <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소
+            <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소 (가점)
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-            <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증
+            <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증 (가점)
           </label>
         </div>
 
