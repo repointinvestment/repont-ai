@@ -14,6 +14,7 @@ export default function NewCustomerPage() {
     email: '',
     industry: '',
     bizRegNumber: '',
+    establishDate: '',
     openDate: '',
     revenueAmount: '',
     creditNice: '',
@@ -115,11 +116,16 @@ export default function NewCustomerPage() {
             <input style={inputStyle} name="bizRegNumber" value={form.bizRegNumber} onChange={handleChange} placeholder="예: 123-45-67890" />
           </label>
         </div>
-        <label style={labelStyle}>
-          개업연도
-          <input style={inputStyle} name="openDate" value={form.openDate} onChange={handleChange} placeholder="예: 2019년 10월" />
-        </label>
-
+               <div style={row}>
+          <label style={{ ...labelStyle, ...half }}>
+            사업자등록일
+            <input style={inputStyle} name="establishDate" value={form.establishDate} onChange={handleChange} placeholder="예: 2019년 10월 1일" />
+          </label>
+          <label style={{ ...labelStyle, ...half }}>
+            개업연도
+            <input style={inputStyle} name="openDate" value={form.openDate} onChange={handleChange} placeholder="예: 2019년 10월 1일" />
+          </label>
+        </div>
         <p style={sectionTitle}>재무 / 신용 정보</p>
         <label style={labelStyle}>
           매출액 (만원)
