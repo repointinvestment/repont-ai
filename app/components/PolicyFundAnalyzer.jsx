@@ -191,10 +191,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis }) {
       });
     }
     if (!hasSmartDevice && canApply) {
-      checks.push(isRestaurant
-        ? `💡 스마트기기 없음 → 리포인트파트너스 협력업체를 통해 QR오더 도입 시 혁신성장촉진자금 신청 가능. 계약만 해오시면 대표님이 직접 연결해드립니다.`
-        : `💡 스마트기기 없음 → 리포인트파트너스 협력업체를 통해 구독형 S/W 도입 시 혁신성장촉진자금 신청 가능. 계약만 해오시면 대표님이 직접 연결해드립니다.`
-      );
+      checks.push(`💡 스마트기기 보유 시 혁신성장촉진자금 신청이 가능합니다. 현재는 보유 스마트기기가 없어 대상이 아닙니다.`);
     }
 
     // 혁신성장촉진자금 혁신형
