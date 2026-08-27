@@ -195,12 +195,12 @@ export default function CodefTestPage() {
             </button>
           )}
 
-          {status === 'confirming' && <LoadingRow />}
-
           {message && status !== 'confirming' && (
             <p style={{ fontSize: 13, color: status === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{message}</p>
           )}
         </div>
+
+        {status === 'confirming' && <LoadingModal />}
 
         {items.length > 0 && (
           <div style={{ marginTop: 20 }}>
@@ -223,22 +223,97 @@ export default function CodefTestPage() {
   );
 }
 
-function LoadingRow() {
-  const [dots, setDots] = useState(0);
+function LoadingModal() {
+  const [phase, setPhase] = useState(0);
+  const messages = [
+    '고객님의 서류를 준비하고 있습니다',
+    '국세청 홈택스에 접속하고 있습니다',
+    '전자서명을 확인하고 있습니다',
+    '증명서를 발급하고 있습니다',
+  ];
   useEffect(() => {
-    const t = setInterval(() => setDots((d) => (d + 1) % 4), 450);
+    const t = setInterval(() => setPhase((p) => (p + 1) % messages.length), 2200);
     return () => clearInterval(t);
   }, []);
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 2px' }}>
-      <span style={{
-        display: 'inline-block', width: 16, height: 16, borderRadius: '50%',
-        border: '2px solid #E0DFDA', borderTopColor: '#2A2925',
-        animation: 'codef-spin 0.8s linear infinite',
-      }} />
-      <span style={{ fontSize: 13, color: '#5A5952' }}>자료를 받아오는 중입니다{'.'.repeat(dots)}</span>
-      <style>{`@keyframes codef-spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(20, 20, 18, 0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 20, padding: '40px 48px', width: 360,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#8A8A85', letterSpacing: 1, margin: '0 0 24px' }}>
+          자금비서
+        </p>
+
+        <div style={{ position: 'relative', width: 220, height: 110, marginBottom: 24 }}>
+          {/* 왼쪽 폴더 */}
+          <FolderIcon style={{ position: 'absolute', left: 0, bottom: 0 }} />
+          {/* 오른쪽 폴더 */}
+          <FolderIcon style={{ position: 'absolute', right: 0, bottom: 0 }} />
+          {/* 왼쪽에서 오른쪽으로 날아가는 서류 */}
+          <div style={{ position: 'absolute', left: 44, bottom: 40, animation: 'codef-fly 1.8s ease-in-out infinite' }}>
+            <PaperIcon />
+          </div>
+          {/* 위에서 떨어지는 작은 점 세 개 (전송 느낌) */}
+          {[0, 1, 2].map((i) => (
+            <span key={i} style={{
+              position: 'absolute', top: 6, left: 90 + i * 14, width: 5, height: 5, borderRadius: '50%',
+              background: '#B8C9E8', animation: `codef-blip 1.4s ease-in-out ${i * 0.18}s infinite`,
+            }} />
+          ))}
+        </div>
+
+        <p style={{ fontSize: 15, fontWeight: 700, color: '#2A2925', margin: '0 0 6px' }}>
+          잠시만 기다려 주세요
+        </p>
+        <p key={phase} style={{ fontSize: 13, color: '#8A8A85', margin: 0, animation: 'codef-fade 0.4s ease' }}>
+          {messages[phase]}
+        </p>
+
+        <style>{`
+          @keyframes codef-fly {
+            0%   { transform: translateX(0) translateY(0) rotate(0deg); opacity: 0; }
+            15%  { opacity: 1; }
+            50%  { transform: translateX(66px) translateY(-26px) rotate(6deg); opacity: 1; }
+            85%  { opacity: 1; }
+            100% { transform: translateX(132px) translateY(0) rotate(0deg); opacity: 0; }
+          }
+          @keyframes codef-blip {
+            0%, 100% { transform: translateY(0); opacity: 0.2; }
+            50% { transform: translateY(10px); opacity: 1; }
+          }
+          @keyframes codef-fade {
+            from { opacity: 0; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
     </div>
+  );
+}
+
+function FolderIcon({ style }) {
+  return (
+    <svg width="60" height="46" viewBox="0 0 60 46" style={style}>
+      <path d="M2 10c0-2.2 1.8-4 4-4h14l5 5h29c2.2 0 4 1.8 4 4v27c0 2.2-1.8 4-4 4H6c-2.2 0-4-1.8-4-4V10z" fill="#3B6BC7" />
+      <path d="M2 16h56v22c0 2.2-1.8 4-4 4H6c-2.2 0-4-1.8-4-4V16z" fill="#4C7FE0" />
+    </svg>
+  );
+}
+
+function PaperIcon() {
+  return (
+    <svg width="30" height="36" viewBox="0 0 30 36">
+      <rect x="1" y="1" width="28" height="34" rx="2" fill="#fff" stroke="#D8DEE9" strokeWidth="1.5" />
+      <line x1="6" y1="9" x2="24" y2="9" stroke="#C7CEDB" strokeWidth="1.5" />
+      <line x1="6" y1="15" x2="24" y2="15" stroke="#C7CEDB" strokeWidth="1.5" />
+      <line x1="6" y1="21" x2="18" y2="21" stroke="#C7CEDB" strokeWidth="1.5" />
+    </svg>
   );
 }
 
