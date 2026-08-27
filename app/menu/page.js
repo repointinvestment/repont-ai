@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
 import DeadlineWidget from '../components/DeadlineWidget'
 import ReminderWidget from '../components/ReminderWidget'
+import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
 const CARDS = {
   chat: {
@@ -116,6 +117,7 @@ export default function MenuPage() {
             </div>
           ))}
         </div>
+        <MonthlyReportWidget user={user} />
         <DeadlineWidget />
         <ReminderWidget user={user} />
       </div>
