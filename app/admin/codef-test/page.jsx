@@ -5,7 +5,7 @@
 // 사업자등록 증명 API를 비회원 간편인증(카카오톡 등)으로 요청 → 승인 대기 → 확인, 2단계로 동작.
 // 실제 서비스에 노출되는 화면이 아니라 CODEF 쪽에 전달할 테스트 검증용.
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
@@ -32,10 +32,9 @@ export default function CodefTestPage() {
   const [sessionId, setSessionId] = useState(null);
   const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [message, setMessage] = useState('');
-  const [raw, setRaw] = useState(null);
   const [items, setItems] = useState([]);
   const [savedFiles, setSavedFiles] = useState([]);
-  const [showRaw, setShowRaw] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(0);
 
   useEffect(() => {
     const s = getSession();
@@ -51,10 +50,8 @@ export default function CodefTestPage() {
   async function requestAuth() {
     setStatus('requesting');
     setMessage('');
-    setRaw(null);
     setItems([]);
     setSavedFiles([]);
-    setShowRaw(false);
     try {
       const res = await fetch('/api/codef/business-registration', {
         method: 'POST',
@@ -62,7 +59,6 @@ export default function CodefTestPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      setRaw(data.raw || data.result || data);
       if (!res.ok) {
         setStatus('error');
         setMessage(data.error || '요청 실패');
@@ -73,8 +69,7 @@ export default function CodefTestPage() {
         setStatus('pending');
         setMessage(data.message);
       } else {
-        setStatus('done');
-        setMessage('추가 인증 없이 바로 완료되었습니다.');
+        finishWithResult(data);
       }
     } catch (err) {
       setStatus('error');
@@ -85,7 +80,6 @@ export default function CodefTestPage() {
   async function confirmAuth() {
     if (!sessionId) return;
     setStatus('confirming');
-    setMessage('CODEF 응답을 기다리는 중입니다 (최대 4분 30초 정도 걸릴 수 있어요)...');
     try {
       const res = await fetch('/api/codef/business-registration/confirm', {
         method: 'POST',
@@ -93,7 +87,6 @@ export default function CodefTestPage() {
         body: JSON.stringify({ sessionId }),
       });
       const data = await res.json();
-      setRaw(data.result || data);
       if (!res.ok) {
         setStatus('error');
         setMessage(data.error || '확인 실패');
@@ -102,19 +95,8 @@ export default function CodefTestPage() {
       if (data.status === 'pending_2way') {
         setStatus('pending');
         setMessage('한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.');
-      } else if (data.status === 'done') {
-        setStatus('done');
-        const docs = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
-        setItems(docs);
-        setSavedFiles(data.savedFiles || []);
-        setMessage(
-          data.savedFiles?.length > 0
-            ? `발급 성공! 고객 파일함에 ${data.savedFiles.length}건 저장했습니다.`
-            : '발급 성공! (고객 ID를 입력하지 않아 파일함에는 저장하지 않았습니다)'
-        );
       } else {
-        setStatus('error');
-        setMessage(data.result?.result?.message || '실패');
+        finishWithResult(data);
       }
     } catch (err) {
       setStatus('error');
@@ -122,7 +104,30 @@ export default function CodefTestPage() {
     }
   }
 
+  function finishWithResult(data) {
+    if (data.status !== 'done') {
+      setStatus('error');
+      setMessage(data.result?.result?.message || '실패');
+      return;
+    }
+    const docs = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
+    setItems(docs);
+    setSavedFiles(data.savedFiles || []);
+    setSelectedIdx(0);
+    setStatus('done');
+    setMessage(
+      data.savedFiles?.length > 0
+        ? `발급 성공! 고객 파일함에 ${data.savedFiles.length}건 저장했습니다.`
+        : '발급 성공! (고객 ID를 입력하지 않아 파일함에는 저장하지 않았습니다)'
+    );
+  }
+
   if (!user) return null;
+
+  const selectedItem = items[selectedIdx];
+  const selectedFile = selectedItem
+    ? savedFiles.find((f) => f.companyName && f.companyName === selectedItem.resCompanyNm)
+    : null;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
@@ -178,35 +183,27 @@ export default function CodefTestPage() {
             </button>
           )}
 
-          {message && (
+          {status === 'confirming' && <LoadingRow />}
+
+          {message && status !== 'confirming' && (
             <p style={{ fontSize: 13, color: status === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{message}</p>
           )}
         </div>
 
         {items.length > 0 && (
-          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {items.map((item, i) => (
-              <DocCard key={i} item={item} saved={savedFiles.some((f) => f.file_name?.includes(item.resCompanyNm || ''))} />
-            ))}
-          </div>
-        )}
-
-        {raw && (
-          <div style={{ marginTop: 16 }}>
-            <button
-              onClick={() => setShowRaw((v) => !v)}
-              style={{ background: 'none', border: 'none', color: '#8A8A85', fontSize: 12, cursor: 'pointer', padding: 0 }}
-            >
-              {showRaw ? '▲ 원본 JSON 접기' : '▼ 원본 JSON 보기 (디버깅용)'}
-            </button>
-            {showRaw && (
-              <pre style={{
-                marginTop: 8, background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8,
-                fontSize: 12, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-              }}>
-                {JSON.stringify(raw, null, 2)}
-              </pre>
+          <div style={{ marginTop: 20 }}>
+            {items.length > 1 && (
+              <select
+                value={selectedIdx}
+                onChange={(e) => setSelectedIdx(Number(e.target.value))}
+                style={{ ...inputStyle, width: '100%', marginBottom: 12, background: '#fff' }}
+              >
+                {items.map((it, i) => (
+                  <option key={i} value={i}>{it.resCompanyNm || `사업장 ${i + 1}`}</option>
+                ))}
+              </select>
             )}
+            {selectedItem && <DocCard item={selectedItem} file={selectedFile} customerId={form.customerId} />}
           </div>
         )}
       </div>
@@ -214,7 +211,26 @@ export default function CodefTestPage() {
   );
 }
 
-function DocCard({ item, saved }) {
+function LoadingRow() {
+  const [dots, setDots] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setDots((d) => (d + 1) % 4), 450);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 2px' }}>
+      <span style={{
+        display: 'inline-block', width: 16, height: 16, borderRadius: '50%',
+        border: '2px solid #E0DFDA', borderTopColor: '#2A2925',
+        animation: 'codef-spin 0.8s linear infinite',
+      }} />
+      <span style={{ fontSize: 13, color: '#5A5952' }}>자료를 받아오는 중입니다{'.'.repeat(dots)}</span>
+      <style>{`@keyframes codef-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function DocCard({ item, file, customerId }) {
   const fmtDate = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
   const rows = [
     ['사업자등록번호', item.resCompanyIdentityNo],
@@ -226,24 +242,36 @@ function DocCard({ item, saved }) {
     ['발급번호', item.resIssueNo],
   ].filter(([, v]) => v);
 
+  const downloadUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E0DFDA' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#2A2925' }}>
           {item.resCompanyNm || '상호 미확인'}
         </h3>
-        {saved && (
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#2A7D46', background: '#EAF6EE', padding: '3px 8px', borderRadius: 20 }}>
-            파일함 저장됨
-          </span>
+        {downloadUrl ? (
+          <a
+            href={downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontSize: 12, fontWeight: 600, color: '#fff', background: '#2A2925',
+              padding: '5px 10px', borderRadius: 20, textDecoration: 'none', whiteSpace: 'nowrap',
+            }}
+          >
+            PDF 다운로드
+          </a>
+        ) : (
+          <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 ID 미입력 — 저장 안 됨</span>
         )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
         {rows.map(([label, value]) => (
-          <React.Fragment key={label}>
+          <div key={label} style={{ display: 'contents' }}>
             <span style={{ color: '#8A8A85' }}>{label}</span>
             <span style={{ color: '#2A2925' }}>{value}</span>
-          </React.Fragment>
+          </div>
         ))}
       </div>
     </div>
