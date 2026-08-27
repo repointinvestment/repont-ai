@@ -16,6 +16,10 @@ const CARDS = {
     icon: '📋', title: '고객관리', desc: '고객 등록 · 조회 · 진행 현황 관리',
     path: '/customers', accent: '#D85A30', tint: '#FAECE7',
   },
+  plans: {
+    icon: '📝', title: '사업계획서 보관함', desc: '생성한 사업계획서 초안 모아보기',
+    path: '/business-plans', accent: '#3B6FB5', tint: '#E4EAF1',
+  },
   admin: {
     icon: '⚙️', title: '계정 관리', desc: '직원/수강생 계정 목록 확인',
     path: '/admin', accent: '#6A5A8C', tint: '#EFEBF5',
@@ -24,8 +28,8 @@ const CARDS = {
 
 // 역할별로 보여줄 메뉴 구성
 const ROLE_MENUS = {
-  admin: ['chat', 'customers', 'admin'],
-  consultant: ['chat', 'customers'],
+  admin: ['chat', 'customers', 'plans', 'admin'],
+  consultant: ['chat', 'customers', 'plans'],
   student: ['chat'],
 }
 

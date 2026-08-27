@@ -127,9 +127,10 @@ export default function CustomerDashboardPage() {
       const pfd = customer.policy_fund_details || {};
       const res = await fetch('/api/business-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '' },
         body: JSON.stringify({
           fundName,
+          customerId: params.id,
           customer: {
             ownerName: customer.owner_name,
             businessName: customer.business_name,

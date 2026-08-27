@@ -3,6 +3,7 @@
 // 사업계획서 초안을 생성. CRM에 있는 정보는 채우고, 없는 항목은 빈칸(________)으로 남겨둡니다.
 // 파일이 아닌 화면 텍스트로 반환 (웹폼 제출/복사 붙여넣기 용도).
 import OpenAI from 'openai'
+import { sql } from '@/lib/db'
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -71,9 +72,24 @@ async function generateParagraph({ fundName, customer, guidance, minChars, maxCh
 }
 
 export async function POST(req) {
-  const { customer, fundName } = await req.json()
+  const { customer, fundName, customerId } = await req.json()
   const guidance = FUND_GUIDANCE[fundName] || '이 자금의 세부 요건에 맞춰 사업의 강점을 자연스럽게 강조하세요.'
   const template = resolveTemplate(fundName)
+  const createdBy = req.headers.get('x-consultant-id') || null
+
+  async function saveAndRespond(draft) {
+    if (customerId) {
+      try {
+        await sql`
+          INSERT INTO business_plans (customer_id, fund_name, content, created_by)
+          VALUES (${customerId}, ${fundName}, ${draft}, ${createdBy})
+        `
+      } catch (err) {
+        console.error('사업계획서 저장 실패:', err)
+      }
+    }
+    return Response.json({ draft })
+  }
 
   if (template === 'SOJINKONG_SHORT') {
     const paragraph = await generateParagraph({
@@ -109,7 +125,7 @@ ${field('기타', null)}
 
 ※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
-    return Response.json({ draft })
+    return saveAndRespond(draft)
   }
 
   if (template === 'SOJINKONG_LONG') {
@@ -180,7 +196,7 @@ ${field('폐업사유', null)}` : ''}
 
 ※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
-    return Response.json({ draft })
+    return saveAndRespond(draft)
   }
 
   // GENERIC: 아직 공식 서식이 등록되지 않은 기관(재단/신보/기보 등) — 일반 사업계획서 형식으로 작성
@@ -226,5 +242,5 @@ ${field('폐업사유', null)}` : ''}
     max_tokens: 2000,
   })
 
-  return Response.json({ draft: response.choices[0].message.content })
+  return saveAndRespond(response.choices[0].message.content)
 }
