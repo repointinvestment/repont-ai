@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
 import DeadlineWidget from '../components/DeadlineWidget'
+import ReminderWidget from '../components/ReminderWidget'
 
 const CARDS = {
   chat: {
@@ -116,6 +117,7 @@ export default function MenuPage() {
           ))}
         </div>
         <DeadlineWidget />
+        <ReminderWidget user={user} />
       </div>
     </div>
   )
