@@ -1,0 +1,199 @@
+'use client';
+
+// app/admin/codef-test/page.jsx
+// CODEF 데모 버전 연동 테스트용 화면 (admin 전용).
+// 사업자등록 증명 API를 비회원 간편인증(카카오톡 등)으로 요청 → 승인 대기 → 확인, 2단계로 동작.
+// 실제 서비스에 노출되는 화면이 아니라 CODEF 쪽에 전달할 테스트 검증용.
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import AppHeader from '../../components/AppHeader';
+
+const LEVELS = [
+  { value: '1', label: '카카오톡' },
+  { value: '3', label: '삼성패스' },
+  { value: '4', label: 'KB모바일' },
+  { value: '5', label: '통신사(PASS)' },
+  { value: '6', label: '네이버' },
+  { value: '7', label: '신한인증서' },
+  { value: '8', label: 'toss' },
+  { value: '9', label: '뱅크샐러드' },
+  { value: '10', label: 'NH인증서' },
+  { value: '11', label: '우리인증서' },
+];
+
+export default function CodefTestPage() {
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [form, setForm] = useState({
+    userName: '', residentNo: '', phoneNo: '', loginTypeLevel: '1', telecom: '0',
+  });
+  const [sessionId, setSessionId] = useState(null);
+  const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
+  const [message, setMessage] = useState('');
+  const [raw, setRaw] = useState(null);
+
+  useEffect(() => {
+    const s = getSession();
+    if (!s) { router.push('/'); return; }
+    if (s.role !== 'admin') { router.push('/menu'); return; }
+    setUser(s);
+  }, []);
+
+  function update(key, value) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function requestAuth() {
+    setStatus('requesting');
+    setMessage('');
+    setRaw(null);
+    try {
+      const res = await fetch('/api/codef/business-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      setRaw(data.raw || data.result || data);
+      if (!res.ok) {
+        setStatus('error');
+        setMessage(data.error || '요청 실패');
+        return;
+      }
+      if (data.status === 'pending_2way') {
+        setSessionId(data.sessionId);
+        setStatus('pending');
+        setMessage(data.message);
+      } else {
+        setStatus('done');
+        setMessage('추가 인증 없이 바로 완료되었습니다.');
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(err.message);
+    }
+  }
+
+  async function confirmAuth() {
+    if (!sessionId) return;
+    setStatus('confirming');
+    setMessage('CODEF 응답을 기다리는 중입니다 (최대 4분 30초 정도 걸릴 수 있어요)...');
+    try {
+      const res = await fetch('/api/codef/business-registration/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json();
+      setRaw(data.result || data);
+      if (!res.ok) {
+        setStatus('error');
+        setMessage(data.error || '확인 실패');
+        return;
+      }
+      if (data.status === 'pending_2way') {
+        setStatus('pending');
+        setMessage('한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.');
+      } else if (data.status === 'done') {
+        setStatus('done');
+        setMessage('발급 성공!');
+      } else {
+        setStatus('error');
+        setMessage(data.result?.result?.message || '실패');
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage(err.message);
+    }
+  }
+
+  if (!user) return null;
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      <AppHeader user={user} />
+      <div style={{ padding: '32px 40px', maxWidth: 640, margin: '0 auto' }}>
+        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>CODEF 연동 테스트</p>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>
+          사업자등록 증명 API (데모)
+        </h1>
+        <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 24px' }}>
+          본인 정보로 직접 테스트해보는 화면입니다. 실제 고객 화면이 아닙니다.
+        </p>
+
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="이름">
+            <input value={form.userName} onChange={(e) => update('userName', e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="주민등록번호 (13자리)">
+            <input value={form.residentNo} onChange={(e) => update('residentNo', e.target.value)} placeholder="900101-1234567" style={inputStyle} />
+          </Field>
+          <Field label="휴대폰 번호">
+            <input value={form.phoneNo} onChange={(e) => update('phoneNo', e.target.value)} placeholder="01012345678" style={inputStyle} />
+          </Field>
+          <Field label="인증 방식">
+            <select value={form.loginTypeLevel} onChange={(e) => update('loginTypeLevel', e.target.value)} style={inputStyle}>
+              {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+            </select>
+          </Field>
+          {form.loginTypeLevel === '5' && (
+            <Field label="통신사 (PASS)">
+              <select value={form.telecom} onChange={(e) => update('telecom', e.target.value)} style={inputStyle}>
+                <option value="0">SKT</option>
+                <option value="1">KT</option>
+                <option value="2">LG U+</option>
+              </select>
+            </Field>
+          )}
+
+          <button
+            onClick={requestAuth}
+            disabled={status === 'requesting' || status === 'confirming'}
+            style={btnStyle}
+          >
+            {status === 'requesting' ? '요청 중...' : '인증 요청'}
+          </button>
+
+          {status === 'pending' && (
+            <button onClick={confirmAuth} disabled={status === 'confirming'} style={{ ...btnStyle, background: '#2A7D46' }}>
+              인증 완료했어요 (확인)
+            </button>
+          )}
+
+          {message && (
+            <p style={{ fontSize: 13, color: status === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{message}</p>
+          )}
+        </div>
+
+        {raw && (
+          <pre style={{
+            marginTop: 20, background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8,
+            fontSize: 12, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}>
+            {JSON.stringify(raw, null, 2)}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: '#5A5952' }}>
+      {label}
+      {children}
+    </label>
+  );
+}
+
+const inputStyle = {
+  padding: '10px 12px', borderRadius: 8, border: '1px solid #E0DFDA', fontSize: 14,
+};
+
+const btnStyle = {
+  marginTop: 8, padding: '12px 16px', borderRadius: 8, border: 'none',
+  background: '#2A2925', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+};
