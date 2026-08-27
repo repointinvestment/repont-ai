@@ -200,7 +200,15 @@ export default function CodefTestPage() {
           )}
         </div>
 
-        {status === 'confirming' && <LoadingModal />}
+        {(status === 'requesting' || status === 'confirming') && (
+          <LoadingModal
+            messages={
+              status === 'requesting'
+                ? ['카카오톡 인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
+                : ['고객님의 서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
+            }
+          />
+        )}
 
         {items.length > 0 && (
           <div style={{ marginTop: 20 }}>
@@ -223,14 +231,13 @@ export default function CodefTestPage() {
   );
 }
 
-function LoadingModal() {
+function LoadingModal({ messages = [
+  '고객님의 서류를 준비하고 있습니다',
+  '국세청 홈택스에 접속하고 있습니다',
+  '전자서명을 확인하고 있습니다',
+  '증명서를 발급하고 있습니다',
+] }) {
   const [phase, setPhase] = useState(0);
-  const messages = [
-    '고객님의 서류를 준비하고 있습니다',
-    '국세청 홈택스에 접속하고 있습니다',
-    '전자서명을 확인하고 있습니다',
-    '증명서를 발급하고 있습니다',
-  ];
   useEffect(() => {
     const t = setInterval(() => setPhase((p) => (p + 1) % messages.length), 2200);
     return () => clearInterval(t);
