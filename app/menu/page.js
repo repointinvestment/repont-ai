@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
+import DeadlineWidget from '../components/DeadlineWidget'
 
 const CARDS = {
   chat: {
@@ -114,6 +115,7 @@ export default function MenuPage() {
             </div>
           ))}
         </div>
+        <DeadlineWidget />
       </div>
     </div>
   )
