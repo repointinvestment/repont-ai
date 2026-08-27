@@ -336,7 +336,26 @@ function DocCard({ item, file, customerId }) {
     ['발급번호', item.resIssueNo],
   ].filter(([, v]) => v);
 
-  const downloadUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+  const serverDownloadUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+
+  // CODEF가 준 PDF 원문(Base64)을 우리 서버에 저장하지 않고, 컨설턴트 브라우저에서 바로 파일로 내려받게 함.
+  // 파일함 저장 여부(고객 선택 여부)와 무관하게 항상 가능.
+  function downloadLocal() {
+    const base64 = item.resOriGinalData1
+    if (!base64) return
+    const byteChars = atob(base64)
+    const bytes = new Uint8Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `사업자등록증명_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.resIssueDate || ''}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E0DFDA' }}>
@@ -344,21 +363,22 @@ function DocCard({ item, file, customerId }) {
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#2A2925' }}>
           {item.resCompanyNm || '상호 미확인'}
         </h3>
-        {downloadUrl ? (
-          <a
-            href={downloadUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{
-              fontSize: 12, fontWeight: 600, color: '#fff', background: '#2A2925',
-              padding: '5px 10px', borderRadius: 20, textDecoration: 'none', whiteSpace: 'nowrap',
-            }}
-          >
-            PDF 다운로드
-          </a>
-        ) : (
-          <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 미선택 — 저장 안 됨</span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!serverDownloadUrl && (
+            <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 미선택 — 파일함 저장 안 됨</span>
+          )}
+          {item.resOriGinalData1 && (
+            <button
+              onClick={downloadLocal}
+              style={{
+                fontSize: 12, fontWeight: 600, color: '#fff', background: '#2A2925', border: 'none', cursor: 'pointer',
+                padding: '5px 10px', borderRadius: 20, whiteSpace: 'nowrap',
+              }}
+            >
+              PDF 다운로드
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
         {rows.map(([label, value]) => (
