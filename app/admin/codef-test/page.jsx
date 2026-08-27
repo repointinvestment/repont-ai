@@ -29,6 +29,7 @@ export default function CodefTestPage() {
   const [form, setForm] = useState({
     customerId: '', userName: '', residentNo: '', phoneNo: '', loginTypeLevel: '1', telecom: '0',
   });
+  const [customers, setCustomers] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [message, setMessage] = useState('');
@@ -41,6 +42,10 @@ export default function CodefTestPage() {
     if (!s) { router.push('/'); return; }
     if (s.role !== 'admin') { router.push('/menu'); return; }
     setUser(s);
+    fetch('/api/customers', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
+      .then((r) => r.json())
+      .then((d) => setCustomers(d.customers || []))
+      .catch(() => {});
   }, []);
 
   function update(key, value) {
@@ -118,7 +123,7 @@ export default function CodefTestPage() {
     setMessage(
       data.savedFiles?.length > 0
         ? `발급 성공! 고객 파일함에 ${data.savedFiles.length}건 저장했습니다.`
-        : '발급 성공! (고객 ID를 입력하지 않아 파일함에는 저장하지 않았습니다)'
+        : '발급 성공! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)'
     );
   }
 
@@ -142,8 +147,15 @@ export default function CodefTestPage() {
         </p>
 
         <div style={{ background: '#fff', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Field label="고객 ID (선택 — 입력하면 성공 시 그 고객 파일함에 PDF가 저장됩니다)">
-            <input value={form.customerId} onChange={(e) => update('customerId', e.target.value)} placeholder="비워두면 저장 없이 결과만 표시" style={inputStyle} />
+          <Field label="고객 선택 (선택 — 고르면 성공 시 그 고객 파일함에 PDF가 저장됩니다)">
+            <select value={form.customerId} onChange={(e) => update('customerId', e.target.value)} style={inputStyle}>
+              <option value="">저장 없이 결과만 표시</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.owner_name || '이름 미입력'}{c.business_name ? ` · ${c.business_name}` : ''}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="이름">
             <input value={form.userName} onChange={(e) => update('userName', e.target.value)} style={inputStyle} />
@@ -263,7 +275,7 @@ function DocCard({ item, file, customerId }) {
             PDF 다운로드
           </a>
         ) : (
-          <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 ID 미입력 — 저장 안 됨</span>
+          <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 미선택 — 저장 안 됨</span>
         )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
