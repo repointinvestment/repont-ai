@@ -27,7 +27,7 @@ export default function CodefTestPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({
-    userName: '', residentNo: '', phoneNo: '', loginTypeLevel: '1', telecom: '0',
+    customerId: '', userName: '', residentNo: '', phoneNo: '', loginTypeLevel: '1', telecom: '0',
   });
   const [sessionId, setSessionId] = useState(null);
   const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
@@ -98,7 +98,12 @@ export default function CodefTestPage() {
         setMessage('한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.');
       } else if (data.status === 'done') {
         setStatus('done');
-        setMessage('발급 성공!');
+        const savedCount = data.savedFiles?.length || 0;
+        setMessage(
+          savedCount > 0
+            ? `발급 성공! 고객 파일함에 ${savedCount}건 저장했습니다: ${data.savedFiles.map((f) => f.file_name).join(', ')}`
+            : '발급 성공! (고객 ID를 입력하지 않아 파일함에는 저장하지 않았습니다)'
+        );
       } else {
         setStatus('error');
         setMessage(data.result?.result?.message || '실패');
@@ -124,6 +129,9 @@ export default function CodefTestPage() {
         </p>
 
         <div style={{ background: '#fff', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="고객 ID (선택 — 입력하면 성공 시 그 고객 파일함에 PDF가 저장됩니다)">
+            <input value={form.customerId} onChange={(e) => update('customerId', e.target.value)} placeholder="비워두면 저장 없이 결과만 표시" style={inputStyle} />
+          </Field>
           <Field label="이름">
             <input value={form.userName} onChange={(e) => update('userName', e.target.value)} style={inputStyle} />
           </Field>
