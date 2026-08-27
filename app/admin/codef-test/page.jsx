@@ -5,7 +5,7 @@
 // 사업자등록 증명 API를 비회원 간편인증(카카오톡 등)으로 요청 → 승인 대기 → 확인, 2단계로 동작.
 // 실제 서비스에 노출되는 화면이 아니라 CODEF 쪽에 전달할 테스트 검증용.
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
@@ -33,6 +33,9 @@ export default function CodefTestPage() {
   const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [message, setMessage] = useState('');
   const [raw, setRaw] = useState(null);
+  const [items, setItems] = useState([]);
+  const [savedFiles, setSavedFiles] = useState([]);
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const s = getSession();
@@ -49,6 +52,9 @@ export default function CodefTestPage() {
     setStatus('requesting');
     setMessage('');
     setRaw(null);
+    setItems([]);
+    setSavedFiles([]);
+    setShowRaw(false);
     try {
       const res = await fetch('/api/codef/business-registration', {
         method: 'POST',
@@ -98,10 +104,12 @@ export default function CodefTestPage() {
         setMessage('한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.');
       } else if (data.status === 'done') {
         setStatus('done');
-        const savedCount = data.savedFiles?.length || 0;
+        const docs = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
+        setItems(docs);
+        setSavedFiles(data.savedFiles || []);
         setMessage(
-          savedCount > 0
-            ? `발급 성공! 고객 파일함에 ${savedCount}건 저장했습니다: ${data.savedFiles.map((f) => f.file_name).join(', ')}`
+          data.savedFiles?.length > 0
+            ? `발급 성공! 고객 파일함에 ${data.savedFiles.length}건 저장했습니다.`
             : '발급 성공! (고객 ID를 입력하지 않아 파일함에는 저장하지 않았습니다)'
         );
       } else {
@@ -175,14 +183,68 @@ export default function CodefTestPage() {
           )}
         </div>
 
-        {raw && (
-          <pre style={{
-            marginTop: 20, background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8,
-            fontSize: 12, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-          }}>
-            {JSON.stringify(raw, null, 2)}
-          </pre>
+        {items.length > 0 && (
+          <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {items.map((item, i) => (
+              <DocCard key={i} item={item} saved={savedFiles.some((f) => f.file_name?.includes(item.resCompanyNm || ''))} />
+            ))}
+          </div>
         )}
+
+        {raw && (
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={() => setShowRaw((v) => !v)}
+              style={{ background: 'none', border: 'none', color: '#8A8A85', fontSize: 12, cursor: 'pointer', padding: 0 }}
+            >
+              {showRaw ? '▲ 원본 JSON 접기' : '▼ 원본 JSON 보기 (디버깅용)'}
+            </button>
+            {showRaw && (
+              <pre style={{
+                marginTop: 8, background: '#1e1e1e', color: '#d4d4d4', padding: 16, borderRadius: 8,
+                fontSize: 12, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+              }}>
+                {JSON.stringify(raw, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DocCard({ item, saved }) {
+  const fmtDate = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
+  const rows = [
+    ['사업자등록번호', item.resCompanyIdentityNo],
+    ['대표자', item.resUserNm],
+    ['주소', item.resUserAddr?.replaceAll('+', ' ')],
+    ['업태 / 종목', [item.resBusinessTypes, item.resBusinessItems].filter(Boolean).join(' / ').replaceAll('+', ' ')],
+    ['개업일 / 등록일', [fmtDate(item.resOpenDate), fmtDate(item.resRegisterDate)].filter(Boolean).join(' / ')],
+    ['발급기관', item.resIssueOgzNm],
+    ['발급번호', item.resIssueNo],
+  ].filter(([, v]) => v);
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E0DFDA' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#2A2925' }}>
+          {item.resCompanyNm || '상호 미확인'}
+        </h3>
+        {saved && (
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#2A7D46', background: '#EAF6EE', padding: '3px 8px', borderRadius: 20 }}>
+            파일함 저장됨
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
+        {rows.map(([label, value]) => (
+          <React.Fragment key={label}>
+            <span style={{ color: '#8A8A85' }}>{label}</span>
+            <span style={{ color: '#2A2925' }}>{value}</span>
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
