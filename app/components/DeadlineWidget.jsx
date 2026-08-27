@@ -70,7 +70,7 @@ export default function DeadlineWidget() {
     <div style={{
       background: '#FBF7EE', borderRadius: 16, padding: '22px 26px',
       boxShadow: '0 16px 32px rgba(11,36,64,0.18)', border: '1px solid #EEE6DA',
-      marginTop: 0,
+      marginTop: 18,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 700, color: '#2A2925', margin: 0 }}>
