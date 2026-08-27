@@ -94,7 +94,8 @@ export default function MenuPage() {
 
       {/* 메뉴 카드 */}
       <div style={{ maxWidth: 880, margin: '-36px auto 0', padding: '0 24px 48px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
+        <DeadlineWidget />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18, marginTop: 18 }}>
           {visibleCards.map((card) => (
             <div
               key={card.title}
@@ -126,7 +127,6 @@ export default function MenuPage() {
           ))}
         </div>
         <MonthlyReportWidget user={user} />
-        <DeadlineWidget />
         <ReminderWidget user={user} />
       </div>
     </div>

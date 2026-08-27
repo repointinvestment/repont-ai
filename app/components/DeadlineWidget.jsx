@@ -3,6 +3,19 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자']
+const REGIONS = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
+const INDUSTRY_TAGS = ['제조업', '건설업', '운수업', '도소매업', '음식점', '서비스업', '수출', 'IT']
+
+function extractTags(item) {
+  const haystack = `${item.hashtags || ''} ${item.pblancNm || ''}`
+  const tags = []
+  const region = REGIONS.find((r) => haystack.includes(r))
+  if (region) tags.push(region)
+  else tags.push('지방')
+  const industry = INDUSTRY_TAGS.find((k) => haystack.includes(k))
+  if (industry) tags.push(industry)
+  return tags.slice(0, 2)
+}
 
 function getDday(endDate) {
   if (!endDate) return null
@@ -43,7 +56,7 @@ export default function DeadlineWidget() {
           })
           .filter((item) => item.dday !== null && item.dday >= 0)
           .sort((a, b) => a.dday - b.dday)
-          .slice(0, 4)
+          .slice(0, 6)
 
         setItems(withDday)
       })
@@ -57,7 +70,7 @@ export default function DeadlineWidget() {
     <div style={{
       background: '#FBF7EE', borderRadius: 16, padding: '22px 26px',
       boxShadow: '0 16px 32px rgba(11,36,64,0.18)', border: '1px solid #EEE6DA',
-      marginTop: 18,
+      marginTop: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 15, fontWeight: 700, color: '#2A2925', margin: 0 }}>
@@ -74,27 +87,37 @@ export default function DeadlineWidget() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map((item, i) => {
           const link = item.pblancUrl || item.detailUrl || ''
+          const tags = extractTags(item)
           return (
             <div
               key={i}
               onClick={() => link && window.open(link, '_blank')}
               style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 12px', borderRadius: 8, border: '1px solid #E4E2DB',
+                padding: '12px 14px', borderRadius: 10, border: '1px solid #E4E2DB',
                 cursor: link ? 'pointer' : 'default',
               }}
             >
-              <span style={{
-                fontSize: 11, fontWeight: 800, padding: '4px 9px', borderRadius: 20,
-                background: item.dday <= 3 ? '#F5E3DF' : '#F6F1E3',
-                color: item.dday <= 3 ? '#8A2A1F' : '#8A5A2E',
-                flexShrink: 0,
-              }}>
-                {item.dday === 0 ? 'D-Day' : `D-${item.dday}`}
-              </span>
-              <span style={{ fontSize: 13, color: '#2A2925', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 800, padding: '3px 9px', borderRadius: 20,
+                  background: item.dday <= 3 ? '#F5E3DF' : '#F6F1E3',
+                  color: item.dday <= 3 ? '#8A2A1F' : '#8A5A2E',
+                  flexShrink: 0,
+                }}>
+                  {item.dday === 0 ? 'D-Day' : `D-${item.dday}`}
+                </span>
+                {tags.map((tag, ti) => (
+                  <span key={ti} style={{
+                    fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
+                    background: '#EFEBF5', color: '#6A5A8C', flexShrink: 0,
+                  }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <p style={{ fontSize: 13, color: '#2A2925', margin: 0, lineHeight: 1.4 }}>
                 {item.pblancNm}
-              </span>
+              </p>
             </div>
           )
         })}
