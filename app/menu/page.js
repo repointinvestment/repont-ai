@@ -12,6 +12,10 @@ const CARDS = {
     icon: '🤖', title: 'AI 자금진단', desc: '정책자금 항목별 분석 · AI 채팅 · 캘린더',
     path: '/chat', accent: '#0B2440', tint: '#E8EEF5',
   },
+  board: {
+    icon: '💬', title: '학습센터', desc: '공지 · 게시판 · QnA',
+    path: '/board', accent: '#B4923F', tint: '#F6F1E3',
+  },
   customers: {
     icon: '📋', title: '고객관리', desc: '고객 등록 · 조회 · 진행 현황 관리',
     path: '/customers', accent: '#D85A30', tint: '#FAECE7',
@@ -28,9 +32,9 @@ const CARDS = {
 
 // 역할별로 보여줄 메뉴 구성
 const ROLE_MENUS = {
-  admin: ['chat', 'customers', 'plans', 'admin'],
-  consultant: ['chat', 'customers', 'plans'],
-  student: ['chat'],
+  admin: ['chat', 'board', 'customers', 'plans', 'admin'],
+  consultant: ['chat', 'board', 'customers', 'plans'],
+  student: ['chat', 'board'],
 }
 
 export default function MenuPage() {
