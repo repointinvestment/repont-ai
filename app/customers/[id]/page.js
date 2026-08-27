@@ -477,7 +477,9 @@ export default function CustomerDashboardPage() {
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
             <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 12px', color: '#2A2925' }}>계정 정보</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {credentials.map((cred) => (
+              {credentials.map((cred) => {
+                const primaryLabel = cred.service_name === '주민등록번호' ? '주민등록번호 복사' : '비밀번호 복사';
+                return (
                 <div key={cred.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
                   <span style={{ fontSize: 14 }}>
                     {cred.service_name}
@@ -489,7 +491,7 @@ export default function CustomerDashboardPage() {
                       onClick={() => copyCredential(cred, 'password')}
                       style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: copyState[cred.id] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 13, cursor: 'pointer' }}
                     >
-                      {copyState[cred.id] || '비밀번호 복사'}
+                      {copyState[cred.id] || primaryLabel}
                     </button>
                     {cred.has_secondary && (
                       <button
@@ -502,7 +504,8 @@ export default function CustomerDashboardPage() {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
