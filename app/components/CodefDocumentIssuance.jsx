@@ -75,6 +75,13 @@ export const DOCUMENTS = {
     memberOnly: true,
     needsPeriod: true,
   },
+  'tax-payment-certificate': {
+    label: '납세증명서 (국세완납증명)',
+    requestPath: '/api/codef/tax-payment-certificate',
+    confirmPath: '/api/codef/tax-payment-certificate/confirm',
+    memberOnly: false,
+    needsPeriod: false,
+  },
 };
 
 // props:
@@ -529,6 +536,23 @@ function buildRows(docType, item) {
     ].filter(([, v]) => v);
   }
 
+  if (docType === 'tax-payment-certificate') {
+    const arrears = Array.isArray(item.resArrearsList) ? item.resArrearsList.filter((a) => a.resTaxItemName) : [];
+    return [
+      ['상호(법인)', item.resCompanyNm],
+      ['사업자등록번호', item.resCompanyIdentityNo],
+      ['성명(대표자)', item.resUserNm],
+      ['주소', item.resUserAddr?.replaceAll('+', ' ')],
+      ['납세상태', item.resPaymentTaxStatus],
+      ['체납 내역', arrears.length > 0
+        ? arrears.map((a) => `${a.resTaxItemName} ${fmtAmt(a.resLocalTaxAmt)}`).join(', ')
+        : (item.resPaymentTaxStatus === '해당없음' ? '없음' : '')],
+      ['유효기간', fmtDate(item.resValidPeriod)],
+      ['발급기관', item.resIssueOgzNm],
+      ['발급번호', item.resIssueNo],
+    ].filter(([, v]) => v);
+  }
+
   return [
     ['사업자등록번호', item.resCompanyIdentityNo],
     ['대표자', item.resUserNm],
@@ -582,7 +606,7 @@ function DocCard({ docType, item, file, customerId }) {
     <div style={{ background: '#fff', borderRadius: 12, padding: 20, border: '1px solid #E0DFDA' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12 }}>
         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#2A2925' }}>
-          {item.resCompanyNm || '상호 미확인'}
+          {item.resCompanyNm || item.resUserNm || '상호 미확인'}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {!customerId && (
