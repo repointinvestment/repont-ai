@@ -38,6 +38,28 @@ function buildVatPeriodOptions() {
   return options.filter((o) => `${o.year}${String(o.half === 1 ? '06' : '12')}` <= `${y}${String(m).padStart(2, '0')}`)
 }
 
+// 가장 최근 신고기한이 지난(=완료된) 반기를 계산.
+function latestCompletedHalf() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
+  if (m >= 8) return { year: y, half: 1, endDate: `${y}06`, label: `${y}년 1기` }
+  return { year: y - 1, half: 2, endDate: `${y - 1}12`, label: `${y - 1}년 2기` }
+}
+
+// "최근 N년" 범위 프리셋 — CODEF에 넓은 startDate~endDate를 주면 그 안의 반기별 증명서를
+// 배열로 한 번에 돌려주므로(출력부 "반복부"), 매출 추이를 보려면 이 범위로 조회해야 함.
+// 최대 5년까지 지원(CODEF 문서 기준: 1분기는 5년전, 그 외 4년전까지 조회 가능).
+function buildVatRangeOptions() {
+  const latest = latestCompletedHalf()
+  return [1, 2, 3, 5].map((n) => ({
+    label: `최근 ${n}년 (${latest.year - (n - 1)}년 1기 ~ ${latest.label})`,
+    startDate: `${latest.year - (n - 1)}01`,
+    endDate: latest.endDate,
+  }))
+}
+
+
 export const DOCUMENTS = {
   'corporate-registration': {
     label: '사업자등록 증명',
@@ -272,7 +294,7 @@ export default function CodefDocumentIssuance({
           </Field>
         )}
         {anyNeedsPeriod && (
-          <Field label="과세기간 (부가세과세표준증명용 — 창업 월이 아니라 몇 년도 몇 기 증명서인지 고르는 항목이에요)">
+          <Field label="과세기간 (부가세과세표준증명용 — 여러 해를 선택하면 반기별로 여러 장 발급됩니다)">
             <select
               value={form.startDate && form.endDate ? `${form.startDate}-${form.endDate}` : ''}
               onChange={(e) => {
@@ -282,10 +304,17 @@ export default function CodefDocumentIssuance({
               }}
               style={inputStyle}
             >
-              <option value="">자동 (가장 최근 완료된 기간)</option>
-              {buildVatPeriodOptions().map((o) => (
-                <option key={o.label} value={`${o.startDate}-${o.endDate}`}>{o.label}</option>
-              ))}
+              <option value="">자동 (최근 완료된 반기 1건)</option>
+              <optgroup label="여러 해 한 번에 (매출 추이 확인용)">
+                {buildVatRangeOptions().map((o) => (
+                  <option key={o.label} value={`${o.startDate}-${o.endDate}`}>{o.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="특정 반기 1건만">
+                {buildVatPeriodOptions().map((o) => (
+                  <option key={o.label} value={`${o.startDate}-${o.endDate}`}>{o.label}</option>
+                ))}
+              </optgroup>
             </select>
           </Field>
         )}
@@ -331,7 +360,11 @@ export default function CodefDocumentIssuance({
             const { items, savedFiles } = results[docKey];
             const idx = selectedIdx[docKey] || 0;
             const item = items[idx];
-            const file = item ? savedFiles.find((f) => f.companyName && f.companyName === item.resCompanyNm) : null;
+            const itemPeriod = item?.commStartDate && item?.commEndDate ? `${item.commStartDate}-${item.commEndDate}` : '';
+            const file = item
+              ? savedFiles.find((f) => f.companyName === item.resCompanyNm && (f.period || '') === itemPeriod)
+                || savedFiles.find((f) => f.companyName === item.resCompanyNm)
+              : null;
             return (
               <div key={docKey}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#5A5952', margin: '0 0 8px' }}>{DOCUMENTS[docKey].label}</p>
@@ -341,9 +374,13 @@ export default function CodefDocumentIssuance({
                     onChange={(e) => setSelectedIdx((prev) => ({ ...prev, [docKey]: Number(e.target.value) }))}
                     style={{ ...inputStyle, width: '100%', marginBottom: 10, background: '#fff' }}
                   >
-                    {items.map((it, i) => (
-                      <option key={i} value={i}>{it.resCompanyNm || `사업장 ${i + 1}`}</option>
-                    ))}
+                    {items.map((it, i) => {
+                      const fmt = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}` : d);
+                      const period = it.commStartDate && it.commEndDate ? ` (${fmt(it.commStartDate)}~${fmt(it.commEndDate)})` : '';
+                      return (
+                        <option key={i} value={i}>{(it.resCompanyNm || `사업장 ${i + 1}`)}{period}</option>
+                      );
+                    })}
                   </select>
                 )}
                 {item && <DocCard docType={docKey} item={item} file={file} customerId={form.customerId} />}

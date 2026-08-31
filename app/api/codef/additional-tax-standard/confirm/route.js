@@ -96,7 +96,7 @@ function saveIssuedPdfs(customerId, result, uploadedBy) {
             VALUES (${customerId}, ${fileName}, ${blob.pathname}, ${buffer.length}, ${uploadedBy || 'CODEF 자동수집'})
             RETURNING id, file_name
           `
-          return { ...row, companyName: item.resCompanyNm || '' }
+          return { ...row, companyName: item.resCompanyNm || '', period: item.commStartDate && item.commEndDate ? `${item.commStartDate}-${item.commEndDate}` : '' }
         } catch (err) {
           console.error('CODEF PDF 파일함 저장 실패:', err)
           return null
