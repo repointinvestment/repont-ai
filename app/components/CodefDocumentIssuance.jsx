@@ -7,7 +7,7 @@
 //   - /customers/[id]: 그 고객 화면에 내장 — customerId/이름/전화번호가 이미 정해져 있어 바로 발급 가능
 // 새 문서(예: 소득금액증명원)를 추가할 땐 DOCUMENTS 객체에 항목 하나, 그 문서 전용 API 라우트 두 개만 추가하면 됨.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const LEVELS = [
   { value: '1', label: '카카오톡' },
@@ -41,7 +41,7 @@ export const DOCUMENTS = {
 
 // props:
 //   customerId, consultantUsername (필수)
-//   customerPicker: true면 화면 안에서 고객을 고를 수 있는 드롭다운을 보여줌 (관리자 테스트 화면용)
+//   customerPicker: true면 화면 안에서 고객을 고를 수 있는 드롭다운을 보여줌 (관리자 테스트/서류발급 화면용)
 //   customers: customerPicker=true일 때 목록
 //   defaultUserName, defaultPhoneNo: 미리 채워둘 값 (고객 상세 페이지에서 넘겨줌)
 //   onSaved: 발급 성공 + 파일함 저장까지 끝났을 때 호출 (파일 목록 새로고침용)
@@ -54,7 +54,8 @@ export default function CodefDocumentIssuance({
   defaultPhoneNo = '',
   onSaved,
 }) {
-  const [docType, setDocType] = useState('corporate-registration');
+  // 일괄 발급: 체크한 문서를 순서대로 하나씩 처리. 인증 정보는 한 번만 입력.
+  const [selectedDocs, setSelectedDocs] = useState(['corporate-registration']);
   const [form, setForm] = useState({
     customerId: fixedCustomerId || '',
     userName: defaultUserName,
@@ -65,60 +66,78 @@ export default function CodefDocumentIssuance({
     startDate: '',
     endDate: '',
   });
+  const [batchIdx, setBatchIdx] = useState(0); // selectedDocs 중 지금 처리 중인 순번
+  const [sharedId, setSharedId] = useState(null); // 여러 문서를 한 세션으로 묶기 위한 공용 id
   const [sessionId, setSessionId] = useState(null);
   const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [message, setMessage] = useState('');
-  const [items, setItems] = useState([]);
-  const [savedFiles, setSavedFiles] = useState([]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [results, setResults] = useState({}); // { [docKey]: { items, savedFiles } }
+  const [selectedIdx, setSelectedIdx] = useState({}); // { [docKey]: 사업장 인덱스 } — 문서별 다건일 때
+  const savedCountRef = useRef(0); // 배치 전체에서 파일함에 저장된 건수 누적 (state 클로저 지연 문제 회피)
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function toggleDoc(key) {
+    setSelectedDocs((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    resetResult();
+  }
+
   function resetResult() {
     setStatus('');
     setMessage('');
-    setItems([]);
-    setSavedFiles([]);
+    setResults({});
     setSessionId(null);
+    setBatchIdx(0);
+    setSharedId(null);
   }
 
-  async function requestAuth() {
+  async function startBatch() {
+    if (selectedDocs.length === 0) return;
+    setResults({});
+    setBatchIdx(0);
+    savedCountRef.current = 0;
+    const sid = `batch-${form.customerId || 'test'}-${Date.now()}`;
+    setSharedId(sid);
+    await requestDoc(0, sid);
+  }
+
+  async function requestDoc(idx, sid) {
     setStatus('requesting');
     setMessage('');
-    setItems([]);
-    setSavedFiles([]);
-    const doc = DOCUMENTS[docType];
+    const docKey = selectedDocs[idx];
+    const doc = DOCUMENTS[docKey];
     try {
       const res = await fetch(doc.requestPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, sharedId: sid }),
       });
       const data = await res.json();
       if (!res.ok) {
         setStatus('error');
-        setMessage(data.error || '요청 실패');
+        setMessage(`[${doc.label}] ${data.error || '요청 실패'}`);
         return;
       }
       if (data.status === 'pending_2way') {
         setSessionId(data.sessionId);
         setStatus('pending');
-        setMessage(data.message);
+        setMessage(`[${doc.label}] ${data.message}`);
       } else {
-        finishWithResult(data);
+        await finishDocAndAdvance(idx, sid, data);
       }
     } catch (err) {
       setStatus('error');
-      setMessage(err.message);
+      setMessage(`[${doc.label}] ${err.message}`);
     }
   }
 
   async function confirmAuth() {
     if (!sessionId) return;
     setStatus('confirming');
-    const doc = DOCUMENTS[docType];
+    const docKey = selectedDocs[batchIdx];
+    const doc = DOCUMENTS[docKey];
     try {
       const res = await fetch(doc.confirmPath, {
         method: 'POST',
@@ -128,63 +147,76 @@ export default function CodefDocumentIssuance({
       const data = await res.json();
       if (!res.ok) {
         setStatus('error');
-        setMessage(data.error || '확인 실패');
+        setMessage(`[${doc.label}] ${data.error || '확인 실패'}`);
         return;
       }
       if (data.status === 'pending_2way') {
         setStatus('pending');
-        setMessage('한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.');
+        setMessage(`[${doc.label}] 한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.`);
       } else {
-        finishWithResult(data);
+        await finishDocAndAdvance(batchIdx, sharedId, data);
       }
     } catch (err) {
       setStatus('error');
-      setMessage(err.message);
+      setMessage(`[${doc.label}] ${err.message}`);
     }
   }
 
-  function finishWithResult(data) {
+  async function finishDocAndAdvance(idx, sid, data) {
+    const docKey = selectedDocs[idx];
+    const doc = DOCUMENTS[docKey];
+
     if (data.status !== 'done') {
       setStatus('error');
-      setMessage(data.result?.result?.message || '실패');
+      setMessage(`[${doc.label}] ${data.result?.result?.message || '실패'}`);
       return;
     }
+
     const docs = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
-    setItems(docs);
-    setSavedFiles(data.savedFiles || []);
-    setSelectedIdx(0);
-    setStatus('done');
-    setMessage(
-      data.savedFiles?.length > 0
-        ? `발급 성공! 파일함에 ${data.savedFiles.length}건 저장했습니다.`
-        : '발급 성공! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)'
-    );
+    setResults((prev) => ({ ...prev, [docKey]: { items: docs, savedFiles: data.savedFiles || [] } }));
+    setSelectedIdx((prev) => ({ ...prev, [docKey]: 0 }));
+    savedCountRef.current += data.savedFiles?.length || 0;
     if (data.savedFiles?.length > 0 && onSaved) onSaved();
+
+    const nextIdx = idx + 1;
+    if (nextIdx < selectedDocs.length) {
+      setBatchIdx(nextIdx);
+      await requestDoc(nextIdx, sid);
+    } else {
+      setStatus('done');
+      const totalSaved = savedCountRef.current;
+      setMessage(
+        totalSaved > 0
+          ? `${selectedDocs.length}개 서류 발급 완료! 파일함에 총 ${totalSaved}건 저장했습니다.`
+          : `${selectedDocs.length}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`
+      );
+    }
   }
 
-  const doc = DOCUMENTS[docType];
-  const selectedItem = items[selectedIdx];
-  const selectedFile = selectedItem
-    ? savedFiles.find((f) => f.companyName && f.companyName === selectedItem.resCompanyNm)
-    : null;
+  const currentDocLabel = DOCUMENTS[selectedDocs[batchIdx]]?.label || '';
+  const anyMemberOnly = selectedDocs.some((k) => DOCUMENTS[k].memberOnly);
+  const anyNeedsPeriod = selectedDocs.some((k) => DOCUMENTS[k].needsPeriod);
 
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Field label="발급 서류">
-          <select
-            value={docType}
-            onChange={(e) => { setDocType(e.target.value); resetResult(); }}
-            style={inputStyle}
-          >
+        <Field label="발급 서류 (여러 개 선택 가능 — 인증 한 번으로 순서대로 발급받습니다)">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #E0DFDA', borderRadius: 8, padding: 12 }}>
             {Object.entries(DOCUMENTS).map(([key, d]) => (
-              <option key={key} value={key}>{d.label}</option>
+              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={selectedDocs.includes(key)}
+                  onChange={() => toggleDoc(key)}
+                />
+                {d.label}
+              </label>
             ))}
-          </select>
+          </div>
         </Field>
-        {doc.memberOnly && (
+        {anyMemberOnly && (
           <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
-            ※ 이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.
+            ※ 선택하신 서류 중 일부는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.
           </p>
         )}
 
@@ -223,8 +255,8 @@ export default function CodefDocumentIssuance({
             </select>
           </Field>
         )}
-        {doc.needsPeriod && (
-          <Field label="과세기간 (비워두면 가장 최근 완료된 기간으로 자동 조회)">
+        {anyNeedsPeriod && (
+          <Field label="과세기간 (부가세과세표준증명용 — 비워두면 가장 최근 완료된 기간으로 자동 조회)">
             <div style={{ display: 'flex', gap: 8 }}>
               <input value={form.startDate} onChange={(e) => update('startDate', e.target.value)} placeholder="시작 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
               <input value={form.endDate} onChange={(e) => update('endDate', e.target.value)} placeholder="종료 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
@@ -233,17 +265,23 @@ export default function CodefDocumentIssuance({
         )}
 
         <button
-          onClick={requestAuth}
-          disabled={status === 'requesting' || status === 'confirming'}
+          onClick={startBatch}
+          disabled={selectedDocs.length === 0 || status === 'requesting' || status === 'confirming'}
           style={btnStyle}
         >
-          {status === 'requesting' ? '요청 중...' : '인증 요청'}
+          {status === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
         </button>
 
         {status === 'pending' && (
           <button onClick={confirmAuth} disabled={status === 'confirming'} style={{ ...btnStyle, background: '#2A7D46' }}>
             인증 완료했어요 (확인)
           </button>
+        )}
+
+        {(status === 'requesting' || status === 'pending' || status === 'confirming') && selectedDocs.length > 1 && (
+          <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>
+            진행 상황: {batchIdx + 1} / {selectedDocs.length} — {currentDocLabel}
+          </p>
         )}
 
         {message && status !== 'confirming' && (
@@ -255,28 +293,37 @@ export default function CodefDocumentIssuance({
         <LoadingModal
           messages={
             status === 'requesting'
-              ? ['카카오톡 인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
-              : ['고객님의 서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
+              ? [`${currentDocLabel} 인증을 요청하고 있습니다`, '고객님의 승인을 기다리고 있습니다']
+              : [`${currentDocLabel}를 준비하고 있습니다`, '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
           }
         />
       )}
 
-      {items.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          {items.length > 1 && (
-            <select
-              value={selectedIdx}
-              onChange={(e) => setSelectedIdx(Number(e.target.value))}
-              style={{ ...inputStyle, width: '100%', marginBottom: 12, background: '#fff' }}
-            >
-              {items.map((it, i) => (
-                <option key={i} value={i}>{it.resCompanyNm || `사업장 ${i + 1}`}</option>
-              ))}
-            </select>
-          )}
-          {selectedItem && (
-            <DocCard docType={docType} item={selectedItem} file={selectedFile} customerId={form.customerId} />
-          )}
+      {Object.keys(results).length > 0 && (
+        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {selectedDocs.filter((k) => results[k]).map((docKey) => {
+            const { items, savedFiles } = results[docKey];
+            const idx = selectedIdx[docKey] || 0;
+            const item = items[idx];
+            const file = item ? savedFiles.find((f) => f.companyName && f.companyName === item.resCompanyNm) : null;
+            return (
+              <div key={docKey}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#5A5952', margin: '0 0 8px' }}>{DOCUMENTS[docKey].label}</p>
+                {items.length > 1 && (
+                  <select
+                    value={idx}
+                    onChange={(e) => setSelectedIdx((prev) => ({ ...prev, [docKey]: Number(e.target.value) }))}
+                    style={{ ...inputStyle, width: '100%', marginBottom: 10, background: '#fff' }}
+                  >
+                    {items.map((it, i) => (
+                      <option key={i} value={i}>{it.resCompanyNm || `사업장 ${i + 1}`}</option>
+                    ))}
+                  </select>
+                )}
+                {item && <DocCard docType={docKey} item={item} file={file} customerId={form.customerId} />}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

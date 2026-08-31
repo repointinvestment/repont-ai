@@ -19,6 +19,7 @@ export async function POST(request) {
     phoneNo,            // 인증 받을 휴대폰 번호 (- 없이)
     loginTypeLevel,     // 1:카카오톡(기본), 3:삼성패스, 5:통신사PASS, ... (문서 참고)
     telecom,            // loginTypeLevel="5" (PASS)일 때만 필요: 0:SKT,1:KT,2:LGU+
+    sharedId,           // 여러 문서를 한 세션으로 묶어 받을 때 프론트에서 넘겨주는 공용 식별자
   } = body
 
   if (!userName || !residentNo || !phoneNo) {
@@ -49,7 +50,7 @@ export async function POST(request) {
     loginTypeLevel: level,
     ...(level === '5' ? { telecom: telecom || '0' } : {}),
     phoneNo: phoneNo.replace(/[^0-9]/g, ''),
-    id: `customer-${customerId || 'test'}-${Date.now()}`,
+    id: sharedId || `customer-${customerId || 'test'}-${Date.now()}`,
     usePurposes: '02',       // 수금용 — 실제 서류 제출처에 맞게 조정 가능
     submitTargets: '99',     // 기타
     isIdentityViewYN: '0',   // 주민번호 뒷자리 비공개

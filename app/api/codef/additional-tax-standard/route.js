@@ -36,6 +36,7 @@ export async function POST(request) {
     telecom,
     startDate,
     endDate,
+    sharedId,
   } = body
 
   if (!userName || !residentNo || !phoneNo) {
@@ -67,7 +68,7 @@ export async function POST(request) {
     loginTypeLevel: level,
     ...(level === '5' ? { telecom: telecom || '0' } : {}),
     phoneNo: phoneNo.replace(/[^0-9]/g, ''),
-    id: `customer-${customerId || 'test'}-${Date.now()}`,
+    id: sharedId || `customer-${customerId || 'test'}-${Date.now()}`,
     startDate: period.startDate,
     endDate: period.endDate,
     usePurposes: '02',
