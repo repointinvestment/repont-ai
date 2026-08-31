@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
 import DonutGauge from '../../components/DonutGauge';
+import CodefDocumentIssuance from '../../components/CodefDocumentIssuance';
 import { estimateInstitutionLimits } from '@/lib/policyFundEstimate';
 import { analyzePolicyFunds } from '@/lib/policyFundAnalysis';
 
@@ -510,6 +511,21 @@ export default function CustomerDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* 국세청 서류 발급 (CODEF) */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <p style={{ fontSize: 15, fontWeight: 600, margin: '0 0 4px', color: '#2A2925' }}>국세청 서류 발급</p>
+          <p style={{ fontSize: 12, color: '#8A8A85', margin: '0 0 14px' }}>
+            고객 본인 인증(카카오톡 등)으로 사업자등록증명 등을 발급받아 아래 파일함에 자동 저장합니다.
+          </p>
+          <CodefDocumentIssuance
+            consultantUsername={user?.username}
+            customerId={params.id}
+            defaultUserName={customer.owner_name || ''}
+            defaultPhoneNo={customer.phone || ''}
+            onSaved={loadFiles}
+          />
+        </div>
 
         {/* 파일 보관함 */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
