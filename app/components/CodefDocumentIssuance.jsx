@@ -362,19 +362,11 @@ export default function CodefDocumentIssuance({
       {Object.keys(results).length > 0 && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {selectedDocs.filter((k) => results[k]).map((docKey) => {
-            const { items, savedFiles } = results[docKey];
-
-            // 부가세과세표준증명처럼 기간별로 여러 건이 온 경우: 하나씩 넘겨보지 말고 표로 한 번에 보여줌.
-            // (요청한 기간과 무관하게 CODEF가 갖고 있는 신고 이력을 그대로 돌려주므로 "선택한 기간"이라 부르지 않음)
-            if (docKey === 'additional-tax-standard' && items.length > 1) {
-              return (
-                <div key={docKey}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#5A5952', margin: '0 0 4px' }}>{DOCUMENTS[docKey].label} — 조회된 전체 내역</p>
-                  <p style={{ fontSize: 11, color: '#B0AFA9', margin: '0 0 8px' }}>요청한 기간과 무관하게 국세청에 남아있는 신고 이력이 모두 표시됩니다.</p>
-                  <TaxStandardTable items={items} savedFiles={savedFiles} customerId={form.customerId} />
-                </div>
-              );
-            }
+            const rawItems = results[docKey].items;
+            const { savedFiles } = results[docKey];
+            // 부가세과세표준증명은 반기별로 여러 건이 올 수 있는데, 회사가 같으면 한 줄로 합쳐서 보여줌
+            // (기간은 조회된 것 중 가장 이른 시작 ~ 가장 늦은 끝, 금액은 합계).
+            const items = docKey === 'additional-tax-standard' ? aggregateTaxStandard(rawItems) : rawItems;
 
             const idx = selectedIdx[docKey] || 0;
             const item = items[idx];
@@ -411,81 +403,27 @@ export default function CodefDocumentIssuance({
   );
 }
 
-function TaxStandardTable({ items, savedFiles, customerId }) {
-  const fmt = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
-  const fmtAmt = (n) => (n ? Number(n).toLocaleString('ko-KR') : '0');
-
-  // 상호 → 기간 최신순 정렬
-  const sorted = [...items].sort((a, b) => {
-    const nameCmp = (a.resCompanyNm || '').localeCompare(b.resCompanyNm || '');
-    if (nameCmp !== 0) return nameCmp;
-    return (b.commStartDate || '').localeCompare(a.commStartDate || '');
-  });
-
-  function downloadLocal(item, doc) {
-    const base64 = item.resOriGinalData1
-    if (!base64) return
-    const byteChars = atob(base64)
-    const bytes = new Uint8Array(byteChars.length)
-    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i)
-    const blob = new Blob([bytes], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${doc.label}_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.commStartDate || ''}.pdf`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+// 부가세과세표준증명은 반기별로 여러 건이 올 수 있음 — 같은 회사면 하나로 합쳐서 보여줌.
+// 기간: 조회된 것 중 가장 이른 시작일 ~ 가장 늦은 종료일. 금액: 반기별 합계.
+// 원본 PDF는 반기마다 따로 존재하므로 _periods에 원본 목록을 보관해뒀다가 다운로드 시 전부 받게 함.
+function aggregateTaxStandard(items) {
+  const byCompany = {}
+  for (const it of items) {
+    const key = it.resCompanyNm || '상호 미확인'
+    if (!byCompany[key]) {
+      byCompany[key] = { ...it, resIncomeTotalAmt: 0, resIncomeAmt: 0, resDutyFreeAmt: 0, resTaxAmt: 0, _periods: [] }
+    }
+    const agg = byCompany[key]
+    agg.resIncomeTotalAmt = String(Number(agg.resIncomeTotalAmt || 0) + Number(it.resIncomeTotalAmt || 0))
+    agg.resIncomeAmt = String(Number(agg.resIncomeAmt || 0) + Number(it.resIncomeAmt || 0))
+    agg.resDutyFreeAmt = String(Number(agg.resDutyFreeAmt || 0) + Number(it.resDutyFreeAmt || 0))
+    agg.resTaxAmt = String(Number(agg.resTaxAmt || 0) + Number(it.resTaxAmt || 0))
+    if (!agg.commStartDate || (it.commStartDate && it.commStartDate < agg.commStartDate)) agg.commStartDate = it.commStartDate
+    if (!agg.commEndDate || (it.commEndDate && it.commEndDate > agg.commEndDate)) agg.commEndDate = it.commEndDate
+    agg._periods.push(it)
   }
-
-  return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E0DFDA', overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-        <thead>
-          <tr style={{ background: '#F7F5F0', textAlign: 'left' }}>
-            <th style={thStyle}>상호</th>
-            <th style={thStyle}>과세기간</th>
-            <th style={{ ...thStyle, textAlign: 'right' }}>과세 총금액</th>
-            <th style={{ ...thStyle, textAlign: 'right' }}>세액</th>
-            <th style={thStyle}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((it, i) => {
-            const period = it.commStartDate && it.commEndDate ? `${fmt(it.commStartDate)} ~ ${fmt(it.commEndDate)}` : '-';
-            const doc = DOCUMENTS['additional-tax-standard'];
-            const itemPeriod = it.commStartDate && it.commEndDate ? `${it.commStartDate}-${it.commEndDate}` : '';
-            const file = savedFiles.find((f) => f.companyName === it.resCompanyNm && (f.period || '') === itemPeriod);
-            const serverUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
-            return (
-              <tr key={i} style={{ borderTop: '1px solid #EFEDE6' }}>
-                <td style={tdStyle}>{it.resCompanyNm || '-'}</td>
-                <td style={tdStyle}>{period}</td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtAmt(it.resIncomeTotalAmt)}원</td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtAmt(it.resTaxAmt)}원</td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  {it.resOriGinalData1 && (
-                    serverUrl ? (
-                      <a href={serverUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#2A2925' }}>다운로드</a>
-                    ) : (
-                      <button onClick={() => downloadLocal(it, doc)} style={{ fontSize: 11, color: '#2A2925', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                        다운로드
-                      </button>
-                    )
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  return Object.values(byCompany)
 }
-
-const thStyle = { padding: '8px 10px', fontWeight: 600, color: '#8A8A85' };
-const tdStyle = { padding: '8px 10px', color: '#2A2925' };
 
 function LoadingModal({ messages }) {
   const [phase, setPhase] = useState(0);
@@ -605,10 +543,12 @@ function buildRows(docType, item) {
 function DocCard({ docType, item, file, customerId }) {
   const rows = buildRows(docType, item);
   const doc = DOCUMENTS[docType];
-  const serverDownloadUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+  const periods = item._periods; // 부가세과세표준증명 합산 항목일 때만 존재 — 반기별 원본이 각각 들어있음
+  const serverDownloadUrl = !periods && file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+  const downloadable = periods ? periods.some((p) => p.resOriGinalData1) : !!item.resOriGinalData1;
 
-  function downloadLocal() {
-    const base64 = item.resOriGinalData1
+  function downloadOne(target, label) {
+    const base64 = target.resOriGinalData1
     if (!base64) return
     const byteChars = atob(base64)
     const bytes = new Uint8Array(byteChars.length)
@@ -617,11 +557,25 @@ function DocCard({ docType, item, file, customerId }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${doc.label}_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.resIssueDate || ''}.pdf`
+    a.download = label
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
+  }
+
+  function downloadLocal() {
+    const companyName = (item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')
+    if (periods) {
+      // 반기별로 원본이 따로 있으므로 전부 파일로 내려받음 (브라우저가 순서대로 여러 개 저장)
+      periods.forEach((p, i) => {
+        if (!p.resOriGinalData1) return
+        const periodLabel = p.commStartDate && p.commEndDate ? `${p.commStartDate}-${p.commEndDate}` : `${i + 1}`
+        setTimeout(() => downloadOne(p, `${doc.label}_${companyName}_${periodLabel}.pdf`), i * 300)
+      })
+      return
+    }
+    downloadOne(item, `${doc.label}_${companyName}_${item.resIssueDate || ''}.pdf`)
   }
 
   return (
@@ -631,10 +585,10 @@ function DocCard({ docType, item, file, customerId }) {
           {item.resCompanyNm || '상호 미확인'}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!serverDownloadUrl && (
+          {!customerId && (
             <span style={{ fontSize: 12, color: '#B0AFA9', whiteSpace: 'nowrap' }}>고객 미선택 — 파일함 저장 안 됨</span>
           )}
-          {item.resOriGinalData1 && (
+          {downloadable && (
             <button
               onClick={downloadLocal}
               style={{
@@ -642,7 +596,7 @@ function DocCard({ docType, item, file, customerId }) {
                 padding: '5px 10px', borderRadius: 20, whiteSpace: 'nowrap',
               }}
             >
-              PDF 다운로드
+              {periods && periods.length > 1 ? `PDF ${periods.length}건 다운로드` : 'PDF 다운로드'}
             </button>
           )}
         </div>
