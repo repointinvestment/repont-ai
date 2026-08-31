@@ -2,8 +2,10 @@
 
 // app/admin/codef-test/page.jsx
 // CODEF 데모 버전 연동 테스트용 화면 (admin 전용).
-// 사업자등록 증명 API를 비회원 간편인증(카카오톡 등)으로 요청 → 승인 대기 → 확인, 2단계로 동작.
+// "발급 서류" 드롭다운으로 문서 종류를 고르면 그 문서 전용 API 라우트(예: /api/codef/business-registration,
+// /api/codef/additional-tax-standard)로 요청 → 승인 대기 → 확인, 2단계로 동작.
 // 실제 서비스에 노출되는 화면이 아니라 CODEF 쪽에 전달할 테스트 검증용.
+// 새 문서를 추가할 땐 DOCUMENTS 배열에 항목 하나, 그 문서 전용 API 라우트 두 개(요청/확인)만 추가하면 됨.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,11 +25,32 @@ const LEVELS = [
   { value: '11', label: '우리인증서' },
 ];
 
+// 문서 종류별 설정. requestPath/confirmPath만 다르고 나머지 흐름은 공용.
+// memberOnly: 비회원 간편인증(loginType 6) 미지원 — 고객이 홈택스 회원이어야 함을 화면에 안내.
+const DOCUMENTS = {
+  'corporate-registration': {
+    label: '사업자등록 증명',
+    requestPath: '/api/codef/business-registration',
+    confirmPath: '/api/codef/business-registration/confirm',
+    memberOnly: false,
+    needsPeriod: false,
+  },
+  'additional-tax-standard': {
+    label: '부가세과세표준증명',
+    requestPath: '/api/codef/additional-tax-standard',
+    confirmPath: '/api/codef/additional-tax-standard/confirm',
+    memberOnly: true,
+    needsPeriod: true,
+  },
+};
+
 export default function CodefTestPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [docType, setDocType] = useState('corporate-registration');
   const [form, setForm] = useState({
     customerId: '', userName: '', residentNo: '', phoneNo: '', loginTypeLevel: '1', telecom: '0',
+    startDate: '', endDate: '',
   });
   const [customers, setCustomers] = useState([]);
   const [sessionId, setSessionId] = useState(null);
@@ -52,13 +75,22 @@ export default function CodefTestPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function resetResult() {
+    setStatus('');
+    setMessage('');
+    setItems([]);
+    setSavedFiles([]);
+    setSessionId(null);
+  }
+
   async function requestAuth() {
     setStatus('requesting');
     setMessage('');
     setItems([]);
     setSavedFiles([]);
+    const doc = DOCUMENTS[docType];
     try {
-      const res = await fetch('/api/codef/business-registration', {
+      const res = await fetch(doc.requestPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username },
         body: JSON.stringify(form),
@@ -85,8 +117,9 @@ export default function CodefTestPage() {
   async function confirmAuth() {
     if (!sessionId) return;
     setStatus('confirming');
+    const doc = DOCUMENTS[docType];
     try {
-      const res = await fetch('/api/codef/business-registration/confirm', {
+      const res = await fetch(doc.confirmPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
@@ -129,6 +162,7 @@ export default function CodefTestPage() {
 
   if (!user) return null;
 
+  const doc = DOCUMENTS[docType];
   const selectedItem = items[selectedIdx];
   const selectedFile = selectedItem
     ? savedFiles.find((f) => f.companyName && f.companyName === selectedItem.resCompanyNm)
@@ -140,13 +174,30 @@ export default function CodefTestPage() {
       <div style={{ padding: '32px 40px', maxWidth: 640, margin: '0 auto' }}>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>CODEF 연동 테스트</p>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>
-          사업자등록 증명 API (데모)
+          국세청 증명서 발급 (데모)
         </h1>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 24px' }}>
           본인 정보로 직접 테스트해보는 화면입니다. 실제 고객 화면이 아닙니다.
         </p>
 
         <div style={{ background: '#fff', borderRadius: 12, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Field label="발급 서류">
+            <select
+              value={docType}
+              onChange={(e) => { setDocType(e.target.value); resetResult(); }}
+              style={inputStyle}
+            >
+              {Object.entries(DOCUMENTS).map(([key, d]) => (
+                <option key={key} value={key}>{d.label}</option>
+              ))}
+            </select>
+          </Field>
+          {doc.memberOnly && (
+            <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
+              ※ 이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.
+            </p>
+          )}
+
           <Field label="고객 선택 (선택 — 고르면 성공 시 그 고객 파일함에 PDF가 저장됩니다)">
             <select value={form.customerId} onChange={(e) => update('customerId', e.target.value)} style={inputStyle}>
               <option value="">저장 없이 결과만 표시</option>
@@ -178,6 +229,14 @@ export default function CodefTestPage() {
                 <option value="1">KT</option>
                 <option value="2">LG U+</option>
               </select>
+            </Field>
+          )}
+          {doc.needsPeriod && (
+            <Field label="과세기간 (비워두면 가장 최근 완료된 기간으로 자동 조회)">
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={form.startDate} onChange={(e) => update('startDate', e.target.value)} placeholder="시작 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
+                <input value={form.endDate} onChange={(e) => update('endDate', e.target.value)} placeholder="종료 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
+              </div>
             </Field>
           )}
 
@@ -223,7 +282,9 @@ export default function CodefTestPage() {
                 ))}
               </select>
             )}
-            {selectedItem && <DocCard item={selectedItem} file={selectedFile} customerId={form.customerId} />}
+            {selectedItem && (
+              <DocCard docType={docType} item={selectedItem} file={selectedFile} customerId={form.customerId} />
+            )}
           </div>
         )}
       </div>
@@ -258,15 +319,11 @@ function LoadingModal({ messages = [
         </p>
 
         <div style={{ position: 'relative', width: 220, height: 110, marginBottom: 24 }}>
-          {/* 왼쪽 폴더 */}
           <FolderIcon style={{ position: 'absolute', left: 0, bottom: 0 }} />
-          {/* 오른쪽 폴더 */}
           <FolderIcon style={{ position: 'absolute', right: 0, bottom: 0 }} />
-          {/* 왼쪽에서 오른쪽으로 날아가는 서류 */}
           <div style={{ position: 'absolute', left: 44, bottom: 40, animation: 'codef-fly 1.8s ease-in-out infinite' }}>
             <PaperIcon />
           </div>
-          {/* 위에서 떨어지는 작은 점 세 개 (전송 느낌) */}
           {[0, 1, 2].map((i) => (
             <span key={i} style={{
               position: 'absolute', top: 6, left: 90 + i * 14, width: 5, height: 5, borderRadius: '50%',
@@ -324,9 +381,30 @@ function PaperIcon() {
   );
 }
 
-function DocCard({ item, file, customerId }) {
+// 문서 종류별로 카드에 보여줄 필드 구성. 새 문서 추가 시 여기에 한 항목만 더 추가하면 됨.
+function buildRows(docType, item) {
   const fmtDate = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
-  const rows = [
+  const fmtPeriod = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
+  const fmtAmt = (n) => (n ? `${Number(n).toLocaleString('ko-KR')}원` : n);
+
+  if (docType === 'additional-tax-standard') {
+    return [
+      ['사업자등록번호', item.resCompanyIdentityNo],
+      ['대표자', item.resUserNm],
+      ['주소', item.resUserAddr?.replaceAll('+', ' ')],
+      ['업태 / 종목', [item.resBusinessTypes, item.resBusinessItems].filter(Boolean).join(' / ').replaceAll('+', ' ')],
+      ['과세기간', [fmtPeriod(item.commStartDate), fmtPeriod(item.commEndDate)].filter(Boolean).join(' ~ ')],
+      ['과세 총금액', fmtAmt(item.resIncomeTotalAmt)],
+      ['소득금액(과세대상급여액)', fmtAmt(item.resIncomeAmt)],
+      ['면세 금액', fmtAmt(item.resDutyFreeAmt)],
+      ['세액', fmtAmt(item.resTaxAmt)],
+      ['발급기관', item.resIssueOgzNm],
+      ['발급번호', item.resIssueNo],
+    ].filter(([, v]) => v);
+  }
+
+  // 기본값: 사업자등록 증명
+  return [
     ['사업자등록번호', item.resCompanyIdentityNo],
     ['대표자', item.resUserNm],
     ['주소', item.resUserAddr?.replaceAll('+', ' ')],
@@ -335,7 +413,11 @@ function DocCard({ item, file, customerId }) {
     ['발급기관', item.resIssueOgzNm],
     ['발급번호', item.resIssueNo],
   ].filter(([, v]) => v);
+}
 
+function DocCard({ docType, item, file, customerId }) {
+  const rows = buildRows(docType, item);
+  const doc = DOCUMENTS[docType];
   const serverDownloadUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
 
   // CODEF가 준 PDF 원문(Base64)을 우리 서버에 저장하지 않고, 컨설턴트 브라우저에서 바로 파일로 내려받게 함.
@@ -350,7 +432,7 @@ function DocCard({ item, file, customerId }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `사업자등록증명_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.resIssueDate || ''}.pdf`
+    a.download = `${doc.label}_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.resIssueDate || ''}.pdf`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -380,7 +462,7 @@ function DocCard({ item, file, customerId }) {
           )}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', rowGap: 6, columnGap: 8, fontSize: 13 }}>
         {rows.map(([label, value]) => (
           <div key={label} style={{ display: 'contents' }}>
             <span style={{ color: '#8A8A85' }}>{label}</span>
