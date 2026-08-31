@@ -22,6 +22,22 @@ const LEVELS = [
   { value: '11', label: '우리인증서' },
 ];
 
+// 부가세과세표준증명은 "몇 년도 몇 기(반기)" 증명서를 뗄지 고르는 것뿐, 창업 월과는 무관함.
+// 최근 3년 x 1기/2기를 최신순으로 나열 — 미래이거나 아직 신고기한이 안 지난 기간은 제외.
+function buildVatPeriodOptions() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
+  const options = []
+  for (let year = y; year >= y - 3; year--) {
+    // 2기(7~12월, 신고기한 다음해 1/25)
+    if (year < y || m >= 8) options.push({ year, half: 2, label: `${year}년 2기 (7~12월)`, startDate: `${year}07`, endDate: `${year}12` })
+    // 1기(1~6월, 신고기한 7/25)
+    if (year < y || m >= 2) options.push({ year, half: 1, label: `${year}년 1기 (1~6월)`, startDate: `${year}01`, endDate: `${year}06` })
+  }
+  return options.filter((o) => `${o.year}${String(o.half === 1 ? '06' : '12')}` <= `${y}${String(m).padStart(2, '0')}`)
+}
+
 export const DOCUMENTS = {
   'corporate-registration': {
     label: '사업자등록 증명',
@@ -256,11 +272,21 @@ export default function CodefDocumentIssuance({
           </Field>
         )}
         {anyNeedsPeriod && (
-          <Field label="과세기간 (부가세과세표준증명용 — 비워두면 가장 최근 완료된 기간으로 자동 조회)">
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={form.startDate} onChange={(e) => update('startDate', e.target.value)} placeholder="시작 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
-              <input value={form.endDate} onChange={(e) => update('endDate', e.target.value)} placeholder="종료 YYYYMM" style={{ ...inputStyle, flex: 1 }} />
-            </div>
+          <Field label="과세기간 (부가세과세표준증명용 — 창업 월이 아니라 몇 년도 몇 기 증명서인지 고르는 항목이에요)">
+            <select
+              value={form.startDate && form.endDate ? `${form.startDate}-${form.endDate}` : ''}
+              onChange={(e) => {
+                if (!e.target.value) { update('startDate', ''); update('endDate', ''); return; }
+                const [s, en] = e.target.value.split('-');
+                setForm((f) => ({ ...f, startDate: s, endDate: en }));
+              }}
+              style={inputStyle}
+            >
+              <option value="">자동 (가장 최근 완료된 기간)</option>
+              {buildVatPeriodOptions().map((o) => (
+                <option key={o.label} value={`${o.startDate}-${o.endDate}`}>{o.label}</option>
+              ))}
+            </select>
           </Field>
         )}
 
