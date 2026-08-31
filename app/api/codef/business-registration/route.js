@@ -20,6 +20,7 @@ export async function POST(request) {
     loginTypeLevel,     // 1:카카오톡(기본), 3:삼성패스, 5:통신사PASS, ... (문서 참고)
     telecom,            // loginTypeLevel="5" (PASS)일 때만 필요: 0:SKT,1:KT,2:LGU+
     sharedId,           // 여러 문서를 한 세션으로 묶어 받을 때 프론트에서 넘겨주는 공용 식별자
+    loginType,          // 기본 '6'(비회원 간편인증). 회원전용 문서와 함께 일괄 발급할 땐 '5'로 통일해서 세션 공유 시도
   } = body
 
   if (!userName || !residentNo || !phoneNo) {
@@ -42,7 +43,7 @@ export async function POST(request) {
 
   const requestPayload = {
     organization: '0001',
-    loginType: '6', // 비회원 간편인증
+    loginType: loginType || '6', // 기본: 비회원 간편인증
     loginIdentity: encryptedTail,
     identityEncYn: 'Y',
     birthDate: digits.slice(0, 6),

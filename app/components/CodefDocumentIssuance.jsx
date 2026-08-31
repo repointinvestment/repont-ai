@@ -146,11 +146,14 @@ export default function CodefDocumentIssuance({
     setMessage('');
     const docKey = selectedDocs[idx];
     const doc = DOCUMENTS[docKey];
+    // 여러 서류를 함께 뗄 땐 로그인 방식을 '5'(회원 간편인증)로 통일해야 CODEF가 같은 세션으로
+    // 묶어줄 가능성이 있음 — 서류 하나만 뗄 땐 사업자등록증명 기본값(6, 비회원)을 그대로 둠.
+    const loginType = selectedDocs.length > 1 ? '5' : undefined;
     try {
       const res = await fetch(doc.requestPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
-        body: JSON.stringify({ ...form, sharedId: sid }),
+        body: JSON.stringify({ ...form, sharedId: sid, loginType }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -252,9 +255,11 @@ export default function CodefDocumentIssuance({
             ))}
           </div>
         </Field>
-        {anyMemberOnly && (
+        {(anyMemberOnly || selectedDocs.length > 1) && (
           <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
-            ※ 선택하신 서류 중 일부는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.
+            ※ {selectedDocs.length > 1
+              ? '여러 서류를 함께 받을 땐 로그인 방식을 회원 간편인증으로 통일해서 진행합니다. 고객이 홈택스 회원가입이 되어있어야 합니다.'
+              : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
           </p>
         )}
 
@@ -358,6 +363,19 @@ export default function CodefDocumentIssuance({
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {selectedDocs.filter((k) => results[k]).map((docKey) => {
             const { items, savedFiles } = results[docKey];
+
+            // 부가세과세표준증명처럼 기간별로 여러 건이 온 경우: 하나씩 넘겨보지 말고 표로 한 번에 보여줌.
+            // (요청한 기간과 무관하게 CODEF가 갖고 있는 신고 이력을 그대로 돌려주므로 "선택한 기간"이라 부르지 않음)
+            if (docKey === 'additional-tax-standard' && items.length > 1) {
+              return (
+                <div key={docKey}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#5A5952', margin: '0 0 4px' }}>{DOCUMENTS[docKey].label} — 조회된 전체 내역</p>
+                  <p style={{ fontSize: 11, color: '#B0AFA9', margin: '0 0 8px' }}>요청한 기간과 무관하게 국세청에 남아있는 신고 이력이 모두 표시됩니다.</p>
+                  <TaxStandardTable items={items} savedFiles={savedFiles} customerId={form.customerId} />
+                </div>
+              );
+            }
+
             const idx = selectedIdx[docKey] || 0;
             const item = items[idx];
             const itemPeriod = item?.commStartDate && item?.commEndDate ? `${item.commStartDate}-${item.commEndDate}` : '';
@@ -392,6 +410,82 @@ export default function CodefDocumentIssuance({
     </div>
   );
 }
+
+function TaxStandardTable({ items, savedFiles, customerId }) {
+  const fmt = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
+  const fmtAmt = (n) => (n ? Number(n).toLocaleString('ko-KR') : '0');
+
+  // 상호 → 기간 최신순 정렬
+  const sorted = [...items].sort((a, b) => {
+    const nameCmp = (a.resCompanyNm || '').localeCompare(b.resCompanyNm || '');
+    if (nameCmp !== 0) return nameCmp;
+    return (b.commStartDate || '').localeCompare(a.commStartDate || '');
+  });
+
+  function downloadLocal(item, doc) {
+    const base64 = item.resOriGinalData1
+    if (!base64) return
+    const byteChars = atob(base64)
+    const bytes = new Uint8Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${doc.label}_${(item.resCompanyNm || '문서').replace(/[/\\?%*:|"<>]/g, '')}_${item.commStartDate || ''}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E0DFDA', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <thead>
+          <tr style={{ background: '#F7F5F0', textAlign: 'left' }}>
+            <th style={thStyle}>상호</th>
+            <th style={thStyle}>과세기간</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>과세 총금액</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>세액</th>
+            <th style={thStyle}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((it, i) => {
+            const period = it.commStartDate && it.commEndDate ? `${fmt(it.commStartDate)} ~ ${fmt(it.commEndDate)}` : '-';
+            const doc = DOCUMENTS['additional-tax-standard'];
+            const itemPeriod = it.commStartDate && it.commEndDate ? `${it.commStartDate}-${it.commEndDate}` : '';
+            const file = savedFiles.find((f) => f.companyName === it.resCompanyNm && (f.period || '') === itemPeriod);
+            const serverUrl = file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
+            return (
+              <tr key={i} style={{ borderTop: '1px solid #EFEDE6' }}>
+                <td style={tdStyle}>{it.resCompanyNm || '-'}</td>
+                <td style={tdStyle}>{period}</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtAmt(it.resIncomeTotalAmt)}원</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtAmt(it.resTaxAmt)}원</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}>
+                  {it.resOriGinalData1 && (
+                    serverUrl ? (
+                      <a href={serverUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#2A2925' }}>다운로드</a>
+                    ) : (
+                      <button onClick={() => downloadLocal(it, doc)} style={{ fontSize: 11, color: '#2A2925', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                        다운로드
+                      </button>
+                    )
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const thStyle = { padding: '8px 10px', fontWeight: 600, color: '#8A8A85' };
+const tdStyle = { padding: '8px 10px', color: '#2A2925' };
 
 function LoadingModal({ messages }) {
   const [phase, setPhase] = useState(0);
