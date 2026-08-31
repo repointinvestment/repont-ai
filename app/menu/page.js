@@ -20,6 +20,10 @@ const CARDS = {
     icon: '📋', title: '고객관리', desc: '고객 등록 · 조회 · 진행 현황 관리',
     path: '/customers', accent: '#D85A30', tint: '#FAECE7',
   },
+  documents: {
+    icon: '📑', title: '서류 발급', desc: '사업자등록증명 등 국세청 서류 자동 발급',
+    path: '/documents', accent: '#2A7D46', tint: '#E6F1EA',
+  },
   plans: {
     icon: '📝', title: '사업계획서 보관함', desc: '생성한 사업계획서 초안 모아보기',
     path: '/business-plans', accent: '#3B6FB5', tint: '#E4EAF1',
@@ -32,8 +36,8 @@ const CARDS = {
 
 // 역할별로 보여줄 메뉴 구성
 const ROLE_MENUS = {
-  admin: ['chat', 'board', 'customers', 'plans', 'admin'],
-  consultant: ['chat', 'board', 'customers', 'plans'],
+  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'admin'],
+  consultant: ['chat', 'board', 'customers', 'documents', 'plans'],
   student: ['chat', 'board'],
 }
 
