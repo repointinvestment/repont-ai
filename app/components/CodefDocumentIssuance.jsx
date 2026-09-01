@@ -92,13 +92,23 @@ export const DOCUMENTS = {
   },
 };
 
-// 재무제표 귀속연도 선택지 — 종합소득세 신고기한(5/31, 성실신고확인대상자는 6/30) 지난 뒤부터
+// 재무제표 귀속연도 — 종합소득세 신고기한(5/31, 성실신고확인대상자는 6/30) 지난 뒤부터
 // 그 해 재무제표가 나온다고 보고, 여유 두고 7월 이후면 올해분까지 완료된 것으로 간주.
-function buildAttrYearOptions() {
+function latestAttrYear() {
   const now = new Date()
   const y = now.getFullYear()
-  const latest = now.getMonth() + 1 >= 7 ? y - 1 : y - 2
+  return now.getMonth() + 1 >= 7 ? y - 1 : y - 2
+}
+function buildAttrYearOptions() {
+  const latest = latestAttrYear()
   return [latest, latest - 1, latest - 2, latest - 3]
+}
+// "최근 N년" 한 번에 — CODEF 재무제표 API는 한 번 호출에 연도 하나만 주기 때문에(부가세과세표준증명과
+// 달리 기간 범위를 안 받음), 연도별로 요청을 N번 나눠 보내되 다건요청(SSO id) 메커니즘으로 묶어서
+// 카카오 인증은 한 번만 타도록 처리함(자세한 건 buildRequestUnits 참고).
+function buildAttrYearRange(n) {
+  const latest = latestAttrYear()
+  return Array.from({ length: n }, (_, i) => latest - i)
 }
 
 // props:
@@ -130,7 +140,9 @@ export default function CodefDocumentIssuance({
     startDate: '',
     endDate: '',
     businessType: 'individual', // 재무제표용 — 'individual' | 'corporate'
-    attrYear: '',               // 재무제표용 귀속연도 (비우면 서버가 자동 계산)
+    attrYearMode: 'single',     // 재무제표용 — 'single'(귀속연도 1개) | 'range'(최근 N년)
+    attrYear: '',               // 재무제표용 귀속연도 단건 (비우면 서버가 자동 계산)
+    attrYearRangeCount: '3',    // 재무제표용 — attrYearMode='range'일 때 최근 몇 년
     attrMonth: '12',            // 재무제표용 — 법인일 때만 사용, 사업연도 종료월
   });
   // docKey별 진행 상태를 각각 들고 있음: { status: 'idle'|'requesting'|'pending'|'done'|'error', sessionId, items, savedFiles, message }
@@ -160,16 +172,35 @@ export default function CodefDocumentIssuance({
     return selectedDocs.every((k) => !DOCUMENTS[k].memberOnly) ? '6' : '5';
   }
 
-  function fireRequest(key, sid, loginType) {
-    const doc = DOCUMENTS[key];
+  // 선택된 문서들을 실제로 쏠 "요청 단위" 목록으로 펼침. 보통은 문서 하나 = 요청 하나지만,
+  // 재무제표를 "최근 N년" 모드로 선택하면 연도별로 요청을 N개로 나눔 — CODEF 재무제표 API가
+  // 한 번에 연도 하나만 받기 때문(부가세과세표준증명처럼 기간 범위를 한 번에 안 줌).
+  // 나뉜 요청들도 전부 같은 sharedId로 묶어서 리더/팔로워 체인에 태우면 카카오 인증은 한 번만 필요함.
+  function buildRequestUnits() {
+    const units = [];
+    for (const docKey of selectedDocs) {
+      if (docKey === 'financial-statement' && form.attrYearMode === 'range') {
+        const years = buildAttrYearRange(Number(form.attrYearRangeCount) || 3);
+        for (const y of years) {
+          units.push({ unitKey: `financial-statement::${y}`, docKey, extra: { attrYear: String(y) } });
+        }
+      } else {
+        units.push({ unitKey: docKey, docKey, extra: {} });
+      }
+    }
+    return units;
+  }
+
+  function fireRequest(unit, sid, loginType) {
+    const doc = DOCUMENTS[unit.docKey];
     return fetch(doc.requestPath, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
-      body: JSON.stringify({ ...form, sharedId: sid, loginType }),
+      body: JSON.stringify({ ...form, ...unit.extra, sharedId: sid, loginType }),
     }).then(async (res) => {
       const data = await res.json();
-      return { key, ok: res.ok, data };
-    }).catch((err) => ({ key, ok: false, data: { error: err.message } }));
+      return { key: unit.unitKey, docKey: unit.docKey, ok: res.ok, data };
+    }).catch((err) => ({ key: unit.unitKey, docKey: unit.docKey, ok: false, data: { error: err.message } }));
   }
 
   async function startBatch() {
@@ -177,19 +208,20 @@ export default function CodefDocumentIssuance({
     setPhase('requesting');
     const sid = `batch-${form.customerId || 'test'}-${Date.now()}`;
     const loginType = pickLoginType();
-    const [leaderKey, ...followerKeys] = selectedDocs;
+    const units = buildRequestUnits();
+    const [leaderUnit, ...followerUnits] = units;
 
-    setDocStates(Object.fromEntries(selectedDocs.map((k) => [k, { status: 'requesting' }])));
+    setDocStates(Object.fromEntries(units.map((u) => [u.unitKey, { status: 'requesting', docKey: u.docKey }])));
     followerPromisesRef.current = {};
 
     // 리더 먼저 보내고 응답(카카오 인증 트리거)을 기다림
-    const leaderResponse = await fireRequest(leaderKey, sid, loginType);
+    const leaderResponse = await fireRequest(leaderUnit, sid, loginType);
 
     // 팔로워는 0.5~1초 간격을 두고 순서대로 보내되, 응답은 기다리지 않고 나중에 한꺼번에 처리
     // (리더 인증이 완료되기 전까지 CODEF가 이 요청들의 응답을 붙잡고 있음)
-    for (const key of followerKeys) {
+    for (const unit of followerUnits) {
       await new Promise((r) => setTimeout(r, 700));
-      followerPromisesRef.current[key] = fireRequest(key, sid, loginType);
+      followerPromisesRef.current[unit.unitKey] = fireRequest(unit, sid, loginType);
     }
 
     applyResponses([leaderResponse]);
@@ -198,19 +230,19 @@ export default function CodefDocumentIssuance({
   async function confirmBatch() {
     setPhase('confirming');
 
-    // 지금 'pending' 상태(=자기 sessionId로 확인이 필요한) 문서들을 전부 확인 요청
+    // 지금 'pending' 상태(=자기 sessionId로 확인이 필요한) 요청 단위들을 전부 확인 요청
     const pendingConfirms = Object.entries(docStates)
       .filter(([, s]) => s.status === 'pending')
       .map(([key, s]) => {
-        const doc = DOCUMENTS[key];
+        const doc = DOCUMENTS[s.docKey];
         return fetch(doc.confirmPath, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId: s.sessionId }),
         }).then(async (res) => {
           const data = await res.json();
-          return { key, ok: res.ok, data };
-        }).catch((err) => ({ key, ok: false, data: { error: err.message } }));
+          return { key, docKey: s.docKey, ok: res.ok, data };
+        }).catch((err) => ({ key, docKey: s.docKey, ok: false, data: { error: err.message } }));
       });
 
     // 아직 첫 응답을 못 받은 팔로워들(리더 인증과 함께 자동으로 풀릴 요청들)도 같이 기다림
@@ -221,35 +253,34 @@ export default function CodefDocumentIssuance({
     applyResponses(responses);
   }
 
-  // 요청/확인 응답을 문서별 상태에 반영하고, 남은 pending이 있는지에 따라 전체 phase를 정함.
+  // 요청/확인 응답을 요청 단위별 상태에 반영하고, 남은 pending이 있는지에 따라 전체 phase를 정함.
   function applyResponses(responses) {
     setDocStates((prev) => {
       const next = { ...prev };
       let savedCount = 0;
-      for (const { key, ok, data } of responses) {
-        const doc = DOCUMENTS[key];
+      for (const { key, docKey, ok, data } of responses) {
+        const resolvedDocKey = docKey || prev[key]?.docKey || key;
         if (!ok) {
-          next[key] = { status: 'error', message: data.error || '요청 실패' };
+          next[key] = { status: 'error', docKey: resolvedDocKey, message: data.error || '요청 실패' };
           continue;
         }
         if (data.status === 'pending_2way') {
-          next[key] = { status: 'pending', sessionId: data.sessionId, message: data.message || '' };
+          next[key] = { status: 'pending', docKey: resolvedDocKey, sessionId: data.sessionId, message: data.message || '' };
           continue;
         }
         if (data.status === 'done') {
           const items = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
-          next[key] = { status: 'done', items, savedFiles: data.savedFiles || [] };
+          next[key] = { status: 'done', docKey: resolvedDocKey, items, savedFiles: data.savedFiles || [] };
           savedCount += data.savedFiles?.length || 0;
           continue;
         }
-        next[key] = { status: 'error', message: data.result?.result?.message || '실패' };
+        next[key] = { status: 'error', docKey: resolvedDocKey, message: data.result?.result?.message || '실패' };
       }
       if (savedCount > 0 && onSaved) onSaved();
 
       const values = Object.values(next);
       const stillPending = values.some((s) => s.status === 'pending');
       const anyError = values.some((s) => s.status === 'error');
-      const totalSaved = values.reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
       setPhase(stillPending ? 'pending' : (anyError ? 'error' : 'done'));
       if (!stillPending) {
         setSelectedIdx(Object.fromEntries(selectedDocs.map((k) => [k, 0])));
@@ -268,21 +299,22 @@ export default function CodefDocumentIssuance({
   // 재무제표는 간편장부대상자이거나 업력이 짧으면 국세청에 원본이 없어 CODEF가 에러로 응답함 —
   // 실제 오류가 아니라 정상적인 "없음" 상태이므로, 실패 목록에 있을 때만 안내 문구를 덧붙임.
   const FS_KEY = 'financial-statement';
-  const hasFsError = errorEntries.some(([k]) => k === FS_KEY);
+  const hasFsError = errorEntries.some(([, s]) => s.docKey === FS_KEY);
   const FS_HINT = ' (간편장부대상자이거나 업력이 짧으면 국세청에 재무제표가 존재하지 않을 수 있습니다)';
 
   let summaryMessage = '';
+  const unitsCount = Object.keys(docStates).length;
   if (phase === 'done') {
     summaryMessage = errorEntries.length > 0
-      ? `${doneCount}/${selectedDocs.length}건 완료. 실패: ${errorEntries.map(([k]) => DOCUMENTS[k].label).join(', ')}${hasFsError ? FS_HINT : ''}`
+      ? `${doneCount}/${unitsCount}건 완료. 실패: ${errorEntries.map(([, s]) => DOCUMENTS[s.docKey].label).join(', ')}${hasFsError ? FS_HINT : ''}`
       : savedTotal > 0
-        ? `${selectedDocs.length}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
-        : `${selectedDocs.length}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
+        ? `${unitsCount}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
+        : `${unitsCount}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
   } else if (phase === 'pending') {
-    const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([k]) => DOCUMENTS[k].label);
+    const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([, s]) => DOCUMENTS[s.docKey].label);
     summaryMessage = `카카오톡에서 인증을 승인한 뒤 확인 버튼을 눌러주세요. (${pendingLabels.join(', ')})`;
   } else if (phase === 'error' && errorEntries.length > 0) {
-    summaryMessage = errorEntries.map(([k, s]) => `[${DOCUMENTS[k].label}] ${s.message}${k === FS_KEY ? FS_HINT : ''}`).join(' / ');
+    summaryMessage = errorEntries.map(([, s]) => `[${DOCUMENTS[s.docKey].label}] ${s.message}${s.docKey === FS_KEY ? FS_HINT : ''}`).join(' / ');
   }
 
   return (
@@ -379,14 +411,35 @@ export default function CodefDocumentIssuance({
                 <option value="corporate">법인사업자</option>
               </select>
             </Field>
-            <Field label="귀속연도 (재무제표용)">
-              <select value={form.attrYear} onChange={(e) => update('attrYear', e.target.value)} style={inputStyle}>
-                <option value="">자동 (최근 신고 완료된 연도)</option>
-                {buildAttrYearOptions().map((y) => (
-                  <option key={y} value={y}>{y}년</option>
-                ))}
+            <Field label="조회 방식 (재무제표용)">
+              <select value={form.attrYearMode} onChange={(e) => update('attrYearMode', e.target.value)} style={inputStyle}>
+                <option value="single">특정 연도 1건만</option>
+                <option value="range">최근 N년 한 번에 (인증은 1번만)</option>
               </select>
             </Field>
+            {form.attrYearMode === 'range' ? (
+              <Field label="최근 몇 년 (재무제표용)">
+                <select value={form.attrYearRangeCount} onChange={(e) => update('attrYearRangeCount', e.target.value)} style={inputStyle}>
+                  {[2, 3, 5].map((n) => {
+                    const years = buildAttrYearRange(n);
+                    return (
+                      <option key={n} value={n}>
+                        최근 {n}년 ({years[years.length - 1]}년 ~ {years[0]}년)
+                      </option>
+                    );
+                  })}
+                </select>
+              </Field>
+            ) : (
+              <Field label="귀속연도 (재무제표용)">
+                <select value={form.attrYear} onChange={(e) => update('attrYear', e.target.value)} style={inputStyle}>
+                  <option value="">자동 (최근 신고 완료된 연도)</option>
+                  {buildAttrYearOptions().map((y) => (
+                    <option key={y} value={y}>{y}년</option>
+                  ))}
+                </select>
+              </Field>
+            )}
             {form.businessType === 'corporate' && (
               <Field label="사업연도 종료월 (법인만)">
                 <select value={form.attrMonth} onChange={(e) => update('attrMonth', e.target.value)} style={inputStyle}>
@@ -404,7 +457,7 @@ export default function CodefDocumentIssuance({
           disabled={selectedDocs.length === 0 || phase === 'requesting' || phase === 'confirming'}
           style={btnStyle}
         >
-          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
+          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${buildRequestUnits().length}건)`}
         </button>
 
         {phase === 'pending' && (
@@ -422,7 +475,7 @@ export default function CodefDocumentIssuance({
         <LoadingModal
           messages={
             phase === 'requesting'
-              ? [selectedDocs.length > 1 ? `${selectedDocs.length}개 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
+              ? [unitsCount > 1 ? `${unitsCount}건 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
               : ['서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
           }
         />
@@ -430,12 +483,20 @@ export default function CodefDocumentIssuance({
 
       {doneCount > 0 && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {selectedDocs.filter((k) => docStates[k]?.status === 'done').map((docKey) => {
-            const rawItems = docStates[docKey].items;
-            const savedFiles = docStates[docKey].savedFiles || [];
+          {selectedDocs.filter((docKey) =>
+            Object.values(docStates).some((s) => s.docKey === docKey && s.status === 'done')
+          ).map((docKey) => {
+            const doneUnitStates = Object.values(docStates).filter((s) => s.docKey === docKey && s.status === 'done');
+            const rawItems = doneUnitStates.flatMap((s) => s.items || []);
+            const savedFiles = doneUnitStates.flatMap((s) => s.savedFiles || []);
             // 부가세과세표준증명은 반기별로 여러 건이 올 수 있는데, 회사가 같으면 한 줄로 합쳐서 보여줌
             // (기간은 조회된 것 중 가장 이른 시작 ~ 가장 늦은 끝, 금액은 합계).
-            const items = docKey === 'additional-tax-standard' ? aggregateTaxStandard(rawItems) : rawItems;
+            // 재무제표를 "최근 N년"으로 조회했을 땐 여러 요청 단위 결과를 모은 것이므로 연도 최신순 정렬.
+            const items = docKey === 'additional-tax-standard'
+              ? aggregateTaxStandard(rawItems)
+              : docKey === 'financial-statement'
+                ? [...rawItems].sort((a, b) => Number(b.resAttrYear || 0) - Number(a.resAttrYear || 0))
+                : rawItems;
 
             const idx = selectedIdx[docKey] || 0;
             const item = items[idx];
@@ -455,9 +516,11 @@ export default function CodefDocumentIssuance({
                   >
                     {items.map((it, i) => {
                       const fmt = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}` : d);
-                      const period = it.commStartDate && it.commEndDate ? ` (${fmt(it.commStartDate)}~${fmt(it.commEndDate)})` : '';
+                      const period = it.commStartDate && it.commEndDate
+                        ? ` (${fmt(it.commStartDate)}~${fmt(it.commEndDate)})`
+                        : it.resAttrYear ? ` (${it.resAttrYear}년)` : '';
                       return (
-                        <option key={i} value={i}>{(it.resCompanyNm || `사업장 ${i + 1}`)}{period}</option>
+                        <option key={i} value={i}>{(it.resCompanyNm || it.resUserNm || `사업장 ${i + 1}`)}{period}</option>
                       );
                     })}
                   </select>
