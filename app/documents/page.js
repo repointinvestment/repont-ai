@@ -19,7 +19,6 @@ export default function DocumentsPage() {
   useEffect(() => {
     const s = getSession();
     if (!s) { router.push('/'); return; }
-    if (s.role === 'student') { router.push('/menu'); return; }
     setUser(s);
     fetch('/api/customers', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
       .then((r) => r.json())

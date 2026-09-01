@@ -35,7 +35,7 @@ export default function MonthlyReportWidget({ user }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user || user.role === 'student') { setLoading(false); return }
+    if (!user) { setLoading(false); return }
     fetch('/api/reports/summary', {
       headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role },
     })

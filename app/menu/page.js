@@ -34,11 +34,13 @@ const CARDS = {
   },
 }
 
-// 역할별로 보여줄 메뉴 구성
+// 역할별로 보여줄 메뉴 구성 — 수강생도 실제로는 각자 자기 고객을 상담하는 컨설턴트라
+// 계정관리(admin)만 빼고 컨설턴트와 동일하게 열어줌. 데이터는 API 단에서 이미
+// consultant_id 기준으로 자기 것만 보이게 스코프되어 있음 (customers/route.js 참고).
 const ROLE_MENUS = {
   admin: ['chat', 'board', 'customers', 'documents', 'plans', 'admin'],
   consultant: ['chat', 'board', 'customers', 'documents', 'plans'],
-  student: ['chat', 'board'],
+  student: ['chat', 'board', 'customers', 'documents', 'plans'],
 }
 
 export default function MenuPage() {
@@ -51,14 +53,12 @@ export default function MenuPage() {
     if (!session) { router.push('/'); return }
     setUser(session)
 
-    if (session.role !== 'student') {
-      fetch('/api/customers', {
-        headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role },
-      })
-        .then((r) => r.json())
-        .then((d) => setCustomerCount((d.customers || []).length))
-        .catch(() => {})
-    }
+    fetch('/api/customers', {
+      headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role },
+    })
+      .then((r) => r.json())
+      .then((d) => setCustomerCount((d.customers || []).length))
+      .catch(() => {})
   }, [])
 
   if (!user) return null

@@ -81,7 +81,6 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     const session = getSession();
     if (!session) { router.push('/'); return; }
-    if (session.role === 'student') { router.push('/menu'); return; }
     setUser(session);
   }, []);
 

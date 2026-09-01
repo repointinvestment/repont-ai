@@ -22,7 +22,6 @@ export default function CustomersPage() {
   useEffect(() => {
     const session = getSession();
     if (!session) { router.push('/'); return; }
-    if (session.role === 'student') { router.push('/menu'); return; } // 수강생은 CRM 접근 불가
     setUser(session);
 
     async function loadCustomers() {
