@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
 
-const ROLE_LABEL = { admin: '관리자', consultant: '컨설턴트', student: '수강생' }
+const ROLE_LABEL = { admin: '관리자', consultant: '컨설턴트', student: '컨설턴트' } // student는 과거 계정 호환용 라벨일 뿐 — 이제 신규 생성 옵션에는 없음
 
 export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [accounts, setAccounts] = useState([])
-  const [form, setForm] = useState({ username: '', password: '', name: '', role: 'student' })
+  const [form, setForm] = useState({ username: '', password: '', name: '', role: 'consultant' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -64,7 +64,7 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: 800, margin: '40px auto', padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h2 style={{ color: '#1a1a2e', margin: 0 }}>계정 관리 (컨설턴트 · 수강생)</h2>
+          <h2 style={{ color: '#1a1a2e', margin: 0 }}>계정 관리 (컨설턴트)</h2>
           <button
             onClick={() => setShowForm((s) => !s)}
             style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
@@ -86,7 +86,6 @@ export default function AdminPage() {
               <label>
                 <span style={labelStyle}>역할</span>
                 <select style={inputStyle} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  <option value="student">수강생</option>
                   <option value="consultant">컨설턴트</option>
                   <option value="admin">관리자</option>
                 </select>

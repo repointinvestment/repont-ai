@@ -34,9 +34,8 @@ const CARDS = {
   },
 }
 
-// 역할별로 보여줄 메뉴 구성 — 수강생도 실제로는 각자 자기 고객을 상담하는 컨설턴트라
-// 계정관리(admin)만 빼고 컨설턴트와 동일하게 열어줌. 데이터는 API 단에서 이미
-// consultant_id 기준으로 자기 것만 보이게 스코프되어 있음 (customers/route.js 참고).
+// 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
+// "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
   admin: ['chat', 'board', 'customers', 'documents', 'plans', 'admin'],
   consultant: ['chat', 'board', 'customers', 'documents', 'plans'],
