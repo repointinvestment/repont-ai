@@ -96,8 +96,11 @@ export const DOCUMENTS = {
     confirmPath: '/api/codef/localtax-payment-certificate/confirm',
     memberOnly: false,
     needsPeriod: false,
-    needsAddress: true,       // 주소(도로명주소) 입력 필요
-    batchRequiresMember: true, // 단독 조회는 비회원(6) 가능하지만, 다른 문서와 묶을 땐 회원(5)이어야 함
+    needsAddress: true, // 주소(도로명주소) 입력 필요
+    // 다건요청(SSO 세션 공유)은 "같은 기관" 로그인 세션 안에서만 됨 — 이 문서는 정부24 로그인이고
+    // 나머지 문서(사업자등록증명 등)는 전부 국세청 홈택스 로그인이라, loginType을 맞춰도 인증이
+    // 항상 각각 따로 뜸(실제로 묶어서 테스트해보니 카카오 인증이 2번 옴). 그래서 항상 단독 조회만.
+    soloOnly: true,
   },
 };
 
@@ -211,19 +214,22 @@ export default function CodefDocumentIssuance({
   }
 
   function toggleDoc(key) {
-    setSelectedDocs((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    setSelectedDocs((prev) => {
+      if (prev.includes(key)) return prev.filter((k) => k !== key);
+      // 단독조회 전용 문서(soloOnly, 예: 정부24 로그인인 지방세 납세증명서)는 다른 기관 로그인
+      // 문서와 세션을 못 묶어서 항상 혼자만 — 선택하면 나머지는 비우고, 반대도 마찬가지.
+      if (DOCUMENTS[key].soloOnly) return [key];
+      return [...prev.filter((k) => !DOCUMENTS[k].soloOnly), key];
+    });
     setDocStates({});
     setPhase('');
     followerPromisesRef.current = {};
   }
 
-  // 모든 선택 문서 지원 여부를 보고 로그인 방식 통일 — 전부 비회원 가능하면 6, 하나라도 회원전용이거나
-  // (지방세 납세증명서처럼) "묶일 때만 회원이 필요"한 문서가 여러 개 중 하나면 5로 통일
+  // 모든 선택 문서 지원 여부를 보고 로그인 방식 통일 — 전부 비회원 가능하면 6, 하나라도 회원전용 있으면 5로 통일
   // (같은 로그인 세션으로 묶이려면 로그인 방식 자체가 같아야 함)
   function pickLoginType() {
-    const forceMember = selectedDocs.some((k) => DOCUMENTS[k].memberOnly)
-      || (selectedDocs.length > 1 && selectedDocs.some((k) => DOCUMENTS[k].batchRequiresMember));
-    return forceMember ? '5' : '6';
+    return selectedDocs.every((k) => !DOCUMENTS[k].memberOnly) ? '6' : '5';
   }
 
   // 선택된 문서들을 실제로 쏠 "요청 단위" 목록으로 펼침. 보통은 문서 하나 = 요청 하나지만,
@@ -347,6 +353,7 @@ export default function CodefDocumentIssuance({
   const anyNeedsPeriod = selectedDocs.some((k) => DOCUMENTS[k].needsPeriod);
   const anyNeedsAttrYear = selectedDocs.some((k) => DOCUMENTS[k].needsAttrYear);
   const anyNeedsAddress = selectedDocs.some((k) => DOCUMENTS[k].needsAddress);
+  const hasSoloDoc = selectedDocs.some((k) => DOCUMENTS[k].soloOnly);
   const doneCount = Object.values(docStates).filter((s) => s.status === 'done').length;
   const errorEntries = Object.entries(docStates).filter(([, s]) => s.status === 'error');
   const savedTotal = Object.values(docStates).reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
@@ -394,11 +401,13 @@ export default function CodefDocumentIssuance({
             ))}
           </div>
         </Field>
-        {(anyMemberOnly || selectedDocs.length > 1) && (
+        {(anyMemberOnly || selectedDocs.length > 1 || hasSoloDoc) && (
           <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
-            ※ {selectedDocs.length > 1
-              ? `여러 서류를 함께 받을 땐 로그인 방식을 ${pickLoginType() === '6' ? '비회원' : '회원'} 간편인증으로 통일해서 진행합니다.${pickLoginType() === '5' ? ' 고객이 홈택스/정부24 회원가입이 되어있어야 합니다.' : ''}`
-              : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
+            ※ {hasSoloDoc
+              ? '이 서류는 로그인 대상 기관이 달라(정부24 vs 홈택스) 다른 서류와 인증을 묶을 수 없어 단독으로만 진행됩니다.'
+              : selectedDocs.length > 1
+                ? `여러 서류를 함께 받을 땐 로그인 방식을 ${pickLoginType() === '6' ? '비회원' : '회원'} 간편인증으로 통일해서 진행합니다.${pickLoginType() === '5' ? ' 고객이 홈택스 회원가입이 되어있어야 합니다.' : ''}`
+                : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
           </p>
         )}
 
