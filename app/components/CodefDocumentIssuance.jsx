@@ -627,7 +627,7 @@ function DocCard({ docType, item, file, customerId }) {
                 padding: '5px 10px', borderRadius: 20, whiteSpace: 'nowrap',
               }}
             >
-              {periods && periods.length > 1 ? `PDF ${periods.length}건 다운로드` : 'PDF 다운로드'}
+              PDF 다운로드
             </button>
           )}
         </div>
