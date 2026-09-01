@@ -1,10 +1,12 @@
 // app/api/codef/localtax-payment-certificate/route.js
 // CODEF "지방세 납세증명 조회 API" 1차 요청 — 정부24 기반, 회원/비회원 간편인증(loginType 5/6) 지원.
-// 주의사항 두 가지:
-//   1) loginType="6"(비회원 간편인증)은 CODEF 스펙상 다건요청(SSO 묶음)을 지원하지 않음 —
+// 주의사항 세 가지:
+//   1) 주민등록번호 필드명이 'identity' (다른 문서들은 'loginIdentity') — 안 맞추면
+//      CODEF가 "사업자번호(주민등록번호)가 잘못되었습니다" 에러를 냄 (실제로 겪었던 버그).
+//   2) loginType="6"(비회원 간편인증)은 CODEF 스펙상 다건요청(SSO 묶음)을 지원하지 않음 —
 //      단독 조회는 6으로 그대로 가능하지만, 다른 문서와 묶을 땐 프론트(CodefDocumentIssuance)에서
 //      전체 로그인 방식을 5(회원)로 강제 전환함.
-//   2) 이 문서만 주소(도로명주소+상세주소)가 필수 — 지방세는 관할 지자체 기준이라 필요.
+//   3) 이 문서만 주소(도로명주소+상세주소)가 필수 — 지방세는 관할 지자체 기준이라 필요.
 //      또한 필드명이 isIdentityViewYn(소문자 n)이고, 값 의미도 다른 문서들과 반대
 //      ("0"=전체표기, "1"=일부표기/기본) — 다른 문서의 isIdentityViewYN과 헷갈리지 않도록 주의.
 // 다건요청 팔로워로 쓰일 경우 응답이 몇 분간 지연될 수 있어 타임아웃을 넉넉히 잡아둠.
@@ -59,7 +61,7 @@ export async function POST(request) {
   const requestPayload = {
     organization: '0001',
     loginType: loginType || PRODUCT.loginType, // 기본 '6' (비회원 간편인증)
-    loginIdentity: encryptedTail,
+    identity: encryptedTail, // 이 상품만 필드명이 identity (다른 문서들은 loginIdentity)
     identityEncYn: 'Y',
     birthDate: digits.slice(0, 6),
     userName,
