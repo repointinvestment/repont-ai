@@ -1,12 +1,15 @@
 // app/api/codef/localtax-payment-certificate/route.js
 // CODEF "지방세 납세증명 조회 API" 1차 요청 — 정부24 기반, 회원/비회원 간편인증(loginType 5/6) 지원.
-// 주의사항 세 가지:
+// 주의사항 네 가지:
 //   1) 주민등록번호 필드명이 'identity' (다른 문서들은 'loginIdentity') — 안 맞추면
-//      CODEF가 "사업자번호(주민등록번호)가 잘못되었습니다" 에러를 냄 (실제로 겪었던 버그).
-//   2) loginType="6"(비회원 간편인증)은 CODEF 스펙상 다건요청(SSO 묶음)을 지원하지 않음 —
+//      CODEF가 "사업자번호(주민등록번호)가 잘못되었습니다" 에러를 냄.
+//   2) phoneNo(로그인용, loginType=5/6일 때 필수)와 별개로 phoneNo1(전화번호1)이
+//      조건 없이 항상 필수(Required=O)임 — 안 보내면 CF-12411 "{userError:PHONE_NO}"로 실패.
+//      이 앱엔 두 번째 번호를 따로 받는 UI가 없어서 phoneNo와 같은 값을 넣어둠.
+//   3) loginType="6"(비회원 간편인증)은 CODEF 스펙상 다건요청(SSO 묶음)을 지원하지 않음 —
 //      단독 조회는 6으로 그대로 가능하지만, 다른 문서와 묶을 땐 프론트(CodefDocumentIssuance)에서
 //      전체 로그인 방식을 5(회원)로 강제 전환함.
-//   3) 이 문서만 주소(도로명주소+상세주소)가 필수 — 지방세는 관할 지자체 기준이라 필요.
+//   4) 이 문서만 주소(도로명주소+상세주소)가 필수 — 지방세는 관할 지자체 기준이라 필요.
 //      또한 필드명이 isIdentityViewYn(소문자 n)이고, 값 의미도 다른 문서들과 반대
 //      ("0"=전체표기, "1"=일부표기/기본) — 다른 문서의 isIdentityViewYN과 헷갈리지 않도록 주의.
 // 다건요청 팔로워로 쓰일 경우 응답이 몇 분간 지연될 수 있어 타임아웃을 넉넉히 잡아둠.
@@ -71,6 +74,7 @@ export async function POST(request) {
     loginTypeLevel: level,
     ...(level === '5' ? { telecom: telecom || '0' } : {}),
     phoneNo: phoneNo.replace(/[^0-9]/g, ''),
+    phoneNo1: phoneNo.replace(/[^0-9]/g, ''), // 무조건 필수(O)인 별도 필드 — 별도로 안 받으니 phoneNo와 동일 값 사용
     id: sharedId || `customer-${customerId || 'test'}-${Date.now()}`,
     address,
     addrDetail: addrDetail || '',
@@ -107,14 +111,6 @@ export async function POST(request) {
   }
 
   const isSuccess = result?.result?.code === 'CF-00000'
-  if (!isSuccess) {
-    // 어떤 파라미터가 문제인지 특정하기 위한 임시 디버그 로그 (Vercel 함수 로그에서 확인) —
-    // 민감정보(identity/phoneNo/id)는 마스킹해서 남김.
-    console.error('[localtax-payment-certificate] 실패 응답', JSON.stringify({
-      sentPayload: { ...requestPayload, identity: '(masked)', phoneNo: '(masked)' },
-      codefResult: result,
-    }))
-  }
   let savedFiles = []
   if (isSuccess && customerId) {
     savedFiles = await saveIssuedPdfs(customerId, result, consultantId, PRODUCT.fileLabel)
