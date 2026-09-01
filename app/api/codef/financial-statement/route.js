@@ -1,5 +1,6 @@
 // app/api/codef/financial-statement/route.js
 // CODEF "재무제표 API" 1차 요청 — 회원/비회원 간편인증(loginType 5 또는 6) 모두 지원, 기본은 6(비회원).
+// 주의: 이 상품은 전화번호 필드명이 다른 문서들과 달리 'loginPhoneNo' (다른 곳은 'phoneNo').
 // 다른 문서들과 달리 기간(startDate~endDate)이 아니라 단일 startDate 하나:
 //   - 개인사업자: 귀속연도만 (yyyy) + proofType(40:사업소득) 필요
 //   - 법인사업자: 사업연도종료연월 (yyyyMM), proofType 불필요
@@ -73,7 +74,7 @@ export async function POST(request) {
     userName,
     loginTypeLevel: level,
     ...(level === '5' ? { telecom: telecom || '0' } : {}),
-    phoneNo: phoneNo.replace(/[^0-9]/g, ''),
+    loginPhoneNo: phoneNo.replace(/[^0-9]/g, ''), // 이 상품만 필드명이 loginPhoneNo (다른 문서들은 phoneNo)
     id: sharedId || `customer-${customerId || 'test'}-${Date.now()}`,
     startDate,
     isIdentityViewYN: '0',

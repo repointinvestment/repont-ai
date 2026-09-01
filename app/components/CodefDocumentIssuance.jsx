@@ -297,16 +297,17 @@ export default function CodefDocumentIssuance({
   const savedTotal = Object.values(docStates).reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
 
   // 재무제표는 간편장부대상자이거나 업력이 짧으면 국세청에 원본이 없어 CODEF가 에러로 응답함 —
-  // 실제 오류가 아니라 정상적인 "없음" 상태이므로, 실패 목록에 있을 때만 안내 문구를 덧붙임.
+  // 실제 오류가 아니라 정상적인 "없음" 상태라, CODEF 원문 메시지(문구도 딱딱하고 공백이 '+'로 깨져서 옴) 대신
+  // 짧은 안내문 하나로 대체해서 보여줌. 재무제표를 "최근 N년"으로 조회해 여러 건이 동시에 실패해도 중복 없이 한 줄만.
   const FS_KEY = 'financial-statement';
   const hasFsError = errorEntries.some(([, s]) => s.docKey === FS_KEY);
-  const FS_HINT = ' (간편장부대상자이거나 업력이 짧으면 국세청에 재무제표가 존재하지 않을 수 있습니다)';
+  const FS_HINT = '간편장부대상자이거나 업력이 짧아 아직 신고 전일 수 있습니다.';
 
   let summaryMessage = '';
   const unitsCount = Object.keys(docStates).length;
   if (phase === 'done') {
     summaryMessage = errorEntries.length > 0
-      ? `${doneCount}/${unitsCount}건 완료. 실패: ${errorEntries.map(([, s]) => DOCUMENTS[s.docKey].label).join(', ')}${hasFsError ? FS_HINT : ''}`
+      ? `${doneCount}/${unitsCount}건 완료. 실패: ${[...new Set(errorEntries.map(([, s]) => DOCUMENTS[s.docKey].label))].join(', ')}${hasFsError ? ` (재무제표: ${FS_HINT})` : ''}`
       : savedTotal > 0
         ? `${unitsCount}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
         : `${unitsCount}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
@@ -314,7 +315,11 @@ export default function CodefDocumentIssuance({
     const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([, s]) => DOCUMENTS[s.docKey].label);
     summaryMessage = `카카오톡에서 인증을 승인한 뒤 확인 버튼을 눌러주세요. (${pendingLabels.join(', ')})`;
   } else if (phase === 'error' && errorEntries.length > 0) {
-    summaryMessage = errorEntries.map(([, s]) => `[${DOCUMENTS[s.docKey].label}] ${s.message}${s.docKey === FS_KEY ? FS_HINT : ''}`).join(' / ');
+    const otherMsgs = errorEntries
+      .filter(([, s]) => s.docKey !== FS_KEY)
+      .map(([, s]) => `[${DOCUMENTS[s.docKey].label}] ${(s.message || '').replaceAll('+', ' ')}`);
+    const fsMsg = hasFsError ? [`[재무제표] ${FS_HINT}`] : [];
+    summaryMessage = [...otherMsgs, ...fsMsg].join(' / ');
   }
 
   return (
