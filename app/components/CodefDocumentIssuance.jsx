@@ -90,6 +90,15 @@ export const DOCUMENTS = {
     needsPeriod: false,
     needsAttrYear: true, // 재무제표 전용 — 사업자 유형 + 귀속연도(법인은 종료월까지) 입력 필요
   },
+  'localtax-payment-certificate': {
+    label: '지방세 납세증명서',
+    requestPath: '/api/codef/localtax-payment-certificate',
+    confirmPath: '/api/codef/localtax-payment-certificate/confirm',
+    memberOnly: false,
+    needsPeriod: false,
+    needsAddress: true, // 주소(도로명주소) 입력 필요
+    soloOnly: true,      // CODEF 스펙: loginType=6(비회원 간편인증) 다건요청 불가 — 항상 단독 조회
+  },
 };
 
 // 재무제표 귀속연도 — 종합소득세 신고기한(5/31, 성실신고확인대상자는 6/30) 지난 뒤부터
@@ -144,6 +153,8 @@ export default function CodefDocumentIssuance({
     attrYear: '',               // 재무제표용 귀속연도 단건 (비우면 서버가 자동 계산)
     attrYearRangeCount: '3',    // 재무제표용 — attrYearMode='range'일 때 최근 몇 년
     attrMonth: '12',            // 재무제표용 — 법인일 때만 사용, 사업연도 종료월
+    address: '',                // 지방세 납세증명서용 — 도로명주소 (필수)
+    addrDetail: '',             // 지방세 납세증명서용 — 상세주소 (동/호수 등, 선택)
   });
   // docKey별 진행 상태를 각각 들고 있음: { status: 'idle'|'requesting'|'pending'|'done'|'error', sessionId, items, savedFiles, message }
   const [docStates, setDocStates] = useState({});
@@ -160,7 +171,13 @@ export default function CodefDocumentIssuance({
   }
 
   function toggleDoc(key) {
-    setSelectedDocs((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+    setSelectedDocs((prev) => {
+      if (prev.includes(key)) return prev.filter((k) => k !== key);
+      // 단독조회 전용 문서(soloOnly)는 다건요청이 안 돼서 다른 선택과 함께 못 감 —
+      // 선택하면 나머지는 다 비우고, 반대로 단독조회 문서가 이미 있는 상태에서 다른 걸 고르면 그건 뺌.
+      if (DOCUMENTS[key].soloOnly) return [key];
+      return [...prev.filter((k) => !DOCUMENTS[k].soloOnly), key];
+    });
     setDocStates({});
     setPhase('');
     followerPromisesRef.current = {};
@@ -292,6 +309,8 @@ export default function CodefDocumentIssuance({
   const anyMemberOnly = selectedDocs.some((k) => DOCUMENTS[k].memberOnly);
   const anyNeedsPeriod = selectedDocs.some((k) => DOCUMENTS[k].needsPeriod);
   const anyNeedsAttrYear = selectedDocs.some((k) => DOCUMENTS[k].needsAttrYear);
+  const anyNeedsAddress = selectedDocs.some((k) => DOCUMENTS[k].needsAddress);
+  const hasSoloDoc = selectedDocs.some((k) => DOCUMENTS[k].soloOnly);
   const doneCount = Object.values(docStates).filter((s) => s.status === 'done').length;
   const errorEntries = Object.entries(docStates).filter(([, s]) => s.status === 'error');
   const savedTotal = Object.values(docStates).reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
@@ -339,11 +358,13 @@ export default function CodefDocumentIssuance({
             ))}
           </div>
         </Field>
-        {(anyMemberOnly || selectedDocs.length > 1) && (
+        {(anyMemberOnly || selectedDocs.length > 1 || hasSoloDoc) && (
           <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
-            ※ {selectedDocs.length > 1
-              ? `여러 서류를 함께 받을 땐 로그인 방식을 ${pickLoginType() === '6' ? '비회원' : '회원'} 간편인증으로 통일해서 진행합니다.${pickLoginType() === '5' ? ' 고객이 홈택스 회원가입이 되어있어야 합니다.' : ''}`
-              : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
+            ※ {hasSoloDoc
+              ? '이 서류는 다른 서류와 함께 조회할 수 없어(CODEF 다건요청 미지원) 단독으로만 진행됩니다.'
+              : selectedDocs.length > 1
+                ? `여러 서류를 함께 받을 땐 로그인 방식을 ${pickLoginType() === '6' ? '비회원' : '회원'} 간편인증으로 통일해서 진행합니다.${pickLoginType() === '5' ? ' 고객이 홈택스 회원가입이 되어있어야 합니다.' : ''}`
+                : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
           </p>
         )}
 
@@ -454,6 +475,22 @@ export default function CodefDocumentIssuance({
                 </select>
               </Field>
             )}
+          </>
+        )}
+
+        {anyNeedsAddress && (
+          <>
+            <Field label="주소 (지방세 납세증명서용 — 도로명주소)">
+              <input
+                value={form.address}
+                onChange={(e) => update('address', e.target.value)}
+                placeholder="예: 서울특별시 영등포구 여의대로 38"
+                style={inputStyle}
+              />
+            </Field>
+            <Field label="상세주소 (동/호수 등, 선택)">
+              <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} style={inputStyle} />
+            </Field>
           </>
         )}
 
@@ -677,6 +714,22 @@ function buildRows(docType, item) {
       ['체납 내역', arrears.length > 0
         ? arrears.map((a) => `${a.resTaxItemName} ${fmtAmt(a.resLocalTaxAmt)}`).join(', ')
         : (item.resPaymentTaxStatus === '해당없음' ? '없음' : '')],
+      ['유효기간', fmtDate(item.resValidPeriod)],
+      ['발급기관', item.resIssueOgzNm],
+      ['발급번호', item.resIssueNo],
+    ].filter(([, v]) => v);
+  }
+
+  if (docType === 'localtax-payment-certificate') {
+    const respites = Array.isArray(item.resRespiteList) ? item.resRespiteList.filter((r) => r.resTaxItemName) : [];
+    return [
+      ['상호(법인)', item.resCompanyNm],
+      ['사업자등록번호', item.resCompanyIdentityNo],
+      ['성명(대표자)', item.resUserNm],
+      ['주소', item.resUserAddr?.replaceAll('+', ' ')],
+      ['징수유예/체납처분유예', respites.length > 0
+        ? respites.map((r) => `${r.resTaxItemName} ${fmtAmt(r.resLocalTaxAmt)}`).join(', ')
+        : '없음'],
       ['유효기간', fmtDate(item.resValidPeriod)],
       ['발급기관', item.resIssueOgzNm],
       ['발급번호', item.resIssueNo],
