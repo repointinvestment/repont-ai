@@ -166,6 +166,30 @@ export default function CodefDocumentIssuance({
   // 확인 버튼 누를 때 같이 기다림.
   const followerPromisesRef = useRef({});
 
+  // 지방세 납세증명서처럼 주소 입력이 필요한 문서가 선택됐을 때만 다음(카카오) 우편번호 서비스 스크립트를 로드.
+  // 이건 juso.go.kr 도로명주소 API처럼 별도 API 키 신청이 필요 없고, 같은 국가 도로명주소 DB를 쓰기 때문에
+  // 결과 포맷이 CODEF가 요구하는 "도로명 + 건물번호" 표준 표기와 동일함 — 직접 타이핑할 때 생기는
+  // 띄어쓰기/표기 차이로 인한 매칭 실패를 막기 위해 검색 팝업으로만 입력받음.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!selectedDocs.some((k) => DOCUMENTS[k].needsAddress)) return;
+    if (window.daum && window.daum.Postcode) return;
+    const script = document.createElement('script');
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    document.body.appendChild(script);
+  }, [selectedDocs]);
+
+  function openAddressSearch() {
+    if (typeof window === 'undefined' || !window.daum || !window.daum.Postcode) {
+      alert('주소 검색 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    new window.daum.Postcode({
+      oncomplete: (data) => update('address', data.roadAddress || data.jibunAddress || ''),
+    }).open();
+  }
+
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -474,13 +498,26 @@ export default function CodefDocumentIssuance({
 
         {anyNeedsAddress && (
           <>
-            <Field label="주소 (지방세 납세증명서용 — 도로명주소)">
-              <input
-                value={form.address}
-                onChange={(e) => update('address', e.target.value)}
-                placeholder="예: 서울특별시 영등포구 여의대로 38"
-                style={inputStyle}
-              />
+            <Field label="주소 (지방세 납세증명서용 — 도로명주소, 검색으로만 입력)">
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={form.address}
+                  readOnly
+                  placeholder="기본주소"
+                  style={{ ...inputStyle, flex: 1, background: '#F5F5F3', color: form.address ? '#2A2925' : '#B0AFA9', cursor: 'default' }}
+                />
+                <button
+                  type="button"
+                  onClick={openAddressSearch}
+                  style={{
+                    padding: '10px 16px', borderRadius: 8, border: '1px solid #2A2925',
+                    background: '#fff', color: '#2A2925', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}
+                >
+                  검색
+                </button>
+              </div>
             </Field>
             <Field label="상세주소 (동/호수 등, 선택)">
               <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} style={inputStyle} />
