@@ -10,6 +10,9 @@ export async function GET(request) {
   const scoped = role !== 'admin' && consultantId
 
   const customerFilter = scoped ? sql`WHERE c.consultant_id = ${consultantId}` : sql``
+  // 두 번째 쿼리는 이미 자기 WHERE(h.status = '완료')가 있어서, 같은 WHERE 조각을 그대로 못 씀 —
+  // AND로 붙일 별도 조각을 하나 더 둠 (그대로 재사용하면 'WHERE ... WHERE ...' 문법 오류 남).
+  const customerAndFilter = scoped ? sql`AND c.consultant_id = ${consultantId}` : sql``
 
   // 이번 달 신규 상담 (최초 이력 기준)
   const [{ count: newThisMonth }] = await sql`
@@ -29,8 +32,8 @@ export async function GET(request) {
     SELECT COUNT(*)::int AS count
     FROM customer_status_history h
     JOIN customers c ON c.id = h.customer_id
-    ${customerFilter}
     WHERE h.status = '완료' AND date_trunc('month', h.changed_at) = date_trunc('month', NOW())
+    ${customerAndFilter}
   `
 
   // 현재 단계별 분포
