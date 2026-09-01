@@ -107,6 +107,14 @@ export async function POST(request) {
   }
 
   const isSuccess = result?.result?.code === 'CF-00000'
+  if (!isSuccess) {
+    // 어떤 파라미터가 문제인지 특정하기 위한 임시 디버그 로그 (Vercel 함수 로그에서 확인) —
+    // 민감정보(identity/phoneNo/id)는 마스킹해서 남김.
+    console.error('[localtax-payment-certificate] 실패 응답', JSON.stringify({
+      sentPayload: { ...requestPayload, identity: '(masked)', phoneNo: '(masked)' },
+      codefResult: result,
+    }))
+  }
   let savedFiles = []
   if (isSuccess && customerId) {
     savedFiles = await saveIssuedPdfs(customerId, result, consultantId, PRODUCT.fileLabel)
