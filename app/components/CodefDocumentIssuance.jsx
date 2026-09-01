@@ -7,7 +7,7 @@
 //   - /customers/[id]: 그 고객 화면에 내장 — customerId/이름/전화번호가 이미 정해져 있어 바로 발급 가능
 // 새 문서(예: 소득금액증명원)를 추가할 땐 DOCUMENTS 객체에 항목 하나, 그 문서 전용 API 라우트 두 개만 추가하면 됨.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const LEVELS = [
   { value: '1', label: '카카오톡' },
@@ -99,7 +99,9 @@ export default function CodefDocumentIssuance({
   defaultPhoneNo = '',
   onSaved,
 }) {
-  // 일괄 발급: 체크한 문서를 순서대로 하나씩 처리. 인증 정보는 한 번만 입력.
+  // 일괄 발급: 체크한 문서를 전부 동시에(병렬로) 요청 — CODEF 다건요청(SSO id) 가이드에 따르면
+  // 같은 id로 여러 요청을 "동시에" 보내야 하나의 로그인 세션(카카오 승인 1번)으로 묶임.
+  // (전에 하나씩 순서대로 보냈을 땐 매번 새 로그인으로 취급돼 승인이 각각 필요했음)
   const [selectedDocs, setSelectedDocs] = useState(['corporate-registration']);
   const [form, setForm] = useState({
     customerId: fixedCustomerId || '',
@@ -111,14 +113,10 @@ export default function CodefDocumentIssuance({
     startDate: '',
     endDate: '',
   });
-  const [batchIdx, setBatchIdx] = useState(0); // selectedDocs 중 지금 처리 중인 순번
-  const [sharedId, setSharedId] = useState(null); // 여러 문서를 한 세션으로 묶기 위한 공용 id
-  const [sessionId, setSessionId] = useState(null);
-  const [status, setStatus] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
-  const [message, setMessage] = useState('');
-  const [results, setResults] = useState({}); // { [docKey]: { items, savedFiles } }
+  // docKey별 진행 상태를 각각 들고 있음: { status: 'idle'|'requesting'|'pending'|'done'|'error', sessionId, items, savedFiles, message }
+  const [docStates, setDocStates] = useState({});
+  const [phase, setPhase] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [selectedIdx, setSelectedIdx] = useState({}); // { [docKey]: 사업장 인덱스 } — 문서별 다건일 때
-  const savedCountRef = useRef(0); // 배치 전체에서 파일함에 저장된 건수 누적 (state 클로저 지연 문제 회피)
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -126,129 +124,125 @@ export default function CodefDocumentIssuance({
 
   function toggleDoc(key) {
     setSelectedDocs((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
-    resetResult();
+    setDocStates({});
+    setPhase('');
   }
 
-  function resetResult() {
-    setStatus('');
-    setMessage('');
-    setResults({});
-    setSessionId(null);
-    setBatchIdx(0);
-    setSharedId(null);
+  // 모든 선택 문서 지원 여부를 보고 로그인 방식 통일 — 전부 비회원 가능하면 6, 하나라도 회원전용 있으면 5로 통일
+  // (같은 로그인 세션으로 묶이려면 로그인 방식 자체가 같아야 함)
+  function pickLoginType() {
+    return selectedDocs.every((k) => !DOCUMENTS[k].memberOnly) ? '6' : '5';
   }
 
   async function startBatch() {
     if (selectedDocs.length === 0) return;
-    setResults({});
-    setBatchIdx(0);
-    savedCountRef.current = 0;
+    setPhase('requesting');
     const sid = `batch-${form.customerId || 'test'}-${Date.now()}`;
-    setSharedId(sid);
-    await requestDoc(0, sid);
+    const loginType = pickLoginType();
+    setDocStates(Object.fromEntries(selectedDocs.map((k) => [k, { status: 'requesting' }])));
+
+    const responses = await Promise.all(selectedDocs.map(async (key) => {
+      const doc = DOCUMENTS[key];
+      try {
+        const res = await fetch(doc.requestPath, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
+          body: JSON.stringify({ ...form, sharedId: sid, loginType }),
+        });
+        const data = await res.json();
+        return { key, ok: res.ok, data };
+      } catch (err) {
+        return { key, ok: false, data: { error: err.message } };
+      }
+    }));
+
+    applyResponses(responses);
   }
 
-  async function requestDoc(idx, sid) {
-    setStatus('requesting');
-    setMessage('');
-    const docKey = selectedDocs[idx];
-    const doc = DOCUMENTS[docKey];
-    // 여러 서류를 함께 뗄 땐 로그인 방식을 '5'(회원 간편인증)로 통일해야 CODEF가 같은 세션으로
-    // 묶어줄 가능성이 있음 — 서류 하나만 뗄 땐 사업자등록증명 기본값(6, 비회원)을 그대로 둠.
-    const loginType = selectedDocs.length > 1 ? '5' : undefined;
-    try {
-      const res = await fetch(doc.requestPath, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
-        body: JSON.stringify({ ...form, sharedId: sid, loginType }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus('error');
-        setMessage(`[${doc.label}] ${data.error || '요청 실패'}`);
-        return;
+  async function confirmBatch() {
+    setPhase('confirming');
+    const pendingKeys = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([k]) => k);
+
+    const responses = await Promise.all(pendingKeys.map(async (key) => {
+      const doc = DOCUMENTS[key];
+      const sessionId = docStates[key].sessionId;
+      try {
+        const res = await fetch(doc.confirmPath, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
+        });
+        const data = await res.json();
+        return { key, ok: res.ok, data };
+      } catch (err) {
+        return { key, ok: false, data: { error: err.message } };
       }
-      if (data.status === 'pending_2way') {
-        setSessionId(data.sessionId);
-        setStatus('pending');
-        setMessage(`[${doc.label}] ${data.message}`);
-      } else {
-        await finishDocAndAdvance(idx, sid, data);
-      }
-    } catch (err) {
-      setStatus('error');
-      setMessage(`[${doc.label}] ${err.message}`);
-    }
+    }));
+
+    applyResponses(responses);
   }
 
-  async function confirmAuth() {
-    if (!sessionId) return;
-    setStatus('confirming');
-    const docKey = selectedDocs[batchIdx];
-    const doc = DOCUMENTS[docKey];
-    try {
-      const res = await fetch(doc.confirmPath, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus('error');
-        setMessage(`[${doc.label}] ${data.error || '확인 실패'}`);
-        return;
+  // 요청/확인 응답을 문서별 상태에 반영하고, 남은 pending이 있는지에 따라 전체 phase를 정함.
+  function applyResponses(responses) {
+    setDocStates((prev) => {
+      const next = { ...prev };
+      let savedCount = 0;
+      for (const { key, ok, data } of responses) {
+        const doc = DOCUMENTS[key];
+        if (!ok) {
+          next[key] = { status: 'error', message: data.error || '요청 실패' };
+          continue;
+        }
+        if (data.status === 'pending_2way') {
+          next[key] = { status: 'pending', sessionId: data.sessionId, message: data.message || '' };
+          continue;
+        }
+        if (data.status === 'done') {
+          const items = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
+          next[key] = { status: 'done', items, savedFiles: data.savedFiles || [] };
+          savedCount += data.savedFiles?.length || 0;
+          continue;
+        }
+        next[key] = { status: 'error', message: data.result?.result?.message || '실패' };
       }
-      if (data.status === 'pending_2way') {
-        setStatus('pending');
-        setMessage(`[${doc.label}] 한 번 더 추가 인증이 필요합니다. 인증 앱을 확인하고 다시 확인 버튼을 눌러주세요.`);
-      } else {
-        await finishDocAndAdvance(batchIdx, sharedId, data);
+      if (savedCount > 0 && onSaved) onSaved();
+
+      const values = Object.values(next);
+      const stillPending = values.some((s) => s.status === 'pending');
+      const anyError = values.some((s) => s.status === 'error');
+      const totalSaved = values.reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
+      setPhase(stillPending ? 'pending' : (anyError ? 'error' : 'done'));
+      if (!stillPending) {
+        setSelectedIdx(Object.fromEntries(selectedDocs.map((k) => [k, 0])));
       }
-    } catch (err) {
-      setStatus('error');
-      setMessage(`[${doc.label}] ${err.message}`);
-    }
+      return next;
+    });
   }
 
-  async function finishDocAndAdvance(idx, sid, data) {
-    const docKey = selectedDocs[idx];
-    const doc = DOCUMENTS[docKey];
-
-    if (data.status !== 'done') {
-      setStatus('error');
-      setMessage(`[${doc.label}] ${data.result?.result?.message || '실패'}`);
-      return;
-    }
-
-    const docs = Array.isArray(data.result?.data) ? data.result.data : data.result?.data ? [data.result.data] : [];
-    setResults((prev) => ({ ...prev, [docKey]: { items: docs, savedFiles: data.savedFiles || [] } }));
-    setSelectedIdx((prev) => ({ ...prev, [docKey]: 0 }));
-    savedCountRef.current += data.savedFiles?.length || 0;
-    if (data.savedFiles?.length > 0 && onSaved) onSaved();
-
-    const nextIdx = idx + 1;
-    if (nextIdx < selectedDocs.length) {
-      setBatchIdx(nextIdx);
-      await requestDoc(nextIdx, sid);
-    } else {
-      setStatus('done');
-      const totalSaved = savedCountRef.current;
-      setMessage(
-        totalSaved > 0
-          ? `${selectedDocs.length}개 서류 발급 완료! 파일함에 총 ${totalSaved}건 저장했습니다.`
-          : `${selectedDocs.length}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`
-      );
-    }
-  }
-
-  const currentDocLabel = DOCUMENTS[selectedDocs[batchIdx]]?.label || '';
   const anyMemberOnly = selectedDocs.some((k) => DOCUMENTS[k].memberOnly);
   const anyNeedsPeriod = selectedDocs.some((k) => DOCUMENTS[k].needsPeriod);
+  const doneCount = Object.values(docStates).filter((s) => s.status === 'done').length;
+  const errorEntries = Object.entries(docStates).filter(([, s]) => s.status === 'error');
+  const savedTotal = Object.values(docStates).reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
+
+  let summaryMessage = '';
+  if (phase === 'done') {
+    summaryMessage = errorEntries.length > 0
+      ? `${doneCount}/${selectedDocs.length}건 완료. 실패: ${errorEntries.map(([k]) => DOCUMENTS[k].label).join(', ')}`
+      : savedTotal > 0
+        ? `${selectedDocs.length}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
+        : `${selectedDocs.length}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
+  } else if (phase === 'pending') {
+    const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([k]) => DOCUMENTS[k].label);
+    summaryMessage = `카카오톡에서 인증을 승인한 뒤 확인 버튼을 눌러주세요. (${pendingLabels.join(', ')})`;
+  } else if (phase === 'error' && errorEntries.length > 0) {
+    summaryMessage = errorEntries.map(([k, s]) => `[${DOCUMENTS[k].label}] ${s.message}`).join(' / ');
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Field label="발급 서류 (여러 개 선택 가능 — 인증 한 번으로 순서대로 발급받습니다)">
+        <Field label="발급 서류 (여러 개 선택 가능 — 인증 한 번으로 함께 발급을 시도합니다)">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #E0DFDA', borderRadius: 8, padding: 12 }}>
             {Object.entries(DOCUMENTS).map(([key, d]) => (
               <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
@@ -265,7 +259,7 @@ export default function CodefDocumentIssuance({
         {(anyMemberOnly || selectedDocs.length > 1) && (
           <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
             ※ {selectedDocs.length > 1
-              ? '여러 서류를 함께 받을 땐 로그인 방식을 회원 간편인증으로 통일해서 진행합니다. 고객이 홈택스 회원가입이 되어있어야 합니다.'
+              ? `여러 서류를 함께 받을 땐 로그인 방식을 ${pickLoginType() === '6' ? '비회원' : '회원'} 간편인증으로 통일해서 진행합니다.${pickLoginType() === '5' ? ' 고객이 홈택스 회원가입이 되어있어야 합니다.' : ''}`
               : '이 서류는 비회원 간편인증을 지원하지 않아, 고객이 홈택스 회원가입이 되어있어야 발급됩니다.'}
           </p>
         )}
@@ -333,44 +327,38 @@ export default function CodefDocumentIssuance({
 
         <button
           onClick={startBatch}
-          disabled={selectedDocs.length === 0 || status === 'requesting' || status === 'confirming'}
+          disabled={selectedDocs.length === 0 || phase === 'requesting' || phase === 'confirming'}
           style={btnStyle}
         >
-          {status === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
+          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
         </button>
 
-        {status === 'pending' && (
-          <button onClick={confirmAuth} disabled={status === 'confirming'} style={{ ...btnStyle, background: '#2A7D46' }}>
+        {phase === 'pending' && (
+          <button onClick={confirmBatch} disabled={phase === 'confirming'} style={{ ...btnStyle, background: '#2A7D46' }}>
             인증 완료했어요 (확인)
           </button>
         )}
 
-        {(status === 'requesting' || status === 'pending' || status === 'confirming') && selectedDocs.length > 1 && (
-          <p style={{ fontSize: 12, color: '#8A8A85', margin: 0 }}>
-            진행 상황: {batchIdx + 1} / {selectedDocs.length} — {currentDocLabel}
-          </p>
-        )}
-
-        {message && status !== 'confirming' && (
-          <p style={{ fontSize: 13, color: status === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{message}</p>
+        {summaryMessage && phase !== 'confirming' && (
+          <p style={{ fontSize: 13, color: phase === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{summaryMessage}</p>
         )}
       </div>
 
-      {(status === 'requesting' || status === 'confirming') && (
+      {(phase === 'requesting' || phase === 'confirming') && (
         <LoadingModal
           messages={
-            status === 'requesting'
-              ? [`${currentDocLabel} 인증을 요청하고 있습니다`, '고객님의 승인을 기다리고 있습니다']
-              : [`${currentDocLabel}를 준비하고 있습니다`, '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
+            phase === 'requesting'
+              ? [selectedDocs.length > 1 ? `${selectedDocs.length}개 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
+              : ['서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
           }
         />
       )}
 
-      {Object.keys(results).length > 0 && (
+      {doneCount > 0 && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {selectedDocs.filter((k) => results[k]).map((docKey) => {
-            const rawItems = results[docKey].items;
-            const { savedFiles } = results[docKey];
+          {selectedDocs.filter((k) => docStates[k]?.status === 'done').map((docKey) => {
+            const rawItems = docStates[docKey].items;
+            const savedFiles = docStates[docKey].savedFiles || [];
             // 부가세과세표준증명은 반기별로 여러 건이 올 수 있는데, 회사가 같으면 한 줄로 합쳐서 보여줌
             // (기간은 조회된 것 중 가장 이른 시작 ~ 가장 늦은 끝, 금액은 합계).
             const items = docKey === 'additional-tax-standard' ? aggregateTaxStandard(rawItems) : rawItems;
