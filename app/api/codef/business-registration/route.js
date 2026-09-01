@@ -2,10 +2,15 @@
 // CODEF "사업자등록 증명 API" 1차 요청 — 비회원 간편인증(loginType=6)으로 진행.
 // 성공적으로 요청이 접수되면 CF-03002(continue2Way=true)가 내려오고,
 // 사용자가 카카오톡 등에서 인증을 승인한 뒤 /confirm 라우트로 2차 확인을 보내야 실제 데이터가 내려옴.
+// 다건요청(같은 sharedId)의 "팔로워"로 쓰일 경우, 리더가 승인될 때까지 CODEF가 이 요청의 응답을
+// 몇 분간 붙잡고 있을 수 있어 타임아웃을 넉넉히 잡아둠.
+
+export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { callCodef, rsaEncrypt, needsTwoWay } from '@/lib/codef'
+import { saveIssuedPdfs } from '@/lib/codefSave'
 
 const PRODUCT_PATH = '/v1/kr/public/nt/proof-issue/corporate-registration'
 
@@ -86,6 +91,11 @@ export async function POST(request) {
     })
   }
 
-  // continue2Way 없이 바로 결과가 온 경우
-  return NextResponse.json({ status: 'done', result })
+  // continue2Way 없이 바로 결과가 온 경우 (단건이거나, 다건요청 팔로워로 쓰여서 리더 승인과 함께 즉시 완료된 경우)
+  const isSuccess = result?.result?.code === 'CF-00000'
+  let savedFiles = []
+  if (isSuccess && customerId) {
+    savedFiles = await saveIssuedPdfs(customerId, result, consultantId, '사업자등록증명')
+  }
+  return NextResponse.json({ status: isSuccess ? 'done' : 'error', result, savedFiles })
 }

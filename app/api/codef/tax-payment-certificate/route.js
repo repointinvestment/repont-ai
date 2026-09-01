@@ -1,10 +1,14 @@
 // app/api/codef/tax-payment-certificate/route.js
 // CODEF "납세증명서 API" 1차 요청. 사업자등록증명과 마찬가지로 비회원 간편인증(loginType=6) 지원.
 // 주의: 이 상품은 생년월일 필드명이 다른 문서들과 달리 'loginBirthDate' (다른 곳은 'birthDate').
+// 다건요청 팔로워로 쓰일 경우 응답이 몇 분간 지연될 수 있어 타임아웃을 넉넉히 잡아둠.
+
+export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { callCodef, rsaEncrypt, needsTwoWay } from '@/lib/codef'
+import { saveIssuedPdfs } from '@/lib/codefSave'
 
 const PRODUCT_PATH = '/v1/kr/public/nt/proof-issue/tax-cert-all'
 
@@ -86,5 +90,10 @@ export async function POST(request) {
     })
   }
 
-  return NextResponse.json({ status: 'done', result })
+  const isSuccess = result?.result?.code === 'CF-00000'
+  let savedFiles = []
+  if (isSuccess && customerId) {
+    savedFiles = await saveIssuedPdfs(customerId, result, consultantId, '납세증명서')
+  }
+  return NextResponse.json({ status: isSuccess ? 'done' : 'error', result, savedFiles })
 }

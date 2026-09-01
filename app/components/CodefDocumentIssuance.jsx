@@ -7,7 +7,7 @@
 //   - /customers/[id]: 그 고객 화면에 내장 — customerId/이름/전화번호가 이미 정해져 있어 바로 발급 가능
 // 새 문서(예: 소득금액증명원)를 추가할 땐 DOCUMENTS 객체에 항목 하나, 그 문서 전용 API 라우트 두 개만 추가하면 됨.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const LEVELS = [
   { value: '1', label: '카카오톡' },
@@ -117,6 +117,11 @@ export default function CodefDocumentIssuance({
   const [docStates, setDocStates] = useState({});
   const [phase, setPhase] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [selectedIdx, setSelectedIdx] = useState({}); // { [docKey]: 사업장 인덱스 } — 문서별 다건일 때
+  // CODEF 다건요청 방식: 맨 처음 문서(리더)만 실제 카카오 인증을 타고, 나머지(팔로워)는 리더와 거의 동시에
+  // (0.5~1초 간격) 미리 요청을 걸어둔 채 CODEF 서버가 응답을 붙잡고 있다가, 리더가 승인되는 순간
+  // 같은 로그인 세션으로 자동 처리되어 응답이 옴. 그 "아직 안 끝난 요청"들을 여기 보관해뒀다가
+  // 확인 버튼 누를 때 같이 기다림.
+  const followerPromisesRef = useRef({});
 
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -126,6 +131,7 @@ export default function CodefDocumentIssuance({
     setSelectedDocs((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
     setDocStates({});
     setPhase('');
+    followerPromisesRef.current = {};
   }
 
   // 모든 선택 문서 지원 여부를 보고 로그인 방식 통일 — 전부 비회원 가능하면 6, 하나라도 회원전용 있으면 5로 통일
@@ -134,51 +140,64 @@ export default function CodefDocumentIssuance({
     return selectedDocs.every((k) => !DOCUMENTS[k].memberOnly) ? '6' : '5';
   }
 
+  function fireRequest(key, sid, loginType) {
+    const doc = DOCUMENTS[key];
+    return fetch(doc.requestPath, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
+      body: JSON.stringify({ ...form, sharedId: sid, loginType }),
+    }).then(async (res) => {
+      const data = await res.json();
+      return { key, ok: res.ok, data };
+    }).catch((err) => ({ key, ok: false, data: { error: err.message } }));
+  }
+
   async function startBatch() {
     if (selectedDocs.length === 0) return;
     setPhase('requesting');
     const sid = `batch-${form.customerId || 'test'}-${Date.now()}`;
     const loginType = pickLoginType();
+    const [leaderKey, ...followerKeys] = selectedDocs;
+
     setDocStates(Object.fromEntries(selectedDocs.map((k) => [k, { status: 'requesting' }])));
+    followerPromisesRef.current = {};
 
-    const responses = await Promise.all(selectedDocs.map(async (key) => {
-      const doc = DOCUMENTS[key];
-      try {
-        const res = await fetch(doc.requestPath, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
-          body: JSON.stringify({ ...form, sharedId: sid, loginType }),
-        });
-        const data = await res.json();
-        return { key, ok: res.ok, data };
-      } catch (err) {
-        return { key, ok: false, data: { error: err.message } };
-      }
-    }));
+    // 리더 먼저 보내고 응답(카카오 인증 트리거)을 기다림
+    const leaderResponse = await fireRequest(leaderKey, sid, loginType);
 
-    applyResponses(responses);
+    // 팔로워는 0.5~1초 간격을 두고 순서대로 보내되, 응답은 기다리지 않고 나중에 한꺼번에 처리
+    // (리더 인증이 완료되기 전까지 CODEF가 이 요청들의 응답을 붙잡고 있음)
+    for (const key of followerKeys) {
+      await new Promise((r) => setTimeout(r, 700));
+      followerPromisesRef.current[key] = fireRequest(key, sid, loginType);
+    }
+
+    applyResponses([leaderResponse]);
   }
 
   async function confirmBatch() {
     setPhase('confirming');
-    const pendingKeys = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([k]) => k);
 
-    const responses = await Promise.all(pendingKeys.map(async (key) => {
-      const doc = DOCUMENTS[key];
-      const sessionId = docStates[key].sessionId;
-      try {
-        const res = await fetch(doc.confirmPath, {
+    // 지금 'pending' 상태(=자기 sessionId로 확인이 필요한) 문서들을 전부 확인 요청
+    const pendingConfirms = Object.entries(docStates)
+      .filter(([, s]) => s.status === 'pending')
+      .map(([key, s]) => {
+        const doc = DOCUMENTS[key];
+        return fetch(doc.confirmPath, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
-        const data = await res.json();
-        return { key, ok: res.ok, data };
-      } catch (err) {
-        return { key, ok: false, data: { error: err.message } };
-      }
-    }));
+          body: JSON.stringify({ sessionId: s.sessionId }),
+        }).then(async (res) => {
+          const data = await res.json();
+          return { key, ok: res.ok, data };
+        }).catch((err) => ({ key, ok: false, data: { error: err.message } }));
+      });
 
+    // 아직 첫 응답을 못 받은 팔로워들(리더 인증과 함께 자동으로 풀릴 요청들)도 같이 기다림
+    const outstandingFollowers = Object.values(followerPromisesRef.current);
+    followerPromisesRef.current = {};
+
+    const responses = await Promise.all([...pendingConfirms, ...outstandingFollowers]);
     applyResponses(responses);
   }
 

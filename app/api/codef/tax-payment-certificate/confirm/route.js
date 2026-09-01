@@ -5,8 +5,8 @@ export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { put } from '@vercel/blob'
 import { callCodef, needsTwoWay } from '@/lib/codef'
+import { saveIssuedPdfs } from '@/lib/codefSave'
 
 const PRODUCT_PATH = '/v1/kr/public/nt/proof-issue/tax-cert-all'
 const FILE_LABEL = '납세증명서'
@@ -67,38 +67,8 @@ export async function POST(request) {
 
   let savedFiles = []
   if (isSuccess && session.customer_id) {
-    savedFiles = await saveIssuedPdfs(session.customer_id, result, session.created_by)
+    savedFiles = await saveIssuedPdfs(session.customer_id, result, session.created_by, FILE_LABEL)
   }
 
   return NextResponse.json({ status: isSuccess ? 'done' : 'error', result, savedFiles })
-}
-
-function saveIssuedPdfs(customerId, result, uploadedBy) {
-  const items = Array.isArray(result.data) ? result.data : result.data ? [result.data] : []
-  return Promise.all(
-    items
-      .filter((item) => item.resOriGinalData1)
-      .map(async (item) => {
-        try {
-          const buffer = Buffer.from(item.resOriGinalData1, 'base64')
-          const companyName = (item.resCompanyNm || item.resUserNm || FILE_LABEL).replace(/[/\\?%*:|"<>]/g, '')
-          const fileName = `${FILE_LABEL}_${companyName}_${item.resIssueDate || Date.now()}.pdf`
-
-          const blob = await put(`customers/${customerId}/${Date.now()}-${fileName}`, buffer, {
-            access: 'private',
-            contentType: 'application/pdf',
-          })
-
-          const [row] = await sql`
-            INSERT INTO customer_files (customer_id, file_name, blob_url, size_bytes, uploaded_by)
-            VALUES (${customerId}, ${fileName}, ${blob.pathname}, ${buffer.length}, ${uploadedBy || 'CODEF 자동수집'})
-            RETURNING id, file_name
-          `
-          return { ...row, companyName: item.resCompanyNm || item.resUserNm || '' }
-        } catch (err) {
-          console.error('CODEF PDF 파일함 저장 실패:', err)
-          return null
-        }
-      })
-  ).then((rows) => rows.filter(Boolean))
 }

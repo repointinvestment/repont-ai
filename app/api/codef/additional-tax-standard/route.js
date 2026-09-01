@@ -2,10 +2,14 @@
 // CODEF "부가세과세표준증명 API" 1차 요청 — 회원 간편인증(loginType=5)으로 진행.
 // 사업자등록증명과 달리 비회원 간편인증(6)을 지원하지 않음 — 고객이 홈택스 회원이어야 발급 가능.
 // 나머지 흐름(추가인증, PDF 저장 등)은 사업자등록증명과 동일.
+// 다건요청 팔로워로 쓰일 경우 응답이 몇 분간 지연될 수 있어 타임아웃을 넉넉히 잡아둠.
+
+export const maxDuration = 300
 
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { callCodef, rsaEncrypt, needsTwoWay, PRODUCTS } from '@/lib/codef'
+import { saveIssuedPdfs } from '@/lib/codefSave'
 
 const PRODUCT_KEY = 'additional-tax-standard'
 const PRODUCT = PRODUCTS[PRODUCT_KEY]
@@ -105,5 +109,10 @@ export async function POST(request) {
     })
   }
 
-  return NextResponse.json({ status: 'done', result })
+  const isSuccess = result?.result?.code === 'CF-00000'
+  let savedFiles = []
+  if (isSuccess && customerId) {
+    savedFiles = await saveIssuedPdfs(customerId, result, consultantId, PRODUCT.fileLabel)
+  }
+  return NextResponse.json({ status: isSuccess ? 'done' : 'error', result, savedFiles })
 }
