@@ -180,13 +180,29 @@ export default function CodefDocumentIssuance({
     document.body.appendChild(script);
   }, [selectedDocs]);
 
+  // 다음(Daum) 우편번호 서비스가 시/도를 축약형("부산")으로 줄 때가 있는데, CODEF/정부24는
+  // 정식 명칭("부산광역시")을 기대해서 그대로 두면 "검색결과가 없습니다" 오류가 남 — 정식 명칭으로 치환.
+  const SIDO_FULL_NAME = {
+    '서울': '서울특별시', '부산': '부산광역시', '대구': '대구광역시', '인천': '인천광역시',
+    '광주': '광주광역시', '대전': '대전광역시', '울산': '울산광역시', '세종': '세종특별자치시',
+    '경기': '경기도', '강원': '강원특별자치도', '충북': '충청북도', '충남': '충청남도',
+    '전북': '전북특별자치도', '전남': '전라남도', '경북': '경상북도', '경남': '경상남도',
+    '제주': '제주특별자치도',
+  };
+  function normalizeRoadAddress(addr) {
+    if (!addr) return addr;
+    const firstWord = addr.split(' ')[0];
+    const full = SIDO_FULL_NAME[firstWord];
+    return full ? addr.replace(firstWord, full) : addr;
+  }
+
   function openAddressSearch() {
     if (typeof window === 'undefined' || !window.daum || !window.daum.Postcode) {
       alert('주소 검색 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
       return;
     }
     new window.daum.Postcode({
-      oncomplete: (data) => update('address', data.roadAddress || data.jibunAddress || ''),
+      oncomplete: (data) => update('address', normalizeRoadAddress(data.roadAddress || data.jibunAddress || '')),
     }).open();
   }
 
