@@ -567,22 +567,6 @@ export default function CodefDocumentIssuance({
         {summaryMessage && phase !== 'confirming' && (
           <p style={{ fontSize: 13, color: phase === 'error' ? '#C0392B' : '#2A2925', margin: 0 }}>{summaryMessage}</p>
         )}
-
-        {phase === 'done' && !selectedDocs.includes('localtax-payment-certificate') && (
-          <button
-            onClick={() => {
-              // 이름/주민번호/전화번호는 그대로 재사용 — 주소만 새로 입력하면 되도록,
-              // 처음부터 다시 타이핑하지 않게 해서 인증 2번의 번거로움을 조금이라도 줄임.
-              // docStates는 그대로 둬서 방금 받은 홈택스 서류 결과가 화면에서 안 사라지게 함.
-              setSelectedDocs(['localtax-payment-certificate']);
-              setPhase('');
-              followerPromisesRef.current = {};
-            }}
-            style={{ ...btnStyle, background: '#fff', color: '#2A2925', border: '1px solid #2A2925' }}
-          >
-            지방세 납세증명서도 이어서 받기 (인증 1번 더 필요)
-          </button>
-        )}
       </div>
 
       {(phase === 'requesting' || phase === 'confirming') && (
@@ -597,7 +581,9 @@ export default function CodefDocumentIssuance({
 
       {doneCount > 0 && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {[...new Set(Object.values(docStates).filter((s) => s.status === 'done').map((s) => s.docKey))].map((docKey) => {
+          {selectedDocs.filter((docKey) =>
+            Object.values(docStates).some((s) => s.docKey === docKey && s.status === 'done')
+          ).map((docKey) => {
             const doneUnitStates = Object.values(docStates).filter((s) => s.docKey === docKey && s.status === 'done');
             const rawItems = doneUnitStates.flatMap((s) => s.items || []);
             const savedFiles = doneUnitStates.flatMap((s) => s.savedFiles || []);
