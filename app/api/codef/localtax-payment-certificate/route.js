@@ -43,6 +43,9 @@ export async function POST(request) {
   if (!address) {
     return NextResponse.json({ error: '지방세 납세증명서는 주소(도로명주소) 입력이 필수입니다.' }, { status: 400 })
   }
+  if (!addrDetail) {
+    return NextResponse.json({ error: '지방세 납세증명서는 상세주소(동/호수 등) 입력이 필수입니다.' }, { status: 400 })
+  }
 
   const digits = residentNo.replace(/[^0-9]/g, '')
   if (digits.length !== 13) {

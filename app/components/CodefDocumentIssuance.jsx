@@ -154,7 +154,7 @@ export default function CodefDocumentIssuance({
     attrYearRangeCount: '3',    // 재무제표용 — attrYearMode='range'일 때 최근 몇 년
     attrMonth: '12',            // 재무제표용 — 법인일 때만 사용, 사업연도 종료월
     address: '',                // 지방세 납세증명서용 — 도로명주소 (필수)
-    addrDetail: '',             // 지방세 납세증명서용 — 상세주소 (동/호수 등, 선택)
+    addrDetail: '',             // 지방세 납세증명서용 — 상세주소 (CODEF 스펙상 필수, 동/호수 등)
   });
   // docKey별 진행 상태를 각각 들고 있음: { status: 'idle'|'requesting'|'pending'|'done'|'error', sessionId, items, savedFiles, message }
   const [docStates, setDocStates] = useState({});
@@ -519,8 +519,8 @@ export default function CodefDocumentIssuance({
                 </button>
               </div>
             </Field>
-            <Field label="상세주소 (동/호수 등, 선택)">
-              <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} style={inputStyle} />
+            <Field label="상세주소 (필수 — 동/호수 등)">
+              <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} placeholder="예: 3층 301호" style={inputStyle} />
             </Field>
           </>
         )}
