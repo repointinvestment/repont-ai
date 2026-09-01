@@ -82,7 +82,24 @@ export const DOCUMENTS = {
     memberOnly: false,
     needsPeriod: false,
   },
+  'financial-statement': {
+    label: '재무제표',
+    requestPath: '/api/codef/financial-statement',
+    confirmPath: '/api/codef/financial-statement/confirm',
+    memberOnly: false,
+    needsPeriod: false,
+    needsAttrYear: true, // 재무제표 전용 — 사업자 유형 + 귀속연도(법인은 종료월까지) 입력 필요
+  },
 };
+
+// 재무제표 귀속연도 선택지 — 종합소득세 신고기한(5/31, 성실신고확인대상자는 6/30) 지난 뒤부터
+// 그 해 재무제표가 나온다고 보고, 여유 두고 7월 이후면 올해분까지 완료된 것으로 간주.
+function buildAttrYearOptions() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const latest = now.getMonth() + 1 >= 7 ? y - 1 : y - 2
+  return [latest, latest - 1, latest - 2, latest - 3]
+}
 
 // props:
 //   customerId, consultantUsername (필수)
@@ -112,6 +129,9 @@ export default function CodefDocumentIssuance({
     telecom: '0',
     startDate: '',
     endDate: '',
+    businessType: 'individual', // 재무제표용 — 'individual' | 'corporate'
+    attrYear: '',               // 재무제표용 귀속연도 (비우면 서버가 자동 계산)
+    attrMonth: '12',            // 재무제표용 — 법인일 때만 사용, 사업연도 종료월
   });
   // docKey별 진행 상태를 각각 들고 있음: { status: 'idle'|'requesting'|'pending'|'done'|'error', sessionId, items, savedFiles, message }
   const [docStates, setDocStates] = useState({});
@@ -240,14 +260,21 @@ export default function CodefDocumentIssuance({
 
   const anyMemberOnly = selectedDocs.some((k) => DOCUMENTS[k].memberOnly);
   const anyNeedsPeriod = selectedDocs.some((k) => DOCUMENTS[k].needsPeriod);
+  const anyNeedsAttrYear = selectedDocs.some((k) => DOCUMENTS[k].needsAttrYear);
   const doneCount = Object.values(docStates).filter((s) => s.status === 'done').length;
   const errorEntries = Object.entries(docStates).filter(([, s]) => s.status === 'error');
   const savedTotal = Object.values(docStates).reduce((sum, s) => sum + (s.savedFiles?.length || 0), 0);
 
+  // 재무제표는 간편장부대상자이거나 업력이 짧으면 국세청에 원본이 없어 CODEF가 에러로 응답함 —
+  // 실제 오류가 아니라 정상적인 "없음" 상태이므로, 실패 목록에 있을 때만 안내 문구를 덧붙임.
+  const FS_KEY = 'financial-statement';
+  const hasFsError = errorEntries.some(([k]) => k === FS_KEY);
+  const FS_HINT = ' (간편장부대상자이거나 업력이 짧으면 국세청에 재무제표가 존재하지 않을 수 있습니다)';
+
   let summaryMessage = '';
   if (phase === 'done') {
     summaryMessage = errorEntries.length > 0
-      ? `${doneCount}/${selectedDocs.length}건 완료. 실패: ${errorEntries.map(([k]) => DOCUMENTS[k].label).join(', ')}`
+      ? `${doneCount}/${selectedDocs.length}건 완료. 실패: ${errorEntries.map(([k]) => DOCUMENTS[k].label).join(', ')}${hasFsError ? FS_HINT : ''}`
       : savedTotal > 0
         ? `${selectedDocs.length}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
         : `${selectedDocs.length}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
@@ -255,7 +282,7 @@ export default function CodefDocumentIssuance({
     const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([k]) => DOCUMENTS[k].label);
     summaryMessage = `카카오톡에서 인증을 승인한 뒤 확인 버튼을 눌러주세요. (${pendingLabels.join(', ')})`;
   } else if (phase === 'error' && errorEntries.length > 0) {
-    summaryMessage = errorEntries.map(([k, s]) => `[${DOCUMENTS[k].label}] ${s.message}`).join(' / ');
+    summaryMessage = errorEntries.map(([k, s]) => `[${DOCUMENTS[k].label}] ${s.message}${k === FS_KEY ? FS_HINT : ''}`).join(' / ');
   }
 
   return (
@@ -342,6 +369,34 @@ export default function CodefDocumentIssuance({
               </optgroup>
             </select>
           </Field>
+        )}
+
+        {anyNeedsAttrYear && (
+          <>
+            <Field label="사업자 유형 (재무제표용)">
+              <select value={form.businessType} onChange={(e) => update('businessType', e.target.value)} style={inputStyle}>
+                <option value="individual">개인사업자</option>
+                <option value="corporate">법인사업자</option>
+              </select>
+            </Field>
+            <Field label="귀속연도 (재무제표용)">
+              <select value={form.attrYear} onChange={(e) => update('attrYear', e.target.value)} style={inputStyle}>
+                <option value="">자동 (최근 신고 완료된 연도)</option>
+                {buildAttrYearOptions().map((y) => (
+                  <option key={y} value={y}>{y}년</option>
+                ))}
+              </select>
+            </Field>
+            {form.businessType === 'corporate' && (
+              <Field label="사업연도 종료월 (법인만)">
+                <select value={form.attrMonth} onChange={(e) => update('attrMonth', e.target.value)} style={inputStyle}>
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                    <option key={m} value={m}>{m}월</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+          </>
         )}
 
         <button
@@ -560,6 +615,18 @@ function buildRows(docType, item) {
     ].filter(([, v]) => v);
   }
 
+  if (docType === 'financial-statement') {
+    return [
+      ['상호(성명)', item.resCompanyNm || item.resUserNm],
+      ['사업자등록번호', item.resCompanyIdentityNo],
+      ['업태 / 종목', [item.resBusinessTypes, item.resBusinessItems].filter(Boolean).join(' / ').replaceAll('+', ' ')],
+      ['귀속연도', item.resAttrYear],
+      ['작성(신고)일자', fmtDate(item.resReportingDate)],
+      ['발급기관', item.resIssueOgzNm],
+      ['발급번호', item.resIssueNo],
+    ].filter(([, v]) => v);
+  }
+
   return [
     ['사업자등록번호', item.resCompanyIdentityNo],
     ['대표자', item.resUserNm],
@@ -569,6 +636,36 @@ function buildRows(docType, item) {
     ['발급기관', item.resIssueOgzNm],
     ['발급번호', item.resIssueNo],
   ].filter(([, v]) => v);
+}
+
+// 재무제표는 대차대조표/손익계산서가 (제목/코드/금액/구분) 배열로 오기 때문에
+// 다른 문서들의 key-value 그리드와 별도로 표 형태로 렌더링함.
+function FinancialTable({ title, rows }) {
+  const fmtAmt = (n) => (n ? `${Number(n).toLocaleString('ko-KR')}원` : '');
+  const visible = (rows || []).filter((r) => r._title);
+  if (visible.length === 0) return null;
+  return (
+    <div style={{ marginTop: 16 }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#5A5952', margin: '0 0 6px' }}>{title}</p>
+      <div style={{ border: '1px solid #E0DFDA', borderRadius: 8, overflow: 'hidden' }}>
+        {visible.map((r, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex', justifyContent: 'space-between', gap: 12,
+              padding: '6px 12px', fontSize: 13,
+              background: i % 2 ? '#FAFAF8' : '#fff',
+            }}
+          >
+            <span style={{ color: '#5A5952' }}>{r._title}</span>
+            <span style={{ color: '#2A2925', fontWeight: r._number === '1' ? 700 : 400, whiteSpace: 'nowrap' }}>
+              {fmtAmt(r._amt)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function DocCard({ docType, item, file, customerId }) {
@@ -640,6 +737,12 @@ function DocCard({ docType, item, file, customerId }) {
           </div>
         ))}
       </div>
+      {docType === 'financial-statement' && (
+        <>
+          <FinancialTable title="대차대조표" rows={item.resBalanceSheet} />
+          <FinancialTable title="손익계산서" rows={item.resIncomeStatement} />
+        </>
+      )}
     </div>
   );
 }
