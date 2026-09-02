@@ -12,15 +12,15 @@ const STATUS_STYLE = {
 };
 const LEVEL_COLOR = { good: '#0F9B6E', warn: '#D9A441', bad: '#C0392B', unknown: '#B0AEA5' };
 
-export default function VerdictPanel({ verdict }) {
+export default function VerdictPanel({ verdict, embedded = false }) {
   if (!verdict) return null;
   const { institutions = [], factors = {}, hardBlocks = [] } = verdict;
   const canApply = institutions.filter((i) => i.status === '접수 가능');
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+    <div style={embedded ? { padding: '4px 28px 20px' } : { background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>접수 판정 — 어디에 무엇으로 넣을 수 있나</p>
+        <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>{embedded ? '기관별 판정과 근거' : '접수 판정 — 어디에 무엇으로 넣을 수 있나'}</p>
         <span style={{ fontSize: 12, color: '#5F5E5A' }}>
           접수 가능 {canApply.length}곳 · 조건부 {institutions.filter((i) => i.status === '조건부').length}곳
         </span>

@@ -16,7 +16,7 @@ const STATUS = {
 
 const fmt = (v) => (v == null || v === '' ? '—' : typeof v === 'number' ? v.toLocaleString() : String(v));
 
-export default function DocumentFactsPanel({ data, onApply }) {
+export default function DocumentFactsPanel({ data, onApply, embedded = false }) {
   const [busy, setBusy] = useState(null);
   if (!data) return null;
   const comparison = data.comparison || [];
@@ -49,9 +49,9 @@ export default function DocumentFactsPanel({ data, onApply }) {
   const docLabel = { 'corporate-registration': '사업자등록증명', 'additional-tax-standard': '부가세과세표준증명', 'tax-payment-certificate': '납세증명서', 'localtax-payment-certificate': '지방세 납세증명서', 'financial-statement': '재무제표' };
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '22px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+    <div style={embedded ? { padding: '4px 28px 20px' } : { background: '#fff', borderRadius: 14, padding: '22px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>서류 기반 검증</p>
+        <p style={{ fontSize: 15, fontWeight: 600, margin: 0, color: '#2A2925' }}>{embedded ? '서류값 vs 입력값' : '서류 기반 검증'}</p>
         {actionable.length > 0 && (
           <button type="button" onClick={applyAll} disabled={busy === 'all'}
             style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>

@@ -12,6 +12,7 @@ import { fetchPolicyFundsData } from '@/lib/policyFundsLookup';
 import { buildVerdict } from '@/lib/policyFundVerdict';
 import DocumentFactsPanel from '../../components/DocumentFactsPanel';
 import VerdictPanel from '../../components/VerdictPanel';
+import ConclusionBox, { Collapsible } from '../../components/ConclusionBox';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -377,17 +378,35 @@ export default function CustomerDashboardPage() {
           </div>
         </div>
 
-        <DocumentFactsPanel
-          data={docData}
-          onApply={async (fields) => {
-            const r = await fetch(`/api/customers/${params.id}/document-facts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
-            const d = await r.json();
-            if (r.ok && d.customer) { setCustomer(d.customer); loadDocFacts(); }
-          }}
-        />
+        {/* 1층: 초보자도 이것만 보고 움직이면 되는 결론 */}
+        {verdict && <ConclusionBox verdict={verdict} analysis={analysis} />}
 
-        {verdict && <VerdictPanel verdict={verdict} />}
+        {/* 2층: 근거 — 접힘 */}
+        {verdict && (
+          <Collapsible title="왜 그런지 보기" badge="기관별 판정 · 4요소">
+            <div style={{ padding: '0 0 8px' }}>
+              <VerdictPanel verdict={verdict} embedded />
+            </div>
+          </Collapsible>
+        )}
 
+        {/* 3층: 서류 검증 — 서류 있을 때만, 접힘 */}
+        {docData && Object.keys(docData.facts?.sources || {}).length > 0 && (
+          <Collapsible title="서류로 확인한 값" badge={`서류 ${Object.keys(docData.facts.sources).length}종`}>
+            <DocumentFactsPanel
+              data={docData}
+              embedded
+              onApply={async (fields) => {
+                const r = await fetch(`/api/customers/${params.id}/document-facts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+                const d = await r.json();
+                if (r.ok && d.customer) { setCustomer(d.customer); loadDocFacts(); }
+              }}
+            />
+          </Collapsible>
+        )}
+
+        {/* 4층: 기존 상세 목록 — 접힘 */}
+        <Collapsible title={hasDetailedData ? '신청 가능한 자금 상세 (한도·금리·기간)' : '기관별 예상 가능 한도'} badge={hasDetailedData ? `${analysis.results.length}개` : '참고자료'} defaultOpen={!verdict}>
         {hasDetailedData ? (
           <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -490,6 +509,7 @@ export default function CustomerDashboardPage() {
           </p>
         </div>
         )}
+        </Collapsible>
 
         {(customer.loan_status || customer.memo) && (
           <div style={{ background: '#fff', borderRadius: 14, padding: '20px 24px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
