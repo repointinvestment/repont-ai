@@ -66,6 +66,12 @@ export default function AdminPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h2 style={{ color: '#1a1a2e', margin: 0 }}>계정 관리 (컨설턴트)</h2>
           <button
+            onClick={() => router.push('/admin/policy-funds')}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 12 }}
+          >
+            정책자금 마스터 DB 관리 →
+          </button>
+          <button
             onClick={() => setShowForm((s) => !s)}
             style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
