@@ -8,6 +8,7 @@ import DonutGauge from '../../components/DonutGauge';
 import CodefDocumentIssuance from '../../components/CodefDocumentIssuance';
 import { estimateInstitutionLimits } from '@/lib/policyFundEstimate';
 import { analyzePolicyFunds } from '@/lib/policyFundAnalysis';
+import { fetchPolicyFundsData } from '@/lib/policyFundsLookup';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -31,11 +32,19 @@ export default function CustomerDashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [fundsByKey, setFundsByKey] = useState({});
+  const [rulesByKey, setRulesByKey] = useState({});
 
   useEffect(() => {
     const session = getSession();
     if (!session) { router.push('/'); return; }
     setUser(session);
+  }, []);
+
+  useEffect(() => {
+    fetchPolicyFundsData({ activeOnly: true })
+      .then((data) => { setFundsByKey(data.fundsByKey); setRulesByKey(data.rulesByKey); })
+      .catch(() => {}); // 실패해도 fundsByKey가 빈 객체라 자격판정은 조용히 빈 결과만 나옴 — 대시보드 자체는 정상 동작
   }, []);
 
   useEffect(() => {
@@ -284,9 +293,9 @@ export default function CustomerDashboardPage() {
         isFranchise: pfd.isFranchise,
         hasPatent: customer.has_patent,
         careerYears: customer.owner_career_years,
-      })
+      }, fundsByKey, rulesByKey)
     : null;
-  const limits = estimateInstitutionLimits(customer);
+  const limits = estimateInstitutionLimits(customer, fundsByKey, rulesByKey);
   const maxLimit = Math.max(...limits.map((l) => l.limit || 0), 1);
 
   const statCard = { background: '#fff', borderRadius: 12, padding: '18px 20px', flex: 1, minWidth: 140 };

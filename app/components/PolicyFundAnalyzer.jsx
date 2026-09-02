@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import DateYMDInput from "./DateYMDInput";
+import { analyzePolicyFunds } from "@/lib/policyFundAnalysis";
+import { fetchPolicyFundsData } from "@/lib/policyFundsLookup";
 
 const SMART_DEVICES = [
   "3D 풋스캐너 / 3D 프린터",
@@ -150,6 +152,15 @@ export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fundsByKey, setFundsByKey] = useState({});
+  const [rulesByKey, setRulesByKey] = useState({});
+
+  // 마스터 DB(lib/policyFundsSeed.js 기반) 자금/공통규칙을 한 번 받아둠 — analyze()가 여기서 한도·기준을 읽음
+  useEffect(() => {
+    fetchPolicyFundsData({ activeOnly: true })
+      .then((data) => { setFundsByKey(data.fundsByKey); setRulesByKey(data.rulesByKey); })
+      .catch(() => {});
+  }, []);
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
   const setLoan = (key, val) => setForm((f) => ({ ...f, loans: { ...f.loans, [key]: val } }));
@@ -166,287 +177,63 @@ export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
     setLoading(true);
     setResult(null);
 
+    // 2026-09-02: 판정 로직 자체는 lib/policyFundAnalysis.js(마스터 DB 기반)로 이관 —
+    // 여기서는 폼 데이터를 넘기고, 결과에 institution 필드(기존 렌더링 코드가 필요로 함)만 덧붙임.
+    const sharedResult = analyzePolicyFunds(
+      {
+        industry: form.industry,
+        bizAge: form.bizAge,
+        sales: form.sales,
+        employees: form.employees,
+        creditKCB: form.creditKCB,
+        creditNICE: form.creditNICE,
+        sojingongLoans: form.sojingongLoans,
+        loans: form.loans,
+        hasBankruptcy: form.hasBankruptcy,
+        currentBizCount: form.currentBizCount,
+        smartDevices: form.smartDevices,
+        exportRecord: form.exportRecord,
+        salesGrowth: form.salesGrowth,
+        taxDelinquent: form.taxDelinquent,
+        isFranchise: form.isFranchise,
+        hasPatent: form.hasPatent === "yes",
+        careerYears: form.careerYears,
+      },
+      fundsByKey,
+      rulesByKey
+    );
+
+    const results = sharedResult.results.map((r) => ({
+      ...r,
+      institution: r.tag === "소진공 직접대출" ? "소진공" : r.name,
+    }));
+
+    // AI 분석용 고객 정보 요약 (customerSummary는 이 컴포넌트만 쓰므로 여기서 별도 계산)
     const bizAgeNum = parseNum(form.bizAge);
     const salesNum = parseNum(form.sales);
     const employeesNum = parseNum(form.employees);
     const creditKCB = parseNum(form.creditKCB);
     const creditNICE = parseNum(form.creditNICE);
-
-    // 소진공 각 자금별 잔액
     const sinYongLoan = parseNum(form.sojingongLoans.sinYong);
     const hyuksinLoan = parseNum(form.sojingongLoans.hyuksin);
     const jaedoLoan = parseNum(form.sojingongLoans.jaedo);
-    const ilsiLoan = parseNum(form.sojingongLoans.ilsi);
-    const etcLoan = parseNum(form.sojingongLoans.etc);
-    const totalSojingong = sinYongLoan + hyuksinLoan + jaedoLoan + ilsiLoan + etcLoan;
-
     const jaedanLoan = parseNum(form.loans.jaedan);
     const shinboLoan = parseNum(form.loans.shinbo);
     const giboLoan = parseNum(form.loans.gibo);
-    const jungjingongLoan = parseNum(form.loans.jungjingong);
-    const bizCreditLoan = parseNum(form.loans.bizCredit);
-    const personal1 = parseNum(form.loans.personal1);
-    const personal2 = parseNum(form.loans.personal2);
-    const cardLoan = parseNum(form.loans.cardLoan);
-    const cashService = parseNum(form.loans.cashService);
-
-    const totalBizLoan = totalSojingong + jaedanLoan + shinboLoan + giboLoan + jungjingongLoan + bizCreditLoan;
-    const totalPersonalLoan = personal1 + personal2 + cardLoan + cashService;
-    const remainingCapacity = salesNum - totalBizLoan;
-
-    // 소진공 잔여한도 계산
-    const sojingongRemain = Math.max(0, 10000 - totalSojingong);
-    const sojingongRemainHyuksin = Math.max(0, 20000 - totalSojingong);
-
-    // 신용취약 추가 가능 여부 (이미 3천 다 쓰면 불가)
-    const sinYongAvailable = sinYongLoan < 3000;
-
-    // 재단 재신청 가능 여부 계산
-    let jaedanCanReapply = true;
-    let jaedanReapplyMsg = "";
-    if (jaedanLoan > 0 && form.loans.jaedanDate) {
-      const receivedDate = new Date(form.loans.jaedanDate);
-      const today = new Date();
-      const diffMonths = (today.getFullYear() - receivedDate.getFullYear()) * 12 + (today.getMonth() - receivedDate.getMonth());
-      const requiredMonths = form.loans.jaedanRegion === "수도권" ? 12 : 6;
-      jaedanCanReapply = diffMonths >= requiredMonths;
-      if (!jaedanCanReapply) {
-        const remaining = requiredMonths - diffMonths;
-        jaedanReapplyMsg = `재단 재신청 불가 — ${form.loans.jaedanRegion === "수도권" ? "수도권 1년" : "지방 6개월"} 기준 미충족 (약 ${remaining}개월 후 가능)`;
-      } else {
-        jaedanReapplyMsg = `재단 재신청 가능 ✅ (${form.loans.jaedanRegion === "수도권" ? "수도권 1년" : "지방 6개월"} 경과)`;
-      }
-    }
-
-    const results = [];
-    const warnings = [];
-    const checks = [];
-
-    const isManufacturing = form.industry.includes("제조") || form.industry.includes("건설") || form.industry.includes("운수");
-    const maxEmployees = isManufacturing ? 9 : 4;
-    const isRestaurant = form.industry.includes("음식점") || form.industry.includes("카페");
-    const isFranchiseFood = isRestaurant && form.isFranchise;
-    const isRetail = form.industry.includes("도소매");
-    const isManuf = form.industry.includes("제조");
-
-    if (employeesNum > maxEmployees) {
-      warnings.push(`⚠️ ${form.industry} 기준 소상공인 상한 ${maxEmployees}명 초과 (현재 ${employeesNum}명) → 정책자금 신청 불가`);
-    }
-    if (form.taxDelinquent === "yes") {
-      warnings.push("⚠️ 국세·지방세 체납 중 → 정책자금 신청 불가 (체납 해소 후 신청 가능)");
-    }
-    if (bizAgeNum >= 7) {
-      if (remainingCapacity < 0) {
-        warnings.push(`⚠️ 업력 ${bizAgeNum}년 (7년 이상) — 매출 ${salesNum.toLocaleString()}만원 - 사업자대출 ${totalBizLoan.toLocaleString()}만원 = ${remainingCapacity.toLocaleString()}만원 → 매출초과차입금 기준 초과, 신청 불가`);
-      } else {
-        checks.push(`✅ 업력 ${bizAgeNum}년 (7년 이상) — 매출초과차입금 여유 ${remainingCapacity.toLocaleString()}만원`);
-      }
-    } else {
-      checks.push(`✅ 업력 ${bizAgeNum}년 (7년 미만) — 매출초과차입금 기준 미적용`);
-    }
-
-    if (jaedanReapplyMsg) {
-      jaedanCanReapply ? checks.push(jaedanReapplyMsg) : warnings.push(`⚠️ ${jaedanReapplyMsg}`);
-    }
-
-    const canApply = form.taxDelinquent !== "yes" && employeesNum <= maxEmployees && (bizAgeNum < 7 || remainingCapacity >= 0);
     const hasSmartDevice = form.smartDevices.length > 0;
-    const creditScore = creditKCB || creditNICE;
-
-    // 혁신성장촉진자금 일반형
-    if (canApply && hasSmartDevice && sojingongRemain > 0) {
-      results.push({
-        tag: "소진공 직접대출",
-        name: "혁신성장촉진자금 일반형",
-        limit: `최대 ${Math.min(sojingongRemain, 10000).toLocaleString()}만원`,
-        rate: "정책자금 기준금리 + 0.4%p",
-        period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
-        condition: `스마트기기 보유 ✅ | 소진공 잔여한도 ${sojingongRemain.toLocaleString()}만원`,
-        color: "#0f3460",
-        institution: "소진공",
-        cap: 10000,
-      });
-    }
-    if (!hasSmartDevice && canApply) {
-      checks.push(`💡 스마트기기 보유 시 혁신성장촉진자금 신청이 가능합니다. 현재는 보유 스마트기기가 없어 대상이 아닙니다.`);
-    }
-
-    // 혁신성장촉진자금 혁신형
-    const isHyuksin = form.exportRecord === "yes" || form.salesGrowth === "yes";
-    if (canApply && isHyuksin && hasSmartDevice && sojingongRemainHyuksin > 0) {
-      results.push({
-        tag: "소진공 직접대출",
-        name: "혁신성장촉진자금 혁신형",
-        limit: `최대 ${Math.min(sojingongRemainHyuksin, 20000).toLocaleString()}만원`,
-        rate: "정책자금 기준금리 + 0.4%p",
-        period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
-        condition: form.exportRecord === "yes" ? "수출 실적 1천달러 이상 ✅" : "2년 연속 매출 10% 증가 ✅",
-        color: "#0f3460",
-        institution: "소진공",
-        cap: 20000,
-      });
-    }
-
-    // 재도전특별자금
-    if (canApply && form.hasBankruptcy === "yes" && form.currentBizCount === "1" && bizAgeNum < 7 && sojingongRemain > 0) {
-      results.push({
-        tag: "소진공 직접대출",
-        name: "재도전특별자금 일반형",
-        limit: `최대 ${Math.min(sojingongRemain, 7000).toLocaleString()}만원`,
-        rate: "정책자금 기준금리 + 0.4%p",
-        period: "운전 5년 (거치 2년) / 시설 8년 (거치 3년)",
-        condition: "폐업이력 ✅ + 사업자 1개 ✅ + 업력 7년 미만 ✅",
-        color: "#0f3460",
-        institution: "소진공",
-        cap: 7000,
-      });
-    }
-
-    // 신용취약소상공인
-    const creditEligible = creditScore >= 595 && creditScore <= 839;
-    if (canApply && sinYongAvailable && creditEligible) {
-      const remaining = 3000 - sinYongLoan;
-      results.push({
-        tag: "소진공 직접대출",
-        name: "신용취약소상공인자금",
-        limit: `최대 ${remaining.toLocaleString()}만원`,
-        rate: "정책자금 기준금리 + 0.4%p",
-        period: "5년 (거치 2년)",
-        condition: `신용점수 ${creditScore}점 (595~839점 해당) ✅ | 잔여한도 ${remaining.toLocaleString()}만원`,
-        color: "#1565c0",
-        institution: "소진공",
-        cap: 3000,
-      });
-    } else {
-      if (!sinYongAvailable) {
-        warnings.push("⚠️ 신용취약소상공인자금 — 3,000만원 한도 소진으로 추가 신청 불가");
-      }
-      if (creditScore > 839) {
-        warnings.push(`⚠️ 신용취약소상공인자금 — 신용점수 ${creditScore}점으로 대상 범위(595~839점) 초과, 신청 불가`);
-      }
-      if (creditScore > 0 && creditScore < 595) {
-        warnings.push(`⚠️ 신용취약소상공인자금 — 신용점수 ${creditScore}점으로 최저 기준(595점) 미달, 신청 불가`);
-      }
-    }
-
-    // 재단/신보/기보 중복 이용 여부 확인 — 이미 하나를 쓰고 있으면 다른 건 원칙적으로 신규 진행 불가 (대환 등은 상담 필요)
-    const jaedanActive = jaedanLoan > 0;
-    const shinboActive = shinboLoan > 0;
-    const giboActive = giboLoan > 0;
-
-    // 신용보증재단
-    const jaedanRemain = Math.max(0, 10000 - jaedanLoan);
-    if (shinboActive || giboActive) {
-      if (!jaedanActive) {
-        warnings.push(`⚠️ 이미 ${shinboActive ? "신보" : "기보"} 이용 중 — 신용보증재단 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
-      }
-    } else if (canApply && jaedanRemain > 0 && jaedanCanReapply) {
-      results.push({
-        tag: "간접대출 (보증)",
-        name: "신용보증재단",
-        limit: `최대 ${jaedanRemain.toLocaleString()}만원`,
-        rate: "은행 대출금리 적용",
-        period: "은행별 상이",
-        condition: `잔여 보증한도 ${jaedanRemain.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
-        color: "#2e7d32",
-        institution: "신용보증재단",
-        cap: 10000,
-      });
-    }
-
-    // 신보 재신청 가능 여부
-    let shinboCanReapply = true;
-    if (shinboLoan > 0 && form.loans.shinboDate) {
-      const shinboDate = new Date(form.loans.shinboDate);
-      const today = new Date();
-      const diffMonths = (today.getFullYear() - shinboDate.getFullYear()) * 12 + (today.getMonth() - shinboDate.getMonth());
-      shinboCanReapply = diffMonths >= 12;
-      if (!shinboCanReapply) {
-        const remaining = 12 - diffMonths;
-        warnings.push(`⚠️ 신용보증기금 재신청 불가 — 1년 기준 미충족 (약 ${remaining}개월 후 가능)`);
-      } else {
-        checks.push(`✅ 신용보증기금 재신청 가능 (1년 경과)`);
-      }
-    }
-
-    // 기보 재신청 가능 여부
-    let giboCanReapply = true;
-    if (giboLoan > 0 && form.loans.giboDate) {
-      const giboDate = new Date(form.loans.giboDate);
-      const today = new Date();
-      const diffMonths = (today.getFullYear() - giboDate.getFullYear()) * 12 + (today.getMonth() - giboDate.getMonth());
-      giboCanReapply = diffMonths >= 12;
-      if (!giboCanReapply) {
-        const remaining = 12 - diffMonths;
-        warnings.push(`⚠️ 기술보증기금 재신청 불가 — 1년 기준 미충족 (약 ${remaining}개월 후 가능)`);
-      } else {
-        checks.push(`✅ 기술보증기금 재신청 가능 (1년 경과)`);
-      }
-    }
-
-    // 신보 (일반 식당은 원칙적으로 대상 아님. 프랜차이즈·가맹점은 매출 기준으로 검토 가능)
-    if (jaedanActive || giboActive) {
-      if (!shinboActive) {
-        warnings.push(`⚠️ 이미 ${jaedanActive ? "신용보증재단" : "기보"} 이용 중 — 신용보증기금(신보) 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
-      }
-    } else if (canApply && shinboCanReapply && (!isRestaurant || isFranchiseFood) && ((isRetail && salesNum >= 50000) || (isManuf && salesNum >= 30000) || (isFranchiseFood && salesNum >= 50000))) {
-      const shinboLimit = isManuf ? Math.floor(salesNum / 4) : Math.floor(salesNum / 6);
-      results.push({
-        tag: "간접대출 (보증)",
-        name: "신용보증기금 (신보)",
-        limit: `최대 ${shinboLimit.toLocaleString()}만원`,
-        rate: "은행 대출금리 적용",
-        period: "은행별 상이",
-        condition: `매출 ÷ ${isManuf ? 4 : 6} = ${shinboLimit.toLocaleString()}만원 ※ 재단/신보/기보 중 1개만 선택`,
-        color: "#2e7d32",
-        institution: "신용보증기금(신보)",
-        cap: null,
-      });
-    }
-    if (isRestaurant && !isFranchiseFood) {
-      checks.push("ℹ️ 신용보증기금·기술보증기금은 요식업 특성상 대상 업종이 아닙니다 (프랜차이즈·가맹점은 별도 검토 가능)");
-    }
-
-    // 기보: 핵심 조건은 특허보유 또는 대표자 경력 10년 이상 (매출/업종 기준 아님). 한도는 매출·기술력 등에 따라
-    // 보증 심사 시 결정되므로 특정 금액을 미리 계산해 보여주지 않습니다.
-    const careerYearsNum = parseNum(form.careerYears);
-    const giboCore = [];
-    if (form.hasPatent === "yes") giboCore.push("특허보유");
-    if (careerYearsNum >= 10) giboCore.push(`대표자 경력 ${careerYearsNum}년`);
-    if (jaedanActive || shinboActive) {
-      if (!giboActive) {
-        warnings.push(`⚠️ 이미 ${jaedanActive ? "신용보증재단" : "신보"} 이용 중 — 기술보증기금(기보) 신규 보증은 원칙적으로 불가 (대환 등 예외는 상담 필요)`);
-      }
-    } else if (canApply && giboCanReapply && (!isRestaurant || isFranchiseFood) && giboCore.length > 0) {
-      results.push({
-        tag: "간접대출 (보증)",
-        name: "기술보증기금 (기보)",
-        limit: "보증 심사 시 결정",
-        rate: "은행 대출금리 적용",
-        period: "은행별 상이",
-        condition: `충족 요건: ${giboCore.join(", ")} ※ 재단/신보/기보 중 1개만 선택, 한도는 매출·기술력 등을 종합해 심사 시 결정`,
-        color: "#6a1b9a",
-        institution: "기술보증기금(기보)",
-      });
-    } else if (canApply && (!isRestaurant || isFranchiseFood) && giboCore.length === 0) {
-      checks.push("ℹ️ 기술보증기금(기보) — 특허보유 또는 대표자 경력 10년 이상 조건 확인 필요");
-    }
-
-    // 중진공: 정확한 심사 기준 미확정 — 별도 상담 필요로만 안내
-    if (canApply) {
-      checks.push("ℹ️ 중진공(중소벤처기업진흥공단) — 기준 확인 필요, 상담 시 별도 검토");
-    }
-
-    // AI 분석용 고객 정보 요약
-    const hasSojingongResult = results.some((r) => r.tag === "소진공 직접대출");
-    const hasGuaranteeResult = results.some((r) => r.tag === "간접대출 (보증)");
-    if (hasSojingongResult && hasGuaranteeResult) {
-      checks.push("💡 소진공 직접대출(직접대출)과 재단·신보·기보(간접대출/보증)는 서로 다른 방식이라 타이밍만 맞으면 함께 진행 가능합니다 — 진행 순서는 상담에서 안내해드립니다.");
-    }
-
     const customerSummary = `업종: ${form.industry}, 업력: ${bizAgeNum}년, 작년매출: ${salesNum.toLocaleString()}만원, 직원수: ${employeesNum}명, 신용점수: KCB ${creditKCB || "-"} / NICE ${creditNICE || "-"}, 소진공 대출: 신용취약 ${sinYongLoan}만원 / 혁신 ${hyuksinLoan}만원 / 재도전 ${jaedoLoan}만원, 신용보증재단: ${jaedanLoan}만원, 신보: ${shinboLoan}만원, 기보: ${giboLoan}만원, 폐업이력: ${form.hasBankruptcy === "yes" ? "있음" : "없음"}, 사업자수: ${form.currentBizCount || "-"}, 스마트기기: ${hasSmartDevice ? form.smartDevices.join(", ") : "없음"}, 수출: ${form.exportRecord === "yes" ? "있음" : "없음"}, 2년연속매출10%증가: ${form.salesGrowth === "yes" ? "있음" : "없음"}`;
 
-    setResult({ results, warnings, checks, totalBizLoan, totalPersonalLoan, remainingCapacity, sojingongRemain, bizAgeNum, customerSummary });
+    setResult({
+      results,
+      warnings: sharedResult.warnings,
+      checks: sharedResult.checks,
+      totalBizLoan: sharedResult.totalBizLoan,
+      totalPersonalLoan: sharedResult.totalPersonalLoan,
+      remainingCapacity: sharedResult.remainingCapacity,
+      sojingongRemain: sharedResult.sojingongRemain,
+      bizAgeNum: sharedResult.bizAgeNum,
+      customerSummary,
+    });
     setLoading(false);
   };
 
