@@ -8,6 +8,25 @@ import ReminderWidget from '../components/ReminderWidget'
 import ReapplyReminderWidget from '../components/ReapplyReminderWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
+// 내 자가진단 공개 링크 — 로그인 없이 잠재고객이 접속해 간단 입력하면 내 CRM에 리드로 등록됨.
+function MyApplyLink({ username }) {
+  const [copied, setCopied] = useState(false)
+  const url = typeof window !== 'undefined' ? `${window.location.origin}/apply/${username}` : `/apply/${username}`
+  return (
+    <div style={{ background: '#FBF7EE', borderRadius: 14, padding: '14px 18px', marginBottom: 18, border: '1px solid #EEE6DA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div>
+        <p style={{ fontSize: 12, color: '#8A8272', margin: '0 0 2px', fontWeight: 700 }}>📮 내 자가진단 공개 링크</p>
+        <p style={{ fontSize: 12.5, color: '#2A2925', margin: 0, wordBreak: 'break-all' }}>{url}</p>
+      </div>
+      <button
+        onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
+        style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+        {copied ? '복사됨 ✓' : '링크 복사'}
+      </button>
+    </div>
+  )
+}
+
 const CARDS = {
   chat: {
     icon: '🤖', title: 'AI 자금진단', desc: '정책자금 항목별 분석 · AI 채팅 · 캘린더',
@@ -106,6 +125,7 @@ export default function MenuPage() {
 
       {/* 메뉴 카드 */}
       <div style={{ maxWidth: 880, margin: '-36px auto 0', padding: '0 24px 48px' }}>
+        <MyApplyLink username={user.username} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
           {visibleCards.map((card) => (
             <div

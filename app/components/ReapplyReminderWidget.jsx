@@ -11,14 +11,17 @@ export default function ReapplyReminderWidget({ user }) {
   const router = useRouter()
   const [dated, setDated] = useState([])
   const [announcement, setAnnouncement] = useState([])
+  const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
-    fetch('/api/applications/reminders?within=14')
-      .then((r) => r.json())
-      .then((d) => { setDated(d.dated || []); setAnnouncement(d.announcement || []) })
-      .catch(() => { setDated([]); setAnnouncement([]) })
+    Promise.all([
+      fetch('/api/applications/reminders?within=14').then((r) => r.json()),
+      fetch('/api/announcements/match').then((r) => r.json()).catch(() => ({ matches: [] })),
+    ])
+      .then(([d, m]) => { setDated(d.dated || []); setAnnouncement(d.announcement || []); setMatches(m.matches || []) })
+      .catch(() => { setDated([]); setAnnouncement([]); setMatches([]) })
       .finally(() => setLoading(false))
   }, [user])
 
@@ -65,11 +68,15 @@ export default function ReapplyReminderWidget({ user }) {
         {announcement.length > 0 && (
           <div style={{ marginTop: 4, paddingTop: 10, borderTop: '1px dashed #E4E2DB' }}>
             <p style={{ fontSize: 11.5, color: '#8A8272', margin: '0 0 8px' }}>공고 뜨면 재도전 (소진공 등 기간 제한 없음, {announcement.length}건)</p>
-            {announcement.slice(0, 3).map((a) => (
-              <div key={a.id} onClick={() => router.push(`/customers/${a.customer_id}`)} style={{ fontSize: 12.5, color: '#5F5E5A', padding: '4px 0', cursor: 'pointer' }}>
-                • {a.owner_name || '이름 미입력'} — {a.fund_name}
-              </div>
-            ))}
+            {announcement.slice(0, 5).map((a) => {
+              const m = matches.find((x) => x.applicationId === a.id)
+              return (
+                <div key={a.id} onClick={() => router.push(`/customers/${a.customer_id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '4px 0', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 12.5, color: '#5F5E5A' }}>• {a.owner_name || '이름 미입력'} — {a.fund_name}</span>
+                  {m && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 8px', borderRadius: 20, background: '#E1F5EE', color: '#085041', flexShrink: 0 }}>관련 공고 떴을 수도</span>}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

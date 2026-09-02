@@ -5,7 +5,10 @@
 // 접수 건을 추가하고, 단계를 옮기고, 부결 시 사유를 남기면 마스터 DB의 reapply_rule로 재신청 가능일을 자동 계산.
 
 import { useState } from 'react';
-import { STAGES } from '@/lib/applicationsStore';
+
+// STAGES는 lib/applicationsStore.js(서버 전용, DB 연결 포함)에서 가져오지 않고 여기 그대로 둠 —
+// 클라이언트 컴포넌트가 서버 전용 모듈(@/lib/db)을 번들에 끌고 들어가면 빌드가 깨짐.
+const STAGES = ['상담', '서류수집', '신청', '심사중', '승인', '부결', '보류'];
 
 const STAGE_COLOR = {
   '상담': { bg: '#EFEEE9', fg: '#5F5E5A' },
