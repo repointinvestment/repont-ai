@@ -13,6 +13,7 @@ import { buildVerdict } from '@/lib/policyFundVerdict';
 import DocumentFactsPanel from '../../components/DocumentFactsPanel';
 import VerdictPanel from '../../components/VerdictPanel';
 import ConclusionBox, { Collapsible } from '../../components/ConclusionBox';
+import ApplicationPipeline from '../../components/ApplicationPipeline';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -39,6 +40,15 @@ export default function CustomerDashboardPage() {
   const [fundsByKey, setFundsByKey] = useState({});
   const [rulesByKey, setRulesByKey] = useState({});
   const [docData, setDocData] = useState(null); // { facts, comparison } — 서류발급 결과 기반 사실값
+  const [applications, setApplications] = useState([]);
+
+  async function loadApplications() {
+    try {
+      const r = await fetch(`/api/customers/${params.id}/applications`);
+      const d = await r.json();
+      setApplications(d.applications || []);
+    } catch { setApplications([]); }
+  }
 
   async function loadDocFacts() {
     try {
@@ -69,6 +79,7 @@ export default function CustomerDashboardPage() {
         if (!res.ok) throw new Error();
         setCustomer(data.customer);
         loadDocFacts();
+        loadApplications();
         fetch(`/api/customers/${params.id}/credentials`)
           .then((r) => r.json())
           .then((d) => setCredentials(d.credentials || []))
@@ -404,6 +415,11 @@ export default function CustomerDashboardPage() {
             />
           </Collapsible>
         )}
+
+        {/* 파이프라인: 실제 접수 진행 상황 */}
+        <Collapsible title="접수 파이프라인" badge={applications.length ? `${applications.length}건` : '진행 중인 접수 없음'} defaultOpen={applications.some((a) => a.stage !== '상담' && a.stage !== '승인' && a.stage !== '부결')}>
+          <ApplicationPipeline customerId={params.id} applications={applications} funds={Object.values(fundsByKey)} onChange={loadApplications} />
+        </Collapsible>
 
         {/* 4층: 기존 상세 목록 — 접힘 */}
         <Collapsible title={hasDetailedData ? '신청 가능한 자금 상세 (한도·금리·기간)' : '기관별 예상 가능 한도'} badge={hasDetailedData ? `${analysis.results.length}개` : '참고자료'} defaultOpen={!verdict}>

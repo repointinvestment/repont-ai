@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
 import DeadlineWidget from '../components/DeadlineWidget'
 import ReminderWidget from '../components/ReminderWidget'
+import ReapplyReminderWidget from '../components/ReapplyReminderWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
 const CARDS = {
@@ -131,6 +132,7 @@ export default function MenuPage() {
         <DeadlineWidget />
         <MonthlyReportWidget user={user} />
         <ReminderWidget user={user} />
+        <ReapplyReminderWidget user={user} />
       </div>
     </div>
   )
