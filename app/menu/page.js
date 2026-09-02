@@ -29,6 +29,14 @@ const CARDS = {
     icon: '📝', title: '사업계획서 보관함', desc: '생성한 사업계획서 초안 모아보기',
     path: '/business-plans', accent: '#3B6FB5', tint: '#E4EAF1',
   },
+  simulator: {
+    icon: '🧮', title: '상환 시뮬레이터', desc: '원금·금리·거치기간으로 월 상환액 계산',
+    path: '/simulator', accent: '#8A6D3B', tint: '#F3EDE0',
+  },
+  referrals: {
+    icon: '📮', title: '대표 의뢰함', desc: '법인전환·절세·상속 이슈 케이스 이관 목록',
+    path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
+  },
   admin: {
     icon: '⚙️', title: '계정 관리', desc: '직원/수강생 계정 목록 확인',
     path: '/admin', accent: '#6A5A8C', tint: '#EFEBF5',
@@ -38,9 +46,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'admin'],
-  consultant: ['chat', 'board', 'customers', 'documents', 'plans'],
-  student: ['chat', 'board', 'customers', 'documents', 'plans'],
+  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'referrals', 'admin'],
+  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator'],
+  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator'],
 }
 
 export default function MenuPage() {

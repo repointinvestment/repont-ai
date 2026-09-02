@@ -14,6 +14,7 @@ import DocumentFactsPanel from '../../components/DocumentFactsPanel';
 import VerdictPanel from '../../components/VerdictPanel';
 import ConclusionBox, { Collapsible } from '../../components/ConclusionBox';
 import ApplicationPipeline from '../../components/ApplicationPipeline';
+import ReferralButton from '../../components/ReferralButton';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -41,6 +42,15 @@ export default function CustomerDashboardPage() {
   const [rulesByKey, setRulesByKey] = useState({});
   const [docData, setDocData] = useState(null); // { facts, comparison } — 서류발급 결과 기반 사실값
   const [applications, setApplications] = useState([]);
+  const [referrals, setReferrals] = useState([]);
+
+  async function loadReferrals() {
+    try {
+      const r = await fetch(`/api/customers/${params.id}/referrals`);
+      const d = await r.json();
+      setReferrals(d.referrals || []);
+    } catch { setReferrals([]); }
+  }
 
   async function loadApplications() {
     try {
@@ -80,6 +90,7 @@ export default function CustomerDashboardPage() {
         setCustomer(data.customer);
         loadDocFacts();
         loadApplications();
+        loadReferrals();
         fetch(`/api/customers/${params.id}/credentials`)
           .then((r) => r.json())
           .then((d) => setCredentials(d.credentials || []))
@@ -341,6 +352,8 @@ export default function CustomerDashboardPage() {
           <span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: stage.bg, color: stage.text, fontWeight: 600 }}>
             {customer.status || '상담중'}
           </span>
+          <span style={{ flex: 1 }} />
+          <ReferralButton customerId={params.id} existing={referrals} />
         </div>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
           {customer.industry} {customer.phone ? `· ${customer.phone}` : ''} {customer.email ? `· ${customer.email}` : ''}
