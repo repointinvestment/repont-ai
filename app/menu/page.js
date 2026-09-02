@@ -6,6 +6,7 @@ import AppHeader from '../components/AppHeader'
 import DeadlineWidget from '../components/DeadlineWidget'
 import ReminderWidget from '../components/ReminderWidget'
 import ReapplyReminderWidget from '../components/ReapplyReminderWidget'
+import ContractExpiryWidget from '../components/ContractExpiryWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
 // 내 자가진단 공개 링크 — 로그인 없이 잠재고객이 접속해 간단 입력하면 내 CRM에 리드로 등록됨.
@@ -56,6 +57,14 @@ const CARDS = {
     icon: '📮', title: '대표 의뢰함', desc: '법인전환·절세·상속 이슈 케이스 이관 목록',
     path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
   },
+  mycontracts: {
+    icon: '📄', title: '내 계약서', desc: '자금비서 이용계약 확인·전자서명',
+    path: '/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
+  },
+  contracts: {
+    icon: '📑', title: '연간계약 관리', desc: '계약 생성 · 서명확인 · 입금확인',
+    path: '/admin/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
+  },
   admin: {
     icon: '⚙️', title: '계정 관리', desc: '직원/수강생 계정 목록 확인',
     path: '/admin', accent: '#6A5A8C', tint: '#EFEBF5',
@@ -65,9 +74,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'referrals', 'admin'],
-  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator'],
-  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator'],
+  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'referrals', 'contracts', 'admin'],
+  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mycontracts'],
+  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mycontracts'],
 }
 
 export default function MenuPage() {
@@ -161,6 +170,7 @@ export default function MenuPage() {
         <MonthlyReportWidget user={user} />
         <ReminderWidget user={user} />
         <ReapplyReminderWidget user={user} />
+        <ContractExpiryWidget user={user} />
       </div>
     </div>
   )
