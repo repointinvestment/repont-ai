@@ -9,6 +9,9 @@ import CodefDocumentIssuance from '../../components/CodefDocumentIssuance';
 import { estimateInstitutionLimits } from '@/lib/policyFundEstimate';
 import { analyzePolicyFunds } from '@/lib/policyFundAnalysis';
 import { fetchPolicyFundsData } from '@/lib/policyFundsLookup';
+import { buildVerdict } from '@/lib/policyFundVerdict';
+import DocumentFactsPanel from '../../components/DocumentFactsPanel';
+import VerdictPanel from '../../components/VerdictPanel';
 
 const STAGE_STYLE = {
   '상담중': { bg: '#FAECE7', text: '#712B13' },
@@ -34,6 +37,15 @@ export default function CustomerDashboardPage() {
   const [error, setError] = useState(null);
   const [fundsByKey, setFundsByKey] = useState({});
   const [rulesByKey, setRulesByKey] = useState({});
+  const [docData, setDocData] = useState(null); // { facts, comparison } — 서류발급 결과 기반 사실값
+
+  async function loadDocFacts() {
+    try {
+      const r = await fetch(`/api/customers/${params.id}/document-facts`);
+      const d = await r.json();
+      setDocData(d);
+    } catch { setDocData(null); }
+  }
 
   useEffect(() => {
     const session = getSession();
@@ -54,6 +66,7 @@ export default function CustomerDashboardPage() {
         const data = await res.json();
         if (!res.ok) throw new Error();
         setCustomer(data.customer);
+        loadDocFacts();
         fetch(`/api/customers/${params.id}/credentials`)
           .then((r) => r.json())
           .then((d) => setCredentials(d.credentials || []))
@@ -274,8 +287,7 @@ export default function CustomerDashboardPage() {
   const stage = STAGE_STYLE[customer.status] || STAGE_STYLE['상담중'];
   const hasDetailedData = customer.business_age_years !== null && customer.business_age_years !== undefined;
   const pfd = customer.policy_fund_details || {};
-  const analysis = hasDetailedData
-    ? analyzePolicyFunds({
+  const analysisForm = {
         industry: customer.industry,
         bizAge: customer.business_age_years,
         sales: customer.revenue_amount,
@@ -293,8 +305,9 @@ export default function CustomerDashboardPage() {
         isFranchise: pfd.isFranchise,
         hasPatent: customer.has_patent,
         careerYears: customer.owner_career_years,
-      }, fundsByKey, rulesByKey)
-    : null;
+      };
+  const analysis = hasDetailedData ? analyzePolicyFunds(analysisForm, fundsByKey, rulesByKey) : null;
+  const verdict = analysis ? buildVerdict({ analysis, form: analysisForm, fundsByKey, rulesByKey, docFacts: docData?.facts || null }) : null;
   const limits = estimateInstitutionLimits(customer, fundsByKey, rulesByKey);
   const maxLimit = Math.max(...limits.map((l) => l.limit || 0), 1);
 
@@ -362,6 +375,17 @@ export default function CustomerDashboardPage() {
             <p style={statValue}>{customer.credit_kcb || '미입력'}</p>
           </div>
         </div>
+
+        <DocumentFactsPanel
+          data={docData}
+          onApply={async (fields) => {
+            const r = await fetch(`/api/customers/${params.id}/document-facts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+            const d = await r.json();
+            if (r.ok && d.customer) { setCustomer(d.customer); loadDocFacts(); }
+          }}
+        />
+
+        {verdict && <VerdictPanel verdict={verdict} />}
 
         {hasDetailedData ? (
           <div style={{ background: '#fff', borderRadius: 14, padding: '24px 28px', marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
