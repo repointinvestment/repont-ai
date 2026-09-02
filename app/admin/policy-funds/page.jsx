@@ -27,13 +27,26 @@ const emptyFund = () => ({
   required_docs: [], exclusive_group: '', notes: '', active: true, sort_order: 0,
 })
 
+const OUTCOMES = ['승인', '감액승인', '부결', '진행중', '기타']
+const LOAN_SLOTS = ['소진공', '재단', '신보', '기보', '중진공', '사업자대출']
+
+const emptyCase = () => ({
+  title: '', fund_key: '', institution: '', fund_name: '', industry: '',
+  biz_age_years: '', sales: '', employees: '', credit_score: '',
+  existing_loans: Object.fromEntries(LOAN_SLOTS.map((k) => [k, ''])),
+  outcome: '승인', approved_amount: '', requested_amount: '', rejection_reason: '',
+  case_date: '', region: '', lesson: '', details: '', tags: '',
+})
+
 export default function PolicyFundsAdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [funds, setFunds] = useState([])
   const [rules, setRules] = useState([])
+  const [cases, setCases] = useState([])
   const [editing, setEditing] = useState(null) // fund object being edited (null = closed)
   const [editingRule, setEditingRule] = useState(null)
+  const [editingCase, setEditingCase] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [tab, setTab] = useState('funds')
@@ -47,10 +60,12 @@ export default function PolicyFundsAdminPage() {
   }, [])
 
   async function load() {
-    const r = await fetch('/api/policy-funds')
+    const [r, rc] = await Promise.all([fetch('/api/policy-funds'), fetch('/api/policy-funds/cases')])
     const d = await r.json()
+    const dc = await rc.json().catch(() => ({}))
     setFunds(d.funds || [])
     setRules(d.rules || [])
+    setCases(dc.cases || [])
   }
 
   const headers = () => ({
@@ -167,6 +182,79 @@ export default function PolicyFundsAdminPage() {
     await load()
   }
 
+  function openCase(c) {
+    const loans = c?.existing_loans || {}
+    setEditingCase({
+      ...emptyCase(),
+      ...(c || {}),
+      biz_age_years: c?.biz_age_years ?? '',
+      sales: c?.sales ?? '',
+      employees: c?.employees ?? '',
+      credit_score: c?.credit_score ?? '',
+      approved_amount: c?.approved_amount ?? '',
+      requested_amount: c?.requested_amount ?? '',
+      case_date: c?.case_date ? String(c.case_date).slice(0, 10) : '',
+      fund_key: c?.fund_key ?? '',
+      institution: c?.institution ?? '',
+      fund_name: c?.fund_name ?? '',
+      industry: c?.industry ?? '',
+      region: c?.region ?? '',
+      rejection_reason: c?.rejection_reason ?? '',
+      lesson: c?.lesson ?? '',
+      details: c?.details ?? '',
+      existing_loans: Object.fromEntries(LOAN_SLOTS.map((k) => [k, loans[k] ?? ''])),
+      tags: Array.isArray(c?.tags) ? c.tags.join(', ') : (c?.tags || ''),
+    })
+    setError(null)
+  }
+
+  // 자금 선택 시 기관·자금명 자동 채움
+  function pickCaseFund(key) {
+    const f = funds.find((x) => x.key === key)
+    setEditingCase({ ...editingCase, fund_key: key, institution: f?.institution ?? editingCase.institution, fund_name: f?.name ?? editingCase.fund_name })
+  }
+
+  async function saveCase() {
+    if (!editingCase.title?.trim()) { setError('사례 제목을 입력해주세요.'); return }
+    setSaving(true); setError(null)
+    const num = (v) => (v === '' || v === null || v === undefined ? null : Number(String(v).replace(/[^0-9.-]/g, '')))
+    try {
+      const loans = {}
+      for (const k of LOAN_SLOTS) { const v = num(editingCase.existing_loans?.[k]); if (v != null && v !== 0) loans[k] = v }
+      const payload = {
+        ...editingCase,
+        biz_age_years: num(editingCase.biz_age_years),
+        sales: num(editingCase.sales),
+        employees: num(editingCase.employees),
+        credit_score: num(editingCase.credit_score),
+        approved_amount: num(editingCase.approved_amount),
+        requested_amount: num(editingCase.requested_amount),
+        case_date: editingCase.case_date || null,
+        fund_key: editingCase.fund_key || null,
+        existing_loans: loans,
+        tags: String(editingCase.tags || '').split(',').map((t) => t.trim()).filter(Boolean),
+      }
+      const isNew = !editingCase.id
+      const res = await fetch(isNew ? '/api/policy-funds/cases' : `/api/policy-funds/cases/${editingCase.id}`, {
+        method: isNew ? 'POST' : 'PUT', headers: headers(), body: JSON.stringify(payload),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || '저장 실패')
+      setEditingCase(null)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeCase(c) {
+    if (!confirm(`"${c.title}" 사례를 삭제할까요?`)) return
+    await fetch(`/api/policy-funds/cases/${c.id}`, { method: 'DELETE', headers: headers() })
+    await load()
+  }
+
   if (!user) return null
 
   const fmtWon = (v) => (v == null ? '-' : v >= 10000 ? `${(v / 10000).toLocaleString()}억` : `${v.toLocaleString()}만`)
@@ -197,14 +285,14 @@ export default function PolicyFundsAdminPage() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button style={btnGhost} onClick={() => router.push('/admin')}>계정 관리로</button>
-            {tab === 'funds'
-              ? <button style={btn} onClick={() => openEdit(null)}>+ 자금 추가</button>
-              : <button style={btn} onClick={() => setEditingRule({ key: '', title: '', content: '', params: {}, sort_order: (rules.at(-1)?.sort_order || 0) + 10 })}>+ 규칙 추가</button>}
+            {tab === 'funds' && <button style={btn} onClick={() => openEdit(null)}>+ 자금 추가</button>}
+            {tab === 'rules' && <button style={btn} onClick={() => setEditingRule({ key: '', title: '', content: '', params: {}, sort_order: (rules.at(-1)?.sort_order || 0) + 10 })}>+ 규칙 추가</button>}
+            {tab === 'cases' && <button style={btn} onClick={() => openCase(null)}>+ 사례 추가</button>}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 6, margin: '18px 0 14px' }}>
-          {[['funds', `자금 (${funds.length})`], ['rules', `공통 규칙 (${rules.length})`]].map(([k, t]) => (
+          {[['funds', `자금 (${funds.length})`], ['rules', `공통 규칙 (${rules.length})`], ['cases', `실무 사례 (${cases.length})`]].map(([k, t]) => (
             <button key={k} onClick={() => setTab(k)} style={{
               ...btnGhost, background: tab === k ? '#2A2925' : '#fff', color: tab === k ? '#fff' : '#2A2925',
             }}>{t}</button>
@@ -268,6 +356,58 @@ export default function PolicyFundsAdminPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'cases' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {cases.length === 0 && (
+              <div style={{ ...card, color: '#8A8A85', fontSize: 13.5, lineHeight: 1.7 }}>
+                아직 등록된 사례가 없습니다. 실제로 받아준 건, 부결된 건, 규칙과 다르게 갈린 건을 여기 쌓아두면
+                자격판정 결과의 "유사 사례" 근거와 AI 상담 참고, 수강생 교육 자료로 쓰입니다.
+                <br />고객 이름·사업자번호 같은 식별 정보는 넣지 말고 업종·규모·조건만 기록하세요.
+              </div>
+            )}
+            {cases.map((c) => {
+              const oc = c.outcome === '승인' || c.outcome === '감액승인' ? { bg: '#E1F5EE', fg: '#085041' } : c.outcome === '부결' ? { bg: '#FAECE7', fg: '#712B13' } : { bg: '#EFEEE9', fg: '#5F5E5A' }
+              const loans = c.existing_loans || {}
+              const loanText = Object.entries(loans).filter(([, v]) => v).map(([k, v]) => `${k} ${fmtWon(v)}`).join(' · ')
+              return (
+                <div key={c.id} style={card}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: 15, color: '#1a1a2e' }}>{c.title}</strong>
+                        {c.outcome && <span style={{ fontSize: 11.5, padding: '2px 8px', borderRadius: 999, background: oc.bg, color: oc.fg, fontWeight: 600 }}>{c.outcome}</span>}
+                        {c.fund_name && <span style={{ fontSize: 11.5, padding: '2px 8px', borderRadius: 999, background: '#E3F2FD', color: '#1565C0' }}>{c.fund_name}</span>}
+                        {c.institution && !c.fund_name && <span style={{ fontSize: 11.5, padding: '2px 8px', borderRadius: 999, background: '#EFEEE9', color: '#5F5E5A' }}>{c.institution}</span>}
+                        {c.case_date && <span style={{ fontSize: 11.5, color: '#8A8A85' }}>{String(c.case_date).slice(0, 7)}</span>}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#5F5E5A', marginTop: 6, lineHeight: 1.6 }}>
+                        {[c.industry, c.biz_age_years != null ? `업력 ${c.biz_age_years}년` : null, c.sales != null ? `매출 ${fmtWon(c.sales)}` : null,
+                          c.employees != null ? `직원 ${c.employees}명` : null, c.credit_score != null ? `신용 ${c.credit_score}점` : null, c.region].filter(Boolean).join(' · ')}
+                        {loanText ? <><br />기존 대출: {loanText}</> : null}
+                        {(c.requested_amount != null || c.approved_amount != null) && (
+                          <><br />{c.requested_amount != null ? `신청 ${fmtWon(c.requested_amount)}` : ''}{c.requested_amount != null && c.approved_amount != null ? ' → ' : ''}{c.approved_amount != null ? `실행 ${fmtWon(c.approved_amount)}` : ''}</>
+                        )}
+                        {c.rejection_reason ? <><br />부결 사유: {c.rejection_reason}</> : null}
+                      </div>
+                      {c.lesson && <div style={{ fontSize: 13, color: '#2A2925', marginTop: 8, padding: '8px 10px', background: '#FAF7EE', borderRadius: 8, borderLeft: '3px solid #B26A00' }}>💡 {c.lesson}</div>}
+                      {c.details && <div style={{ fontSize: 12.5, color: '#5F5E5A', marginTop: 6, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{c.details}</div>}
+                      {Array.isArray(c.tags) && c.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                          {c.tags.map((t, i) => <span key={i} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, background: '#EFEEE9', color: '#5F5E5A' }}>#{t}</span>)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button style={btnGhost} onClick={() => openCase(c)}>수정</button>
+                      <button style={btnDanger} onClick={() => removeCase(c)}>삭제</button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -368,6 +508,69 @@ export default function PolicyFundsAdminPage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
             <button style={btnGhost} onClick={() => setEditingRule(null)}>취소</button>
             <button style={btn} disabled={saving} onClick={saveRule}>{saving ? '저장 중...' : '저장'}</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ───────── 사례 편집 모달 ───────── */}
+      {editingCase && (
+        <Modal onClose={() => setEditingCase(null)} title={editingCase.id ? `사례 수정 — ${editingCase.title}` : '사례 추가'}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="사례 제목 * (한 줄 요약, 예: 매출 17억 도소매 — 신보 3억 보유 상태에서 재단 1억 추가 승인)" full>
+              <input style={input} value={editingCase.title} onChange={(e) => setEditingCase({ ...editingCase, title: e.target.value })} />
+            </Field>
+            <Field label="관련 자금">
+              <select style={input} value={editingCase.fund_key} onChange={(e) => pickCaseFund(e.target.value)}>
+                <option value="">(선택 안 함 / 여러 자금에 걸침)</option>
+                {funds.map((f) => <option key={f.key} value={f.key}>{f.name} — {f.institution}</option>)}
+              </select>
+            </Field>
+            <Field label="결과">
+              <select style={input} value={editingCase.outcome} onChange={(e) => setEditingCase({ ...editingCase, outcome: e.target.value })}>
+                {OUTCOMES.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </Field>
+            <Field label="기관 (자금 선택 시 자동)"><input style={input} value={editingCase.institution} onChange={(e) => setEditingCase({ ...editingCase, institution: e.target.value })} /></Field>
+            <Field label="자금명 (자금 선택 시 자동)"><input style={input} value={editingCase.fund_name} onChange={(e) => setEditingCase({ ...editingCase, fund_name: e.target.value })} /></Field>
+
+            <Field label="업종"><input style={input} placeholder="예: 도소매업, 제조업, 프랜차이즈 음식점" value={editingCase.industry} onChange={(e) => setEditingCase({ ...editingCase, industry: e.target.value })} /></Field>
+            <Field label="지역"><input style={input} placeholder="예: 부산, 수도권" value={editingCase.region} onChange={(e) => setEditingCase({ ...editingCase, region: e.target.value })} /></Field>
+            <Field label="업력 (년)"><input style={input} type="number" step="0.5" value={editingCase.biz_age_years} onChange={(e) => setEditingCase({ ...editingCase, biz_age_years: e.target.value })} /></Field>
+            <Field label="연매출 (만원)"><input style={input} placeholder="예: 170000 (=17억)" value={editingCase.sales} onChange={(e) => setEditingCase({ ...editingCase, sales: e.target.value })} /></Field>
+            <Field label="직원 수 (대표 제외)"><input style={input} type="number" value={editingCase.employees} onChange={(e) => setEditingCase({ ...editingCase, employees: e.target.value })} /></Field>
+            <Field label="신용점수"><input style={input} type="number" value={editingCase.credit_score} onChange={(e) => setEditingCase({ ...editingCase, credit_score: e.target.value })} /></Field>
+
+            <Field label="신청 당시 기존 대출 잔액 (만원) — 없으면 비워두기" full>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {LOAN_SLOTS.map((k) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, color: '#5F5E5A', minWidth: 60 }}>{k}</span>
+                    <input style={input} placeholder="0" value={editingCase.existing_loans?.[k] ?? ''} onChange={(e) => setEditingCase({ ...editingCase, existing_loans: { ...editingCase.existing_loans, [k]: e.target.value } })} />
+                  </div>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="신청 금액 (만원)"><input style={input} value={editingCase.requested_amount} onChange={(e) => setEditingCase({ ...editingCase, requested_amount: e.target.value })} /></Field>
+            <Field label="실행/승인 금액 (만원)"><input style={input} value={editingCase.approved_amount} onChange={(e) => setEditingCase({ ...editingCase, approved_amount: e.target.value })} /></Field>
+            <Field label="시점 (공고가 매년 바뀌므로 꼭 기록)"><input style={input} type="date" value={editingCase.case_date} onChange={(e) => setEditingCase({ ...editingCase, case_date: e.target.value })} /></Field>
+            <Field label="부결·감액 사유 (해당 시)"><input style={input} value={editingCase.rejection_reason} onChange={(e) => setEditingCase({ ...editingCase, rejection_reason: e.target.value })} /></Field>
+
+            <Field label="배운 점 / 규칙과 달랐던 부분 (판정·상담에서 근거로 보여줄 핵심 한두 문장)" full>
+              <textarea style={{ ...input, minHeight: 70 }} value={editingCase.lesson} onChange={(e) => setEditingCase({ ...editingCase, lesson: e.target.value })} />
+            </Field>
+            <Field label="상세 (자유 서술 — 진행 과정, 담당자 반응, 서류 이슈 등)" full>
+              <textarea style={{ ...input, minHeight: 100 }} value={editingCase.details} onChange={(e) => setEditingCase({ ...editingCase, details: e.target.value })} />
+            </Field>
+            <Field label="태그 (쉼표로 구분, 예: 보증기관 병행, 대환, 요식업 예외)" full>
+              <input style={input} value={editingCase.tags} onChange={(e) => setEditingCase({ ...editingCase, tags: e.target.value })} />
+            </Field>
+          </div>
+          <p style={{ fontSize: 12, color: '#8A8A85', margin: '10px 0 0' }}>※ 고객 이름·상호·사업자번호 등 식별 정보는 넣지 마세요. 수강생 교육 자료와 AI 상담 참고로 노출될 수 있습니다.</p>
+          {error && <p style={{ color: '#C0392B', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+            <button style={btnGhost} onClick={() => setEditingCase(null)}>취소</button>
+            <button style={btn} disabled={saving} onClick={saveCase}>{saving ? '저장 중...' : '저장'}</button>
           </div>
         </Modal>
       )}
