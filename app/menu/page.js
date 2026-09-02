@@ -9,25 +9,6 @@ import ReapplyReminderWidget from '../components/ReapplyReminderWidget'
 import ContractExpiryWidget from '../components/ContractExpiryWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
-// 내 자가진단 공개 링크 — 로그인 없이 잠재고객이 접속해 간단 입력하면 내 CRM에 리드로 등록됨.
-function MyApplyLink({ username }) {
-  const [copied, setCopied] = useState(false)
-  const url = typeof window !== 'undefined' ? `${window.location.origin}/apply/${username}` : `/apply/${username}`
-  return (
-    <div style={{ background: '#FBF7EE', borderRadius: 14, padding: '14px 18px', marginBottom: 18, border: '1px solid #EEE6DA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-      <div>
-        <p style={{ fontSize: 12, color: '#8A8272', margin: '0 0 2px', fontWeight: 700 }}>📮 내 자가진단 공개 링크</p>
-        <p style={{ fontSize: 12.5, color: '#2A2925', margin: 0, wordBreak: 'break-all' }}>{url}</p>
-      </div>
-      <button
-        onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500) }}
-        style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-        {copied ? '복사됨 ✓' : '링크 복사'}
-      </button>
-    </div>
-  )
-}
-
 const CARDS = {
   chat: {
     icon: '🤖', title: 'AI 자금진단', desc: '정책자금 항목별 분석 · AI 채팅 · 캘린더',
@@ -53,6 +34,10 @@ const CARDS = {
     icon: '🧮', title: '상환 시뮬레이터', desc: '원금·금리·거치기간으로 월 상환액 계산',
     path: '/simulator', accent: '#8A6D3B', tint: '#F3EDE0',
   },
+  mylink: {
+    icon: '🔗', title: '내 자가진단 링크', desc: 'SNS·블로그에 붙여넣을 잠재고객 유입 링크',
+    path: '/my-link', accent: '#B4713F', tint: '#F6EBE0',
+  },
   referrals: {
     icon: '📮', title: '대표 의뢰함', desc: '법인전환·절세·상속 이슈 케이스 이관 목록',
     path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
@@ -74,9 +59,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'referrals', 'contracts', 'admin'],
-  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mycontracts'],
-  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mycontracts'],
+  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'referrals', 'contracts', 'admin'],
+  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'mycontracts'],
+  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'mycontracts'],
 }
 
 export default function MenuPage() {
@@ -134,7 +119,6 @@ export default function MenuPage() {
 
       {/* 메뉴 카드 */}
       <div style={{ maxWidth: 880, margin: '-36px auto 0', padding: '0 24px 48px' }}>
-        <MyApplyLink username={user.username} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
           {visibleCards.map((card) => (
             <div
