@@ -353,6 +353,10 @@ export default function CustomerDashboardPage() {
             {customer.status || '상담중'}
           </span>
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => router.push(`/customers/${params.id}/report`)}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+            🖨 상담 리포트
+          </button>
           <ReferralButton customerId={params.id} existing={referrals} />
         </div>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
