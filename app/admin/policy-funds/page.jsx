@@ -223,6 +223,9 @@ export default function PolicyFundsAdminPage() {
                       <span style={{ fontSize: 11.5, padding: '2px 8px', borderRadius: 999, background: f.fund_type === '보증' ? '#E8F5E9' : '#E3F2FD', color: f.fund_type === '보증' ? '#2E7D32' : '#1565C0' }}>{f.fund_type}</span>
                       {!f.active && <span style={{ fontSize: 11.5, color: '#C0392B' }}>미사용</span>}
                       {f.exclusive_group && <span style={{ fontSize: 11.5, color: '#8A8A85' }}>배타그룹: {f.exclusive_group}</span>}
+                      <span style={{ fontSize: 11, color: '#8A8A85' }} title={f.updated_by === 'seed' ? '코드(시드)로 관리되는 항목 — 수정사항은 Claude에게 말하면 반영됨' : '관리자 화면에서 직접 수정된 항목 — 이후 시드 갱신에서 보호됨'}>
+                        {f.updated_by === 'seed' ? '· 시드 관리' : `· 직접 수정(${f.updated_by})`}
+                      </span>
                     </div>
                     <div style={{ fontSize: 13, color: '#5F5E5A', marginTop: 6, lineHeight: 1.6 }}>
                       한도 운전 {fmtWon(f.limit_operating)} / 시설 {fmtWon(f.limit_facility)}
@@ -234,7 +237,7 @@ export default function PolicyFundsAdminPage() {
                     {(f.conditions || []).length > 0 && (
                       <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5, color: '#5F5E5A', lineHeight: 1.6 }}>
                         {f.conditions.map((c, i) => (
-                          <li key={i}><span style={{ color: c.kind === 'any' ? '#B26A00' : '#2E7D32', fontWeight: 600 }}>{c.kind === 'any' ? '[택1]' : '[필수]'}</span> {c.text}</li>
+                          <li key={i}><span style={{ color: c.kind === 'any' ? '#B26A00' : c.kind === 'bonus' ? '#6A1B9A' : '#2E7D32', fontWeight: 600 }}>{c.kind === 'any' ? '[택1]' : c.kind === 'bonus' ? '[가점]' : '[필수]'}</span> {c.text}</li>
                         ))}
                       </ul>
                     )}
@@ -292,12 +295,13 @@ export default function PolicyFundsAdminPage() {
             <Field label="상환기간"><input style={input} value={editing.period_note} onChange={(e) => setEditing({ ...editing, period_note: e.target.value })} placeholder="예: 운전 5년 (거치 2년)" /></Field>
             <Field label="자격 요약 (한 줄 설명)" full><textarea style={{ ...input, minHeight: 60 }} value={editing.eligibility_summary} onChange={(e) => setEditing({ ...editing, eligibility_summary: e.target.value })} /></Field>
 
-            <Field label="자격 조건 (필수 = 전부 충족 / 택1 = 택1끼리 묶어 그중 1개만)" full>
+            <Field label="자격 조건 (필수 = 전부 충족 / 택1 = 택1끼리 묶어 그중 1개만 / 가점 = 없어도 신청 가능)" full>
               {(editing.conditions || []).map((c, i) => (
                 <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                   <select style={{ ...input, width: 90, flexShrink: 0 }} value={c.kind} onChange={(e) => updateCond(i, { kind: e.target.value })}>
                     <option value="required">필수</option>
                     <option value="any">택1</option>
+                    <option value="bonus">가점</option>
                   </select>
                   <input style={input} value={c.text} onChange={(e) => updateCond(i, { text: e.target.value })} />
                   <button style={{ ...btnDanger, padding: '6px 10px' }} onClick={() => setEditing({ ...editing, conditions: editing.conditions.filter((_, j) => j !== i) })}>×</button>
