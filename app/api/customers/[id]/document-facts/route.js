@@ -12,9 +12,16 @@ export async function GET(request, { params }) {
   const [customer] = await sql`SELECT * FROM customers WHERE id = ${id}`
   if (!customer) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   try {
-    const facts = await getDocumentFacts(id)
-    const comparison = compareWithCustomer(facts, customer)
-    return NextResponse.json({ facts, comparison })
+    const facts = await getDocumentFacts(id, customer.biz_reg_number)
+    // 업력은 서류(사업자등록증명 개업일)가 더 정확 → 서류가 있으면 CRM 업력을 자동으로 맞춤. 서류 없으면 등록 때 입력한 업력 그대로.
+    let updatedCustomer = customer
+    const docAge = facts.registration?.bizAgeYears
+    if (docAge != null && Number(customer.business_age_years ?? -1) !== Number(docAge)) {
+      const [row] = await sql`UPDATE customers SET business_age_years = ${docAge}, updated_at = NOW() WHERE id = ${id} RETURNING *`
+      if (row) updatedCustomer = row
+    }
+    const comparison = compareWithCustomer(facts, updatedCustomer)
+    return NextResponse.json({ facts, comparison, customer: updatedCustomer, bizAgeAutoApplied: updatedCustomer !== customer })
   } catch (err) {
     console.error('document-facts 추출 실패:', err)
     return NextResponse.json({ facts: { sources: {} }, comparison: [], error: err.message })

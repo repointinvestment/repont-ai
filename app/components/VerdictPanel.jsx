@@ -63,18 +63,32 @@ export default function VerdictPanel({ verdict }) {
                 <span style={{ fontSize: 11.5, padding: '2px 9px', borderRadius: 999, background: st.bg, color: st.fg, fontWeight: 700 }}>{inst.status}</span>
               </div>
               {inst.funds.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                  {inst.funds.map((f, i) => (
-                    <span key={i} style={{ fontSize: 12.5, padding: '4px 10px', borderRadius: 8, background: '#E6F1FB', color: '#0C447C', fontWeight: 600 }}>
-                      {f.name} · {f.limit}
-                    </span>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                  {inst.funds.map((f, i) => {
+                    const cond = f.status === '조건부';
+                    return (
+                      <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: cond ? '#FAF7EE' : '#E6F1FB', borderLeft: `3px solid ${cond ? '#D9A441' : '#0C447C'}` }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: cond ? '#633806' : '#0C447C' }}>
+                          {f.status ? `[${f.status}] ` : ''}{f.name} · {f.limit}
+                        </div>
+                        {f.condition && <div style={{ fontSize: 12, color: '#5F5E5A', marginTop: 3, lineHeight: 1.5 }}>{f.condition}</div>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#2A2925', lineHeight: 1.7 }}>
                 {inst.reasons.map((r, i) => <li key={i}>{r}</li>)}
                 {inst.caveats.map((c, i) => <li key={`c${i}`} style={{ color: '#5F5E5A' }}>{c}</li>)}
               </ul>
+              {inst.excluded?.length > 0 && (
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ fontSize: 12, color: '#8A8A85', cursor: 'pointer' }}>제외된 자금 {inst.excluded.length}개 — 사유 보기</summary>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: '#8A8A85', lineHeight: 1.6 }}>
+                    {inst.excluded.map((e, i) => <li key={i}>{e.name}: {e.why}</li>)}
+                  </ul>
+                </details>
+              )}
             </div>
           );
         })}

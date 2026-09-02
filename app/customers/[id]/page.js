@@ -44,6 +44,7 @@ export default function CustomerDashboardPage() {
       const r = await fetch(`/api/customers/${params.id}/document-facts`);
       const d = await r.json();
       setDocData(d);
+      if (d?.bizAgeAutoApplied && d.customer) setCustomer(d.customer); // 서류 개업일 기준 업력 자동 반영
     } catch { setDocData(null); }
   }
 

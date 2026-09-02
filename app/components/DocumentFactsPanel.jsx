@@ -11,6 +11,7 @@ const STATUS = {
   mismatch: { label: '불일치', bg: '#FAECE7', fg: '#712B13' },
   match: { label: '일치', bg: '#E1F5EE', fg: '#085041' },
   doc_only: { label: '참고', bg: '#EFEEE9', fg: '#5F5E5A' },
+  applied: { label: '자동 적용', bg: '#E1F5EE', fg: '#085041' },
 };
 
 const fmt = (v) => (v == null || v === '' ? '—' : typeof v === 'number' ? v.toLocaleString() : String(v));
@@ -27,8 +28,7 @@ export default function DocumentFactsPanel({ data, onApply }) {
   const applyOne = async (item) => {
     setBusy(item.field);
     const fields = {};
-    if (item.field === 'businessAgeYears') fields.businessAgeYears = item.docValue;
-    if (item.field === 'revenueAmount') fields.revenueAmount = item.docValue;
+    if (item.field === 'revenueAmount') fields.revenueAmount = item.rawValue ?? item.docValue;
     if (item.field === 'industry') fields.industry = item.docValue;
     if (item.field === 'taxDelinquent') fields.taxDelinquent = item.rawValue;
     try { await onApply(fields); } finally { setBusy(null); }
@@ -39,8 +39,7 @@ export default function DocumentFactsPanel({ data, onApply }) {
     const fields = {};
     for (const it of comparison) {
       if (it.status !== 'fill' && it.status !== 'mismatch') continue;
-      if (it.field === 'businessAgeYears') fields.businessAgeYears = it.docValue;
-      if (it.field === 'revenueAmount') fields.revenueAmount = it.docValue;
+      if (it.field === 'revenueAmount') fields.revenueAmount = it.rawValue ?? it.docValue;
       if (it.field === 'taxDelinquent') fields.taxDelinquent = it.rawValue;
     }
     try { await onApply(fields); } finally { setBusy(null); }
@@ -75,8 +74,8 @@ export default function DocumentFactsPanel({ data, onApply }) {
                 <span style={{ fontSize: 10.5, padding: '1px 7px', borderRadius: 999, background: st.bg, color: st.fg, fontWeight: 700 }}>{st.label}</span>
               </div>
               <div style={{ fontSize: 13 }}>
-                <div style={{ fontSize: 11, color: '#8A8A85' }}>CRM 입력값</div>
-                <div style={{ color: c.crmValue == null ? '#B0AEA5' : '#2A2925' }}>{fmt(c.crmValue)}</div>
+                <div style={{ fontSize: 11, color: '#8A8A85' }}>{c.status === 'applied' ? '' : 'CRM 입력값'}</div>
+                <div style={{ color: c.crmValue == null ? '#B0AEA5' : '#2A2925' }}>{c.status === 'applied' ? '서류 기준으로 CRM 반영됨' : fmt(c.crmValue)}</div>
               </div>
               <div style={{ fontSize: 13 }}>
                 <div style={{ fontSize: 11, color: '#8A8A85' }}>서류값 · {c.docSource}</div>
@@ -95,7 +94,7 @@ export default function DocumentFactsPanel({ data, onApply }) {
         })}
       </div>
       <p style={{ fontSize: 11, color: '#B0AEA5', margin: '12px 0 0' }}>
-        * 업종은 CRM이 분류형(도소매업 등)이고 서류는 세부 업태/종목이라 자동 비교하지 않습니다. 직원 수·기존 대출 잔액·스마트기기 등은 서류에 없어 진단 입력값을 그대로 씁니다.
+        * 업력은 사업자등록증명 개업일 기준으로 자동 반영됩니다(서류 없으면 등록 때 입력한 값 사용). 업종은 CRM이 분류형(도소매업 등)이고 서류는 세부 업태/종목이라 자동 비교하지 않습니다. 직원 수·기존 대출 잔액·스마트기기 등은 서류에 없어 진단 입력값을 그대로 씁니다.
       </p>
     </div>
   );
