@@ -108,6 +108,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
   const [form, setForm] = useState({
     industry: "",
     bizAge: "",
+    bizAgeThreshold: "auto",
     sales: "",
     employees: "",
     creditKCB: "",
@@ -183,6 +184,7 @@ export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
       {
         industry: form.industry,
         bizAge: form.bizAge,
+        bizAgeOver7: form.bizAgeThreshold === "over" ? "yes" : form.bizAgeThreshold === "under" ? "no" : undefined,
         sales: form.sales,
         employees: form.employees,
         creditKCB: form.creditKCB,
@@ -346,6 +348,20 @@ export default function PolicyFundAnalyzer({ onAIAnalysis, initialData }) {
             <div>
               <label style={labelStyle}>업력 (년)</label>
               <input type="number" placeholder="예: 3" value={form.bizAge} onChange={(e) => set("bizAge", e.target.value)} style={inputStyle} />
+              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                {[["auto", "숫자로 자동판단"], ["under", "7년 미만 확정"], ["over", "7년 이상 확정"]].map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => set("bizAgeThreshold", key)}
+                    style={{
+                      flex: 1, padding: "6px 4px", borderRadius: 6, fontSize: 11, cursor: "pointer",
+                      border: (form.bizAgeThreshold || "auto") === key ? "1.5px solid #0f3460" : "1px solid #ddd",
+                      background: (form.bizAgeThreshold || "auto") === key ? "#eef2fb" : "#fff",
+                      color: (form.bizAgeThreshold || "auto") === key ? "#0f3460" : "#888", fontWeight: (form.bizAgeThreshold || "auto") === key ? 700 : 400,
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 10.5, color: "#999", margin: "4px 0 0" }}>매출초과차입금 기준(7년)은 사업자등록일 기준으로 정확히 계산되는데, 고객 등록 전 빠른 진단이라 정확한 날짜를 모르면 여기서 직접 확정하세요. 고객 등록 후 사업자등록증명을 받으면 자동으로 정확히 계산됩니다.</p>
             </div>
             <div>
               <label style={labelStyle}>작년 매출 (만원)</label>

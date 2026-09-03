@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
   try {
     const facts = await getDocumentFacts(id, customer.biz_reg_number)
 
-    // 업력(사업자등록증명 개업일)과 폐업이력·현재 사업자 개수(사업자등록증명 vs 부가세과세표준증명 대조)는
+    // 업력(사업자등록증명의 사업자등록일)과 폐업이력·현재 사업자 개수(사업자등록증명 vs 부가세과세표준증명 대조)는
     // 서류가 CRM 수기입력보다 명백히 더 정확해서 자동 반영 — 특히 currentBizCount는 재도전특별자금의
     // "현재 사업자 1개" 조건 판정에 직접 쓰이는 값이라, 오래된 CRM 값이 남아있으면 자격판정 자체가 틀어짐.
     const updates = {}
