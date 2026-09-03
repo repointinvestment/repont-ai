@@ -43,7 +43,7 @@ const CARDS = {
     path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
   },
   myreferrals: {
-    icon: '📨', title: '내 의뢰 이력', desc: '내가 보낸 의뢰와 대표 답변 확인 (본인 것만)',
+    icon: '📨', title: '문수환 대표에게 의뢰', desc: '법인전환·절세·상속 등 전문 이슈 케이스 이관 + 답변 확인',
     path: '/my-referrals', accent: '#9B4B3F', tint: '#F5E6E2',
   },
   mycontracts: {

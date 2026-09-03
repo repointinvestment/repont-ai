@@ -39,8 +39,8 @@ export default function MyReferralsPage() {
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '28px 20px 60px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h2 style={{ color: '#1a1a2e', margin: 0 }}>내 의뢰 이력</h2>
-            <p style={{ fontSize: 13, color: '#8A8A85', margin: '6px 0 0' }}>내가 문수환 대표에게 보낸 의뢰와 답변입니다. 다른 사람 것은 보이지 않습니다.</p>
+            <h2 style={{ color: '#1a1a2e', margin: 0 }}>문수환 대표에게 의뢰</h2>
+            <p style={{ fontSize: 13, color: '#8A8A85', margin: '6px 0 0' }}>법인전환·절세·상속 등 정책자금 범위를 넘는 이슈를 대표에게 이관한 이력입니다. 다른 사람 것은 보이지 않습니다.</p>
           </div>
           <button onClick={() => router.push('/menu')} style={{ padding: '7px 12px', borderRadius: 7, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>메뉴로</button>
         </div>
