@@ -645,7 +645,7 @@ export default function CustomerDashboardPage() {
                   <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #E4E2DB', borderRadius: 8, padding: '10px 14px' }}>
                     <button
                       type="button"
-                      onClick={() => handleFileOpen(f)}
+                      onClick={() => handleFileDownload(f)}
                       style={{ fontSize: 14, color: '#2A2925', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     >
                       📄 {f.file_name}
