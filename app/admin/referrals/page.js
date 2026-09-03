@@ -26,17 +26,21 @@ export default function ReferralsInboxPage() {
     if (!s) { router.push('/'); return }
     if (s.role !== 'admin') { router.push('/menu'); return }
     setUser(s)
-    load()
+    load(s)
   }, [])
 
-  async function load() {
-    const r = await fetch('/api/referrals')
+  async function load(s = user) {
+    const r = await fetch('/api/referrals', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
     const d = await r.json()
     setReferrals(d.referrals || [])
   }
 
   async function setStatus(id, status) {
-    await fetch(`/api/referrals/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+    await fetch(`/api/referrals/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role },
+      body: JSON.stringify({ status }),
+    })
     load()
   }
 
