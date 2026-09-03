@@ -12,12 +12,9 @@ export default function ContractExpiryWidget({ user }) {
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
-    fetch('/api/contracts/reminders?within=30')
+    fetch('/api/contracts/reminders?within=30', { headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
       .then((r) => r.json())
-      .then((d) => {
-        const list = user.role === 'admin' ? (d.contracts || []) : (d.contracts || []).filter((c) => c.consultant_username === user.username)
-        setContracts(list)
-      })
+      .then((d) => setContracts(d.contracts || []))
       .catch(() => setContracts([]))
       .finally(() => setLoading(false))
   }, [user])
@@ -41,7 +38,10 @@ export default function ContractExpiryWidget({ user }) {
           return (
             <div key={c.id} onClick={() => router.push(user.role === 'admin' ? '/admin/contracts' : '/contracts')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid #E4E2DB', cursor: 'pointer' }}>
-              <span style={{ fontSize: 13, color: '#2A2925' }}>{c.consultant_name || c.consultant_username}</span>
+              <span style={{ fontSize: 13, color: '#2A2925' }}>
+                {c.owner_name || '고객 미지정'}{c.business_name ? ` · ${c.business_name}` : ''}
+                {user.role === 'admin' && <span style={{ color: '#8A8272' }}> ({c.consultant_name || c.consultant_username})</span>}
+              </span>
               <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 9px', borderRadius: 20, background: dl <= 0 ? '#F5E3DF' : '#FAEEDA', color: dl <= 0 ? '#8A2A1F' : '#633806', flexShrink: 0 }}>
                 {dl <= 0 ? '만료됨' : `${dl}일 남음`}
               </span>

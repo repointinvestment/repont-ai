@@ -47,11 +47,11 @@ const CARDS = {
     path: '/my-referrals', accent: '#9B4B3F', tint: '#F5E6E2',
   },
   mycontracts: {
-    icon: '📄', title: '내 계약서', desc: '자금비서 이용계약 확인·전자서명',
+    icon: '📄', title: '내 계약 관리', desc: '내 고객과의 컨설팅 계약 생성 · 서명 · 입금확인',
     path: '/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
   },
   contracts: {
-    icon: '📑', title: '연간계약 관리', desc: '계약 생성 · 서명확인 · 입금확인',
+    icon: '📑', title: '전체 계약 현황', desc: '컨설턴트별 고객 계약 현황 조회 (읽기 전용)',
     path: '/admin/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
   },
   admin: {
