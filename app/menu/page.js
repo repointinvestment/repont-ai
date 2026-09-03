@@ -42,6 +42,10 @@ const CARDS = {
     icon: '📮', title: '대표 의뢰함', desc: '법인전환·절세·상속 이슈 케이스 이관 목록',
     path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
   },
+  myreferrals: {
+    icon: '📨', title: '내 의뢰 이력', desc: '내가 보낸 의뢰와 대표 답변 확인 (본인 것만)',
+    path: '/my-referrals', accent: '#9B4B3F', tint: '#F5E6E2',
+  },
   mycontracts: {
     icon: '📄', title: '내 계약서', desc: '자금비서 이용계약 확인·전자서명',
     path: '/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
@@ -60,8 +64,8 @@ const CARDS = {
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
   admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'mylink', 'referrals', 'board', 'admin'],
-  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'board'],
-  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'board'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'board'],
 }
 
 export default function MenuPage() {

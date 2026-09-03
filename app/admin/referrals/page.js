@@ -20,6 +20,8 @@ export default function ReferralsInboxPage() {
   const [user, setUser] = useState(null)
   const [referrals, setReferrals] = useState([])
   const [filter, setFilter] = useState('')
+  const [drafts, setDrafts] = useState({}) // { [id]: 답변 초안 텍스트 }
+  const [saving, setSaving] = useState(null)
 
   useEffect(() => {
     const s = getSession()
@@ -42,6 +44,23 @@ export default function ReferralsInboxPage() {
       body: JSON.stringify({ status }),
     })
     load()
+  }
+
+  async function saveReply(r) {
+    const adminNote = drafts[r.id]
+    if (adminNote === undefined) return
+    setSaving(r.id)
+    try {
+      await fetch(`/api/referrals/${r.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role },
+        body: JSON.stringify({ adminNote, status: r.status === '대기' ? '처리중' : r.status }),
+      })
+      setDrafts((d) => { const n = { ...d }; delete n[r.id]; return n })
+      load()
+    } finally {
+      setSaving(null)
+    }
   }
 
   if (!user) return null
@@ -96,6 +115,24 @@ export default function ReferralsInboxPage() {
                     {['대기', '처리중', '완료'].filter((s) => s !== r.status).map((s) => (
                       <button key={s} onClick={() => setStatus(r.id, s)} style={{ ...btn, padding: '5px 10px', fontSize: 11.5 }}>{s}로</button>
                     ))}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #EFEEE9' }}>
+                  <p style={{ fontSize: 11.5, fontWeight: 700, color: '#5F5E5A', margin: '0 0 6px' }}>{r.created_by || '컨설턴트'}에게 답변</p>
+                  <textarea
+                    value={drafts[r.id] !== undefined ? drafts[r.id] : (r.admin_note || '')}
+                    onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
+                    placeholder="답변을 입력하면 해당 컨설턴트의 '내 의뢰 이력' 화면에 표시됩니다."
+                    style={{ width: '100%', minHeight: 60, padding: '9px 11px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                    <button
+                      onClick={() => saveReply(r)}
+                      disabled={saving === r.id || drafts[r.id] === undefined}
+                      style={{ ...btn, background: '#2A2925', color: '#fff', padding: '6px 12px', fontSize: 11.5, opacity: drafts[r.id] === undefined ? 0.5 : 1 }}>
+                      {saving === r.id ? '저장 중…' : '답변 저장'}
+                    </button>
                   </div>
                 </div>
               </div>
