@@ -596,10 +596,10 @@ export default function CodefDocumentIssuance({
               <div style={{ background: bh.hasClosureHistory ? '#FFF6F2' : '#F2F8F4', border: `1px solid ${bh.hasClosureHistory ? '#F0D9CC' : '#D3E8DB'}`, borderRadius: 10, padding: '14px 16px' }}>
                 <p style={{ fontSize: 12.5, fontWeight: 700, color: '#5A5952', margin: '0 0 6px' }}>사업자 이력 (사업자등록증명 vs 부가세과세표준증명 대조 — 고객 저장 없이도 바로 계산됨)</p>
                 <p style={{ fontSize: 13.5, color: '#2A2925', margin: 0 }}>
-                  총 <strong>{bh.totalCount}개</strong> 사업자 · 활성 <strong>{bh.activeCount}개</strong> · 폐업 이력 <strong style={{ color: bh.hasClosureHistory ? '#B24A2B' : '#2A2925' }}>{bh.closedCount}개</strong>
+                  총 <strong>{bh.totalCount}개</strong> 사업자 등록 이력 · 현재 운영중 <strong>{bh.activeCount}개</strong> · 폐업 <strong style={{ color: bh.hasClosureHistory ? '#B24A2B' : '#2A2925' }}>{bh.closedCount}개</strong>
                 </p>
                 <p style={{ fontSize: 12, color: '#8A8A85', margin: '6px 0 0' }}>
-                  {bh.businesses.map((b) => `${b.name}(${b.active ? '활성' : '폐업'})`).join(', ')}
+                  {bh.businesses.map((b) => `${b.name}(${b.active ? '운영중' : '폐업'})`).join(', ')}
                 </p>
               </div>
             );

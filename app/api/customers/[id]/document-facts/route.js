@@ -13,15 +13,42 @@ export async function GET(request, { params }) {
   if (!customer) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   try {
     const facts = await getDocumentFacts(id, customer.biz_reg_number)
-    // 업력은 서류(사업자등록증명 개업일)가 더 정확 → 서류가 있으면 CRM 업력을 자동으로 맞춤. 서류 없으면 등록 때 입력한 업력 그대로.
-    let updatedCustomer = customer
+
+    // 업력(사업자등록증명 개업일)과 폐업이력·현재 사업자 개수(사업자등록증명 vs 부가세과세표준증명 대조)는
+    // 서류가 CRM 수기입력보다 명백히 더 정확해서 자동 반영 — 특히 currentBizCount는 재도전특별자금의
+    // "현재 사업자 1개" 조건 판정에 직접 쓰이는 값이라, 오래된 CRM 값이 남아있으면 자격판정 자체가 틀어짐.
+    const updates = {}
+    const pfdUpdates = {}
     const docAge = facts.registration?.bizAgeYears
     if (docAge != null && Number(customer.business_age_years ?? -1) !== Number(docAge)) {
-      const [row] = await sql`UPDATE customers SET business_age_years = ${docAge}, updated_at = NOW() WHERE id = ${id} RETURNING *`
+      updates.business_age_years = docAge
+    }
+    if (facts.businessHistory?.reliable) {
+      const bh = facts.businessHistory
+      const docBankruptcy = bh.hasClosureHistory ? 'yes' : 'no'
+      const pfd = customer.policy_fund_details || {}
+      if (pfd.hasBankruptcy !== docBankruptcy) pfdUpdates.hasBankruptcy = docBankruptcy
+      if (bh.activeCount > 0 && String(pfd.currentBizCount || '') !== String(bh.activeCount)) {
+        pfdUpdates.currentBizCount = String(bh.activeCount)
+      }
+    }
+
+    let updatedCustomer = customer
+    if (Object.keys(updates).length > 0 || Object.keys(pfdUpdates).length > 0) {
+      const nextPfd = { ...(customer.policy_fund_details || {}), ...pfdUpdates, _docAppliedAt: new Date().toISOString() }
+      const [row] = await sql`
+        UPDATE customers SET
+          business_age_years = COALESCE(${updates.business_age_years ?? null}, business_age_years),
+          policy_fund_details = ${JSON.stringify(nextPfd)},
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `
       if (row) updatedCustomer = row
     }
+
     const comparison = compareWithCustomer(facts, updatedCustomer)
-    return NextResponse.json({ facts, comparison, customer: updatedCustomer, bizAgeAutoApplied: updatedCustomer !== customer })
+    return NextResponse.json({ facts, comparison, customer: updatedCustomer, autoApplied: updatedCustomer !== customer })
   } catch (err) {
     console.error('document-facts 추출 실패:', err)
     return NextResponse.json({ facts: { sources: {} }, comparison: [], error: err.message })
