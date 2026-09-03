@@ -27,16 +27,18 @@ async function ensureSchema() {
       file_name TEXT NOT NULL,
       blob_url TEXT NOT NULL,
       size_bytes INTEGER,
+      description TEXT,
       uploaded_by TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `
+  await sql`ALTER TABLE resource_files ADD COLUMN IF NOT EXISTS description TEXT`
   schemaReady = true
 }
 
 export async function GET() {
   await ensureSchema()
-  const rows = await sql`SELECT id, file_name, blob_url, size_bytes, uploaded_by, created_at FROM resource_files ORDER BY created_at DESC`
+  const rows = await sql`SELECT id, file_name, blob_url, size_bytes, description, uploaded_by, created_at FROM resource_files ORDER BY created_at DESC`
   return NextResponse.json({ files: rows })
 }
 
@@ -50,6 +52,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData()
     const file = formData.get('file')
+    const description = formData.get('description') || null
     if (!file) return NextResponse.json({ error: '파일이 없습니다.' }, { status: 400 })
     if (ALLOWED_TYPES.length > 0 && file.type && !ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json({ error: `허용되지 않는 파일 형식입니다. (${file.type || '알 수 없음'}) PPT·PDF·엑셀·이미지만 업로드 가능` }, { status: 400 })
@@ -58,8 +61,8 @@ export async function POST(request) {
     const blob = await put(`resources/${Date.now()}-${file.name}`, file, { access: 'private' })
 
     const [row] = await sql`
-      INSERT INTO resource_files (file_name, blob_url, size_bytes, uploaded_by)
-      VALUES (${file.name}, ${blob.pathname}, ${file.size || null}, ${uploadedBy})
+      INSERT INTO resource_files (file_name, blob_url, size_bytes, description, uploaded_by)
+      VALUES (${file.name}, ${blob.pathname}, ${file.size || null}, ${description}, ${uploadedBy})
       RETURNING *
     `
     return NextResponse.json({ file: row })
