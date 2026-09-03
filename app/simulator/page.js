@@ -132,7 +132,7 @@ export default function SimulatorPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-            <p style={{ fontSize: 12, color: '#8A8A85', margin: '0 0 6px' }}>{form.method === 'equal_payment' ? '월 납입액 (상환 시작 후, 고정)' : '첫 회차 납입액'}</p>
+            <p style={{ fontSize: 12, color: '#8A8A85', margin: '0 0 6px' }}>{form.method === 'equal_payment' ? '월 납입액 (거치기간 끝나고 원금상환 시작 시, 고정)' : '첫 회차 납입액 (거치기간 끝나고 원금상환 시작 시)'}</p>
             <p style={{ fontSize: 20, fontWeight: 700, color: '#2A2925', margin: 0 }}>{firstRepayRow ? `${fmt(firstRepayRow.payment)}만원` : '-'}</p>
           </div>
           <div style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
