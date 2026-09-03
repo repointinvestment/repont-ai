@@ -10,7 +10,11 @@ function daysSince(dateStr) {
   return Math.floor((now - then) / (1000 * 60 * 60 * 24))
 }
 
-// 완료 단계가 아니면서 STALE_DAYS일 이상 업데이트가 없는 고객을 팔로우업 리마인더로 표시.
+// 팔로우업이 필요한 고객 = 아직 컨설턴트가 할 일이 남은 상태(상담중·서류준비)인데 STALE_DAYS일 이상
+// 업데이트가 없는 경우. 심사중(기관 결정 대기 중이라 딱히 할 일 없음)과 완료는 제외 —
+// 심사중이어도 "다른 기관에 추가로 접수해볼 여지가 있는 경우"는 예외로 챙겨야 하는데, 이건
+// 접수 판정을 다시 계산해야 알 수 있어서 아직 이 위젯엔 반영 안 됨(다음에 붙일 수 있음).
+const FOLLOWUP_STATUSES = ['상담중', '서류준비']
 export default function ReminderWidget({ user }) {
   const router = useRouter()
   const [stale, setStale] = useState([])
@@ -24,7 +28,7 @@ export default function ReminderWidget({ user }) {
       .then((r) => r.json())
       .then((d) => {
         const list = (d.customers || [])
-          .filter((c) => (c.status || '상담중') !== '완료')
+          .filter((c) => FOLLOWUP_STATUSES.includes(c.status || '상담중'))
           .map((c) => ({ ...c, daysStale: daysSince(c.updated_at) }))
           .filter((c) => c.daysStale >= STALE_DAYS)
           .sort((a, b) => b.daysStale - a.daysStale)
