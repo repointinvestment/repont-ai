@@ -280,7 +280,7 @@ export default function CodefDocumentIssuance({
     // 팔로워는 0.5~1초 간격을 두고 순서대로 보내되, 응답은 기다리지 않고 나중에 한꺼번에 처리
     // (리더 인증이 완료되기 전까지 CODEF가 이 요청들의 응답을 붙잡고 있음)
     for (const unit of followerUnits) {
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 550)); // CODEF 스펙상 최소 0.5초 간격 필요 — 안전마진만 살짝 두고 최소치에 가깝게
       followerPromisesRef.current[unit.unitKey] = fireRequest(unit, sid, loginType);
     }
 
@@ -366,13 +366,17 @@ export default function CodefDocumentIssuance({
   const FS_HINT = '간편장부대상자이거나 업력이 짧아 아직 신고 전일 수 있습니다.';
 
   let summaryMessage = '';
-  const unitsCount = Object.keys(docStates).length;
+  // 컨설턴트가 체크한 "문서 종류" 기준 개수 — 재무제표를 "최근 N년"으로 조회하면 내부적으로는
+  // 연도별 API 호출(unit)로 쪼개지지만, 화면에 보여줄 때는 체크박스 개수 기준으로 맞춤
+  // (안 그러면 "4개 체크했는데 왜 6건이라고 나오냐"는 혼란이 생김).
+  const docTypeTotal = selectedDocs.length;
+  const docTypeDoneSet = new Set(Object.values(docStates).filter((s) => s.status === 'done').map((s) => s.docKey));
   if (phase === 'done') {
     summaryMessage = errorEntries.length > 0
-      ? `${doneCount}/${unitsCount}건 완료. 실패: ${[...new Set(errorEntries.map(([, s]) => DOCUMENTS[s.docKey].label))].join(', ')}${hasFsError ? ` (재무제표: ${FS_HINT})` : ''}`
+      ? `${docTypeDoneSet.size}/${docTypeTotal}건 완료. 실패: ${[...new Set(errorEntries.map(([, s]) => DOCUMENTS[s.docKey].label))].join(', ')}${hasFsError ? ` (재무제표: ${FS_HINT})` : ''}`
       : savedTotal > 0
-        ? `${unitsCount}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
-        : `${unitsCount}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
+        ? `${docTypeTotal}개 서류 발급 완료! 파일함에 총 ${savedTotal}건 저장했습니다.`
+        : `${docTypeTotal}개 서류 발급 완료! (고객을 선택하지 않아 파일함에는 저장하지 않았습니다)`;
   } else if (phase === 'pending') {
     const pendingLabels = Object.entries(docStates).filter(([, s]) => s.status === 'pending').map(([, s]) => DOCUMENTS[s.docKey].label);
     summaryMessage = `카카오톡에서 인증을 승인한 뒤 확인 버튼을 눌러주세요. (${pendingLabels.join(', ')})`;
@@ -555,7 +559,7 @@ export default function CodefDocumentIssuance({
           disabled={selectedDocs.length === 0 || phase === 'requesting' || phase === 'confirming'}
           style={btnStyle}
         >
-          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${buildRequestUnits().length}건)`}
+          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
         </button>
 
         {phase === 'pending' && (
@@ -573,7 +577,7 @@ export default function CodefDocumentIssuance({
         <LoadingModal
           messages={
             phase === 'requesting'
-              ? [unitsCount > 1 ? `${unitsCount}건 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
+              ? [selectedDocs.length > 1 ? `${selectedDocs.length}건 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
               : ['서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
           }
         />
@@ -581,6 +585,24 @@ export default function CodefDocumentIssuance({
 
       {doneCount > 0 && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {(() => {
+            const regRaw = Object.values(docStates).filter((s) => s.docKey === 'corporate-registration' && s.status === 'done').flatMap((s) => s.items || []);
+            const vatRaw = Object.values(docStates).filter((s) => s.docKey === 'additional-tax-standard' && s.status === 'done').flatMap((s) => s.items || []);
+            if (regRaw.length === 0 || vatRaw.length === 0) return null;
+            const bh = computeBusinessHistory(vatRaw, regRaw);
+            if (!bh) return null;
+            return (
+              <div style={{ background: bh.hasClosureHistory ? '#FFF6F2' : '#F2F8F4', border: `1px solid ${bh.hasClosureHistory ? '#F0D9CC' : '#D3E8DB'}`, borderRadius: 10, padding: '14px 16px' }}>
+                <p style={{ fontSize: 12.5, fontWeight: 700, color: '#5A5952', margin: '0 0 6px' }}>사업자 이력 (사업자등록증명 vs 부가세과세표준증명 대조 — 고객 저장 없이도 바로 계산됨)</p>
+                <p style={{ fontSize: 13.5, color: '#2A2925', margin: 0 }}>
+                  총 <strong>{bh.totalCount}개</strong> 사업자 · 활성 <strong>{bh.activeCount}개</strong> · 폐업 이력 <strong style={{ color: bh.hasClosureHistory ? '#B24A2B' : '#2A2925' }}>{bh.closedCount}개</strong>
+                </p>
+                <p style={{ fontSize: 12, color: '#8A8A85', margin: '6px 0 0' }}>
+                  {bh.businesses.map((b) => `${b.name}(${b.active ? '활성' : '폐업'})`).join(', ')}
+                </p>
+              </div>
+            );
+          })()}
           {selectedDocs.filter((docKey) =>
             Object.values(docStates).some((s) => s.docKey === docKey && s.status === 'done')
           ).map((docKey) => {
@@ -636,6 +658,30 @@ export default function CodefDocumentIssuance({
 // 부가세과세표준증명은 반기별로 여러 건이 올 수 있음 — 같은 회사면 하나로 합쳐서 보여줌.
 // 기간: 조회된 것 중 가장 이른 시작일 ~ 가장 늦은 종료일. 금액: 반기별 합계.
 // 원본 PDF는 반기마다 따로 존재하므로 _periods에 원본 목록을 보관해뒀다가 다운로드 시 전부 받게 함.
+// 사업자등록증명(활성 사업자만 발급됨)과 부가세과세표준증명(폐업 여부 무관하게 신고 이력 있으면 나옴)의
+// 사업자등록번호를 대조해서 폐업 이력·사업자 개수를 즉석에서 계산 — DB 저장 없이도(고객 미선택 상태) 이 결과
+// 화면에서 바로 보여주기 위한 것. lib/documentFacts.js의 같은 로직을 클라이언트에 맞게 복제(그쪽은 서버 전용
+// DB 모듈을 top-level import하고 있어서 클라이언트 컴포넌트가 그대로 가져다 쓰면 빌드 번들이 깨짐).
+function computeBusinessHistory(vatItems, regItems) {
+  if (vatItems.length === 0 && regItems.length === 0) return null;
+  const activeNos = new Set(regItems.map((it) => String(it.resCompanyIdentityNo || '').replace(/[^0-9]/g, '')).filter(Boolean));
+  const byNo = {};
+  for (const it of vatItems) {
+    const no = String(it.resCompanyIdentityNo || '').replace(/[^0-9]/g, '');
+    const key = no || `이름:${it.resCompanyNm || '상호 미확인'}`;
+    if (!byNo[key]) byNo[key] = { bizRegNo: no || null, name: it.resCompanyNm || '상호 미확인', active: no ? activeNos.has(no) : false };
+  }
+  for (const it of regItems) {
+    const no = String(it.resCompanyIdentityNo || '').replace(/[^0-9]/g, '');
+    const key = no || `이름:${it.resCompanyNm || it.resUserNm || '상호 미확인'}`;
+    if (!byNo[key]) byNo[key] = { bizRegNo: no || null, name: it.resCompanyNm || it.resUserNm || '상호 미확인', active: true };
+  }
+  const businesses = Object.values(byNo);
+  const activeCount = businesses.filter((b) => b.active).length;
+  const closedCount = businesses.length - activeCount;
+  return { businesses, totalCount: businesses.length, activeCount, closedCount, hasClosureHistory: closedCount > 0 };
+}
+
 function aggregateTaxStandard(items) {
   const byCompany = {}
   for (const it of items) {
@@ -657,10 +703,15 @@ function aggregateTaxStandard(items) {
 
 function LoadingModal({ messages }) {
   const [phase, setPhase] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setPhase((p) => (p + 1) % messages.length), 2200);
     return () => clearInterval(t);
   }, [messages]);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <div style={{
@@ -695,6 +746,9 @@ function LoadingModal({ messages }) {
         </p>
         <p key={phase} style={{ fontSize: 13, color: '#8A8A85', margin: 0, animation: 'codef-fade 0.4s ease' }}>
           {messages[phase]}
+        </p>
+        <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>
+          {elapsed}초 경과{elapsed >= 10 ? ' · 렉이 아니라 고객님이 카카오톡 승인을 누르는 걸 기다리는 중이에요' : ''}
         </p>
 
         <style>{`
