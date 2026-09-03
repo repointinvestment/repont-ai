@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../components/AppHeader';
 
@@ -12,8 +12,10 @@ const STAGE_STYLE = {
   '완료': { bg: '#E6F1FB', text: '#0C447C', ring: '#185FA5' },
 };
 
-export default function CustomersPage() {
+function CustomersPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const consultantFilter = searchParams.get('consultant'); // admin이 특정 컨설턴트의 고객만 보고 싶을 때(?consultant=아이디)
   const [user, setUser] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +48,9 @@ export default function CustomersPage() {
   if (!user) return null;
 
   const normalizeStage = (status) => (STAGE_STYLE[status] ? status : '상담중');
+  const visibleCustomers = consultantFilter ? customers.filter((c) => String(c.consultant_id) === String(consultantFilter)) : customers;
 
-  const stageCounts = customers.reduce((acc, c) => {
+  const stageCounts = visibleCustomers.reduce((acc, c) => {
     const stage = normalizeStage(c.status);
     acc[stage] = (acc[stage] || 0) + 1;
     return acc;
@@ -57,6 +60,13 @@ export default function CustomersPage() {
     <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
     <AppHeader user={user} />
     <div style={{ padding: '32px 40px', maxWidth: 960, margin: '0 auto' }}>
+
+      {consultantFilter && (
+        <div style={{ background: '#FFF6F2', border: '1px solid #F0D9CC', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 13, color: '#B24A2B' }}>👁 관리자 보기 — <strong>{consultantFilter}</strong> 님 담당 고객만 보고 있습니다</span>
+          <button onClick={() => router.push('/customers')} style={{ fontSize: 12, color: '#B24A2B', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer' }}>전체 보기</button>
+        </div>
+      )}
 
       {/* 개인화된 히어로 배너 */}
       <div style={{
@@ -77,10 +87,10 @@ export default function CustomersPage() {
             {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })} · 실시간 갱신
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>
-            {user.name} 컨설턴트님의 고객명단
+            {consultantFilter ? `${consultantFilter}님의 고객명단` : `${user.name} 컨설턴트님의 고객명단`}
           </h1>
           <p style={{ fontSize: 14, color: '#5F5E5A', margin: 0 }}>
-            이번 달 신규 상담 {customers.length}건 · 아래에서 고객 상세와 계정정보까지 바로 확인하세요
+            이번 달 신규 상담 {visibleCustomers.length}건 · 아래에서 고객 상세와 계정정보까지 바로 확인하세요
           </p>
         </div>
       </div>
@@ -141,12 +151,12 @@ export default function CustomersPage() {
 
       {loading && <p style={{ fontSize: 14, color: '#8A8A85' }}>불러오는 중...</p>}
       {error && <p style={{ fontSize: 14, color: '#A32D2D' }}>{error}</p>}
-      {!loading && !error && customers.length === 0 && (
+      {!loading && !error && visibleCustomers.length === 0 && (
         <p style={{ fontSize: 14, color: '#8A8A85' }}>등록된 고객이 없습니다.</p>
       )}
 
       {Object.keys(STAGE_STYLE).map((stage) => {
-        const stageCustomers = customers.filter((c) => normalizeStage(c.status) === stage);
+        const stageCustomers = visibleCustomers.filter((c) => normalizeStage(c.status) === stage);
         const style = STAGE_STYLE[stage];
         return (
           <div key={stage} style={{ marginBottom: 24 }}>
@@ -221,5 +231,13 @@ export default function CustomersPage() {
       })}
     </div>
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomersPageInner />
+    </Suspense>
   );
 }

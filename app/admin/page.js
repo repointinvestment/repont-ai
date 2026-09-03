@@ -10,6 +10,7 @@ export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [accounts, setAccounts] = useState([])
+  const [customers, setCustomers] = useState([])
   const [form, setForm] = useState({ username: '', password: '', name: '', role: 'consultant' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -21,6 +22,9 @@ export default function AdminPage() {
     if (session.role !== 'admin') { router.push('/menu'); return }
     setUser(session)
     loadAccounts()
+    // 가벼운 활동 현황용 — 이미 있는 고객 목록 API를 그대로 재사용(추가 API 없음), 컨설턴트별로 묶어서 개수·최근활동만 계산
+    fetch('/api/customers', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
+      .then((r) => r.json()).then((d) => setCustomers(d.customers || []))
   }, [])
 
   function loadAccounts() {
@@ -70,6 +74,12 @@ export default function AdminPage() {
             style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 12 }}
           >
             정책자금 마스터 DB 관리 →
+          </button>
+          <button
+            onClick={() => router.push('/admin/contracts')}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            전체 계약 현황 →
           </button>
           <button
             onClick={() => setShowForm((s) => !s)}
@@ -123,18 +133,35 @@ export default function AdminPage() {
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>이름</th>
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>아이디</th>
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>역할</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>담당 고객</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>최근 활동</th>
               </tr>
             </thead>
             <tbody>
-              {accounts.map((acc, i) => (
-                <tr key={i} style={{ borderTop: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '14px 20px', fontSize: 14 }}>{acc.name}</td>
-                  <td style={{ padding: '14px 20px', fontSize: 14, color: '#666' }}>{acc.username}</td>
-                  <td style={{ padding: '14px 20px', fontSize: 14 }}>
-                    <span style={{ background: acc.role === 'admin' ? '#e8f0fe' : '#f0f4ff', color: acc.role === 'admin' ? '#1a73e8' : '#555', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{ROLE_LABEL[acc.role] || acc.role}</span>
-                  </td>
-                </tr>
-              ))}
+              {accounts.map((acc, i) => {
+                const own = customers.filter((c) => String(c.consultant_id) === String(acc.username))
+                const lastActive = own.reduce((max, c) => (c.updated_at > max ? c.updated_at : max), '')
+                const daysAgo = lastActive ? Math.floor((Date.now() - new Date(lastActive)) / 86400000) : null
+                return (
+                  <tr key={i} style={{ borderTop: '1px solid #f0f0f0' }}>
+                    <td style={{ padding: '14px 20px', fontSize: 14 }}>{acc.name}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 14, color: '#666' }}>{acc.username}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 14 }}>
+                      <span style={{ background: acc.role === 'admin' ? '#e8f0fe' : '#f0f4ff', color: acc.role === 'admin' ? '#1a73e8' : '#555', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600 }}>{ROLE_LABEL[acc.role] || acc.role}</span>
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: 14 }}>
+                      {acc.role === 'admin' ? '—' : (
+                        own.length > 0
+                          ? <button onClick={() => router.push(`/customers?consultant=${acc.username}`)} style={{ background: 'none', border: 'none', color: '#D85A30', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>{own.length}명 보기</button>
+                          : <span style={{ color: '#B0AEA5' }}>0명</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: daysAgo != null && daysAgo >= 7 ? '#B24A2B' : '#666' }}>
+                      {acc.role === 'admin' ? '—' : daysAgo == null ? '활동 없음' : daysAgo === 0 ? '오늘' : `${daysAgo}일 전`}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
