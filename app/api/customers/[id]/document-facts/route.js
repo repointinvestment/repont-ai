@@ -37,6 +37,8 @@ export async function POST(request, { params }) {
 
   const pfd = { ...(customer.policy_fund_details || {}) }
   if (f.taxDelinquent === 'yes' || f.taxDelinquent === 'no') pfd.taxDelinquent = f.taxDelinquent
+  if (f.hasBankruptcy === 'yes' || f.hasBankruptcy === 'no') pfd.hasBankruptcy = f.hasBankruptcy
+  if (f.currentBizCount != null && f.currentBizCount !== '') pfd.currentBizCount = String(f.currentBizCount)
   pfd._docAppliedAt = new Date().toISOString()
 
   const [row] = await sql`

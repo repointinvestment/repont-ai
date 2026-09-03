@@ -31,6 +31,8 @@ export default function DocumentFactsPanel({ data, onApply, embedded = false }) 
     if (item.field === 'revenueAmount') fields.revenueAmount = item.rawValue ?? item.docValue;
     if (item.field === 'industry') fields.industry = item.docValue;
     if (item.field === 'taxDelinquent') fields.taxDelinquent = item.rawValue;
+    if (item.field === 'hasBankruptcy') fields.hasBankruptcy = item.rawValue;
+    if (item.field === 'currentBizCount') fields.currentBizCount = item.rawValue;
     try { await onApply(fields); } finally { setBusy(null); }
   };
 
@@ -41,6 +43,8 @@ export default function DocumentFactsPanel({ data, onApply, embedded = false }) 
       if (it.status !== 'fill' && it.status !== 'mismatch') continue;
       if (it.field === 'revenueAmount') fields.revenueAmount = it.rawValue ?? it.docValue;
       if (it.field === 'taxDelinquent') fields.taxDelinquent = it.rawValue;
+      if (it.field === 'hasBankruptcy') fields.hasBankruptcy = it.rawValue;
+      if (it.field === 'currentBizCount') fields.currentBizCount = it.rawValue;
     }
     try { await onApply(fields); } finally { setBusy(null); }
   };
