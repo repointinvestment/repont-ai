@@ -575,10 +575,11 @@ export default function CodefDocumentIssuance({
 
       {(phase === 'requesting' || phase === 'confirming') && (
         <LoadingModal
+          phase={phase}
           messages={
             phase === 'requesting'
               ? [selectedDocs.length > 1 ? `${selectedDocs.length}건 서류 인증을 함께 요청하고 있습니다` : '인증을 요청하고 있습니다', '고객님의 승인을 기다리고 있습니다']
-              : ['서류를 준비하고 있습니다', '국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
+              : ['국세청 홈택스에 접속하고 있습니다', '전자서명을 확인하고 있습니다', '증명서를 발급하고 있습니다']
           }
         />
       )}
@@ -701,7 +702,7 @@ function aggregateTaxStandard(items) {
   return Object.values(byCompany)
 }
 
-function LoadingModal({ messages }) {
+function LoadingModal({ messages, phase }) {
   const [phase, setPhase] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
@@ -748,7 +749,9 @@ function LoadingModal({ messages }) {
           {messages[phase]}
         </p>
         <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>
-          {elapsed}초 경과{elapsed >= 10 ? ' · 렉이 아니라 고객님이 카카오톡 승인을 누르는 걸 기다리는 중이에요' : ''}
+          {elapsed}초 경과
+          {elapsed >= 10 && phase === 'requesting' ? ' · 렉이 아니라 고객님이 카카오톡 승인을 누르는 걸 기다리는 중이에요' : ''}
+          {elapsed >= 10 && phase === 'confirming' ? ' · 렉이 아니라 국세청에서 서류를 발급받는 중이에요 (승인은 이미 완료됨, 보통 10~30초)' : ''}
         </p>
 
         <style>{`
