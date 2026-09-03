@@ -15,6 +15,11 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [resettingPw, setResettingPw] = useState(null) // 비밀번호 재설정 중인 계정
+  const [newPw, setNewPw] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState(null)
+  const [pwDone, setPwDone] = useState(null) // 완료 후 잠깐 보여줄 계정 아이디
 
   useEffect(() => {
     const session = getSession()
@@ -58,6 +63,33 @@ export default function AdminPage() {
   }
 
   if (!user) return null
+
+  function openResetPw(acc) {
+    setResettingPw(acc)
+    setNewPw('')
+    setPwError(null)
+  }
+
+  async function submitResetPw() {
+    if (!newPw || newPw.length < 4) { setPwError('비밀번호는 4자 이상이어야 합니다.'); return }
+    setPwSaving(true); setPwError(null)
+    try {
+      const res = await fetch(`/api/users/${resettingPw.username}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role },
+        body: JSON.stringify({ password: newPw }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '변경 실패')
+      setPwDone(resettingPw.username)
+      setResettingPw(null)
+      setTimeout(() => setPwDone(null), 4000)
+    } catch (err) {
+      setPwError(err.message)
+    } finally {
+      setPwSaving(false)
+    }
+  }
 
   const inputStyle = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 14, boxSizing: 'border-box' }
   const labelStyle = { fontSize: 13, color: '#5F5E5A', display: 'block', marginBottom: 6 }
@@ -135,6 +167,7 @@ export default function AdminPage() {
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>역할</th>
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>담당 고객</th>
                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}>최근 활동</th>
+                <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: 13, color: '#555', fontWeight: 600 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -159,6 +192,9 @@ export default function AdminPage() {
                     <td style={{ padding: '14px 20px', fontSize: 13, color: daysAgo != null && daysAgo >= 7 ? '#B24A2B' : '#666' }}>
                       {acc.role === 'admin' ? '—' : daysAgo == null ? '활동 없음' : daysAgo === 0 ? '오늘' : `${daysAgo}일 전`}
                     </td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <button onClick={() => openResetPw(acc)} style={{ padding: '6px 11px', borderRadius: 7, border: '1px solid #D3D1C7', background: '#fff', color: '#5F5E5A', fontSize: 12, cursor: 'pointer' }}>비밀번호 변경</button>
+                    </td>
                   </tr>
                 )
               })}
@@ -166,6 +202,36 @@ export default function AdminPage() {
           </table>
         </div>
       </div>
+
+      {pwDone && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#1a1a2e', color: '#fff', padding: '12px 18px', borderRadius: 10, fontSize: 13, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+          ✓ {pwDone} 계정 비밀번호를 변경했습니다.
+        </div>
+      )}
+
+      {resettingPw && (
+        <div onClick={() => setResettingPw(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 22, width: 340 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#2A2925', margin: '0 0 4px' }}>비밀번호 변경</p>
+            <p style={{ fontSize: 12.5, color: '#8A8A85', margin: '0 0 16px' }}>{resettingPw.name} ({resettingPw.username}) 계정의 새 비밀번호를 입력하세요. 기존 비밀번호는 확인할 수 없어 새로 덮어씁니다.</p>
+            <input
+              type="text"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="새 비밀번호"
+              autoFocus
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 14, boxSizing: 'border-box', marginBottom: 12 }}
+            />
+            {pwError && <p style={{ color: '#C0392B', fontSize: 12.5, margin: '0 0 10px' }}>{pwError}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setResettingPw(null)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
+              <button onClick={submitResetPw} disabled={pwSaving} style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: '#1a1a2e', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {pwSaving ? '변경 중...' : '변경'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
