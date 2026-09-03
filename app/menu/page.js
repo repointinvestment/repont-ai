@@ -59,9 +59,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'referrals', 'contracts', 'admin'],
-  consultant: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'mycontracts'],
-  student: ['chat', 'board', 'customers', 'documents', 'plans', 'simulator', 'mylink', 'mycontracts'],
+  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'mylink', 'referrals', 'board', 'admin'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'board'],
 }
 
 export default function MenuPage() {
