@@ -3,6 +3,7 @@
 // app/apply/[username]/page.js
 // 자가진단 공개 링크 (로드맵 8번). 로그인 없이 접근 가능. SNS·블로그·문자에 공유되는 페이지라
 // "OOO 컨설턴트"보다 "내가 받을 수 있는 자금 확인"이 먼저 보이도록 헤드라인을 혜택 중심으로 재설계.
+// '컨설턴트'라는 단어 대신 '자금전문가'로 표기 (대표 요청 — 컨설팅이라는 단어를 선호하지 않음).
 // 디자인 톤: 정책자금 = 사업 성장을 돕는 돈 → 성장 그래프/새싹 모티프의 커스텀 SVG, 짙은 포레스트 그린 팔레트.
 
 import { useEffect, useState } from 'react';
@@ -49,7 +50,7 @@ function CheckIcon() {
 
 const FEATURES = [
   { label: '1분이면 충분해요', detail: '업종·업력·매출만 입력' },
-  { label: '전문 컨설턴트가 검토해요', detail: '자동 결과 + 사람의 확인' },
+  { label: '자금전문가가 검토해요', detail: '자동 결과 + 사람의 확인' },
   { label: '완전 무료예요', detail: '가입도, 비용도 없어요' },
 ];
 
@@ -157,7 +158,7 @@ export default function PublicApplyPage() {
             내가 받을 수 있는<br />정책자금, 지금 확인하세요
           </h1>
           <p style={{ fontSize: 14, color: '#5C6B62', margin: 0, lineHeight: 1.6 }}>
-            <strong style={{ color: INK }}>{consultantName}</strong> 컨설턴트가 직접 검토해드려요
+            <strong style={{ color: INK }}>{consultantName}</strong> 자금전문가가 직접 검토해드려요
           </p>
         </div>
 
@@ -214,7 +215,7 @@ export default function PublicApplyPage() {
             }}>
               {status === 'submitting' ? '확인 중…' : '내 자금 확인하기'}
             </button>
-            <p style={{ fontSize: 11, color: '#A8AFA5', margin: 0, textAlign: 'center' }}>입력하신 정보는 담당 컨설턴트에게 전달되어 상담에 활용됩니다.</p>
+            <p style={{ fontSize: 11, color: '#A8AFA5', margin: 0, textAlign: 'center' }}>입력하신 정보는 담당 자금전문가에게 전달되어 상담에 활용됩니다.</p>
           </form>
         ) : (
           <div style={{ background: '#fff', borderRadius: '22px 22px 18px 18px', padding: 26, boxShadow: '0 12px 32px rgba(23,38,31,0.08)', border: `1px solid ${LINE}` }}>
@@ -238,7 +239,7 @@ export default function PublicApplyPage() {
               <p style={{ fontSize: 13.5, color: '#5C6B62' }}>입력하신 조건으로는 자동으로 판단하기 어려운 부분이 있어요. 상담을 통해 정확히 확인해드릴게요.</p>
             )}
             <p style={{ fontSize: 13, color: '#5C6B62', lineHeight: 1.7, marginTop: 16, marginBottom: 0 }}>
-              정확한 한도와 신청 절차는 실제 서류 확인 후 결정됩니다. <strong style={{ color: INK }}>{consultantName}</strong> 컨설턴트가 입력하신 연락처로 곧 연락드릴게요.
+              정확한 한도와 신청 절차는 실제 서류 확인 후 결정됩니다. <strong style={{ color: INK }}>{consultantName}</strong> 자금전문가가 입력하신 연락처로 곧 연락드릴게요.
             </p>
           </div>
         )}
