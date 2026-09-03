@@ -703,10 +703,10 @@ function aggregateTaxStandard(items) {
 }
 
 function LoadingModal({ messages, phase }) {
-  const [phase, setPhase] = useState(0);
+  const [msgIndex, setMsgIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setPhase((p) => (p + 1) % messages.length), 2200);
+    const t = setInterval(() => setMsgIndex((p) => (p + 1) % messages.length), 2200);
     return () => clearInterval(t);
   }, [messages]);
   useEffect(() => {
@@ -745,8 +745,8 @@ function LoadingModal({ messages, phase }) {
         <p style={{ fontSize: 15, fontWeight: 700, color: '#2A2925', margin: '0 0 6px' }}>
           잠시만 기다려 주세요
         </p>
-        <p key={phase} style={{ fontSize: 13, color: '#8A8A85', margin: 0, animation: 'codef-fade 0.4s ease' }}>
-          {messages[phase]}
+        <p key={msgIndex} style={{ fontSize: 13, color: '#8A8A85', margin: 0, animation: 'codef-fade 0.4s ease' }}>
+          {messages[msgIndex]}
         </p>
         <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>
           {elapsed}초 경과
