@@ -14,6 +14,10 @@ const CARDS = {
     icon: '🤖', title: 'AI 자금진단', desc: '정책자금 항목별 분석 · AI 채팅 · 캘린더',
     path: '/chat', accent: '#0B2440', tint: '#E8EEF5',
   },
+  resources: {
+    icon: '🗂️', title: '자료실', desc: '강의자료·양식 등 PPT·PDF·엑셀·이미지 다운로드',
+    path: '/resources', accent: '#5C7A66', tint: '#E7EFE9',
+  },
   board: {
     icon: '💬', title: '학습센터', desc: '공지 · 게시판 · QnA',
     path: '/board', accent: '#B4923F', tint: '#F6F1E3',
@@ -63,9 +67,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'mylink', 'referrals', 'board', 'admin'],
-  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'board'],
-  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'board'],
+  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'mylink', 'referrals', 'resources', 'board', 'admin'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
 }
 
 export default function MenuPage() {
