@@ -364,7 +364,7 @@ export default function PolicyFundsAdminPage() {
             {cases.length === 0 && (
               <div style={{ ...card, color: '#8A8A85', fontSize: 13.5, lineHeight: 1.7 }}>
                 아직 등록된 사례가 없습니다. 실제로 받아준 건, 부결된 건, 규칙과 다르게 갈린 건을 여기 쌓아두면
-                자격판정 결과의 "유사 사례" 근거와 AI 상담 참고, 수강생 교육 자료로 쓰입니다.
+                자격판정 결과의 "유사 사례" 근거와 AI 상담 참고, 컨설턴트 교육 자료로 쓰입니다.
                 <br />고객 이름·사업자번호 같은 식별 정보는 넣지 말고 업종·규모·조건만 기록하세요.
               </div>
             )}
@@ -566,7 +566,7 @@ export default function PolicyFundsAdminPage() {
               <input style={input} value={editingCase.tags} onChange={(e) => setEditingCase({ ...editingCase, tags: e.target.value })} />
             </Field>
           </div>
-          <p style={{ fontSize: 12, color: '#8A8A85', margin: '10px 0 0' }}>※ 고객 이름·상호·사업자번호 등 식별 정보는 넣지 마세요. 수강생 교육 자료와 AI 상담 참고로 노출될 수 있습니다.</p>
+          <p style={{ fontSize: 12, color: '#8A8A85', margin: '10px 0 0' }}>※ 고객 이름·상호·사업자번호 등 식별 정보는 넣지 마세요. 컨설턴트 교육 자료와 AI 상담 참고로 노출될 수 있습니다.</p>
           {error && <p style={{ color: '#C0392B', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
             <button style={btnGhost} onClick={() => setEditingCase(null)}>취소</button>

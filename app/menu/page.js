@@ -55,7 +55,7 @@ const CARDS = {
     path: '/admin/contracts', accent: '#4B7C8C', tint: '#E5EFF1',
   },
   admin: {
-    icon: '⚙️', title: '계정 관리', desc: '직원/수강생 계정 목록 확인',
+    icon: '⚙️', title: '계정 관리', desc: '컨설턴트 계정 목록 확인',
     path: '/admin', accent: '#6A5A8C', tint: '#EFEBF5',
   },
 }

@@ -89,7 +89,7 @@ export default function AdminContractsPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h2 style={{ color: '#1a1a2e', margin: 0 }}>연간계약 관리</h2>
-            <p style={{ fontSize: 13, color: '#8A8A85', margin: '6px 0 0' }}>수강생·컨설턴트별 자금비서 이용계약을 생성하고 서명·입금을 확인합니다.</p>
+            <p style={{ fontSize: 13, color: '#8A8A85', margin: '6px 0 0' }}>컨설턴트별 자금비서 이용계약을 생성하고 서명·입금을 확인합니다.</p>
           </div>
           <button style={btn} onClick={() => { setForm({ consultantUsername: '', feeAmount: '1000000', feeStructure: 'flat', successFeePct: '5' }); setCreating(true); setError(null) }}>+ 계약 생성</button>
         </div>
