@@ -23,6 +23,11 @@ export async function GET(request, { params }) {
     if (docAge != null && Number(customer.business_age_years ?? -1) !== Number(docAge)) {
       updates.business_age_years = docAge
     }
+    // 개업일은 매출초과차입금 계산엔 안 쓰지만(그건 사업자등록일 기준) 별도로 필요한 자금 조건이 있어 CRM의 open_date 칸에도 자동 반영.
+    const docOpenDate = facts.registration?.businessStartDate
+    if (docOpenDate && customer.open_date !== docOpenDate) {
+      updates.open_date = docOpenDate
+    }
     if (facts.businessHistory?.reliable) {
       const bh = facts.businessHistory
       const docBankruptcy = bh.hasClosureHistory ? 'yes' : 'no'
@@ -39,6 +44,7 @@ export async function GET(request, { params }) {
       const [row] = await sql`
         UPDATE customers SET
           business_age_years = COALESCE(${updates.business_age_years ?? null}, business_age_years),
+          open_date = COALESCE(${updates.open_date ?? null}, open_date),
           policy_fund_details = ${JSON.stringify(nextPfd)},
           updated_at = NOW()
         WHERE id = ${id}
