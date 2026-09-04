@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../components/AppHeader';
+import { INNOVATION_GROWTH_FIELDS, INNOVATION_TYPE_COMPANY, POLICY_PREFERRED_COMPANIES, VERIFICATION_SOURCES } from '@/lib/kosmeReferenceData';
 
 const SECTIONS = [
   {
@@ -56,6 +57,8 @@ export default function KosmeScorePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [selections, setSelections] = useState({}); // { indicatorKey: pointValue }
+  const [refModal, setRefModal] = useState(null); // indicator key currently shown in modal
+  const [refSearch, setRefSearch] = useState('');
 
   useEffect(() => {
     const s = getSession();
@@ -132,7 +135,16 @@ export default function KosmeScorePage() {
                       );
                     })}
                   </div>
-                  <p style={{ fontSize: 10.5, color: '#B0AEA5', margin: '5px 0 0' }}>{ind.note}</p>
+                  <p style={{ fontSize: 10.5, color: '#B0AEA5', margin: '5px 0 0' }}>
+                    {ind.note}
+                    {' '}
+                    <button
+                      onClick={() => { setRefModal(ind.key); setRefSearch(''); }}
+                      style={{ fontSize: 10.5, color: '#3A5A78', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >
+                      바로 확인
+                    </button>
+                  </p>
                 </div>
               ))}
             </div>
@@ -150,6 +162,99 @@ export default function KosmeScorePage() {
           * 이은종 본부장 공유 자료(중진공_정책자금 평가점수 산출표) 기준입니다. 실제 심사 결과는 기관 내부 심사 기준에 따라 달라질 수 있습니다.
         </p>
       </div>
+
+      {refModal && <ReferenceModal indKey={refModal} search={refSearch} setSearch={setRefSearch} onClose={() => setRefModal(null)} />}
     </div>
+  );
+}
+
+function ReferenceModal({ indKey, search, setSearch, onClose }) {
+  const q = search.trim().toLowerCase();
+
+  let title = '';
+  let body = null;
+
+  if (indKey === 'innovGrowth') {
+    title = '혁신성장 분야 (참고1) — 9개 테마·31개 분야·240개 품목';
+    const filtered = INNOVATION_GROWTH_FIELDS.map((t) => ({
+      ...t,
+      groups: t.groups.map((g) => ({ ...g, items: g.items.filter((i) => !q || i.toLowerCase().includes(q) || g.field.toLowerCase().includes(q) || t.theme.toLowerCase().includes(q)) })).filter((g) => g.items.length > 0),
+    })).filter((t) => t.groups.length > 0);
+    body = (
+      <>
+        <SearchBox value={search} onChange={setSearch} placeholder="업종·품목 검색 (예: AI, 반도체, 로봇...)" />
+        {filtered.length === 0 && <p style={{ fontSize: 12.5, color: '#B0AEA5' }}>검색 결과가 없습니다.</p>}
+        {filtered.map((t) => (
+          <div key={t.theme} style={{ marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#2A2925', margin: '0 0 6px' }}>{t.theme}</p>
+            {t.groups.map((g) => (
+              <div key={g.field} style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#3A5A78' }}>{g.field}: </span>
+                <span style={{ fontSize: 12, color: '#5F5E5A' }}>{g.items.join(', ')}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </>
+    );
+  } else if (indKey === 'techMgmt') {
+    title = '혁신형 중소기업 지원대상 (참고7)';
+    body = INNOVATION_TYPE_COMPANY.map((c) => (
+      <div key={c.category} style={{ marginBottom: 14 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#2A2925', margin: '0 0 6px' }}>{c.category}</p>
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          {c.items.map((i) => <li key={i} style={{ fontSize: 12.5, color: '#5F5E5A', marginBottom: 3 }}>{i}</li>)}
+        </ul>
+      </div>
+    ));
+  } else if (indKey === 'policyPref') {
+    title = '정부 정책에 따른 우대 기업 (별표2)';
+    const filtered = POLICY_PREFERRED_COMPANIES.filter((i) => !q || i.toLowerCase().includes(q));
+    body = (
+      <>
+        <SearchBox value={search} onChange={setSearch} placeholder="인증·기업 유형 검색" />
+        {filtered.length === 0 && <p style={{ fontSize: 12.5, color: '#B0AEA5' }}>검색 결과가 없습니다.</p>}
+        <ul style={{ margin: 0, paddingLeft: 18 }}>
+          {filtered.map((i) => <li key={i} style={{ fontSize: 12.5, color: '#5F5E5A', marginBottom: 5 }}>{i}</li>)}
+        </ul>
+      </>
+    );
+  } else {
+    const src = VERIFICATION_SOURCES[indKey];
+    title = '확인 방법';
+    body = (
+      <div>
+        <p style={{ fontSize: 13, color: '#2A2925', lineHeight: 1.7 }}>{src?.text || '확인자료 정보가 없습니다.'}</p>
+        {src?.type === 'link' && (
+          <a href={src.url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 8, padding: '9px 14px', borderRadius: 8, background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            사이트 바로가기 →
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto', zIndex: 1000 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 22, width: '100%', maxWidth: 520, maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#2A2925', margin: 0 }}>{title}</p>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, color: '#B0AEA5', cursor: 'pointer' }}>×</button>
+        </div>
+        {body}
+      </div>
+    </div>
+  );
+}
+
+function SearchBox({ value, onChange, placeholder }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      autoFocus
+      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 13, boxSizing: 'border-box', marginBottom: 14 }}
+    />
   );
 }
