@@ -35,6 +35,8 @@ export default function CustomerDashboardPage() {
   const [planDrafts, setPlanDrafts] = useState({});
   const [planLoading, setPlanLoading] = useState({});
   const [planCopyState, setPlanCopyState] = useState({});
+  const [planAmountPrompt, setPlanAmountPrompt] = useState(null); // { fundName, index, suggested }
+  const [planAmountInput, setPlanAmountInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -167,7 +169,12 @@ export default function CustomerDashboardPage() {
     await uploadFiles(e.dataTransfer.files);
   }
 
-  async function generatePlan(fundName, index, loanAmountManwon) {
+  function openPlanAmountPrompt(fundName, index, suggested) {
+    setPlanAmountPrompt({ fundName, index, suggested });
+    setPlanAmountInput(suggested ? String(suggested) : '');
+  }
+
+  async function runGeneratePlan(fundName, index, loanAmountManwon) {
     setPlanLoading((s) => ({ ...s, [index]: true }));
     try {
       const pfd = customer.policy_fund_details || {};
@@ -206,6 +213,13 @@ export default function CustomerDashboardPage() {
     } finally {
       setPlanLoading((s) => ({ ...s, [index]: false }));
     }
+  }
+
+  function confirmPlanAmount() {
+    const amt = Number(String(planAmountInput).replace(/[^0-9]/g, ''));
+    const { fundName, index } = planAmountPrompt;
+    setPlanAmountPrompt(null);
+    runGeneratePlan(fundName, index, amt || null);
   }
 
   async function copyPlan(index) {
@@ -474,7 +488,7 @@ export default function CustomerDashboardPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => generatePlan(r.name, i, amounts[i])}
+                          onClick={() => openPlanAmountPrompt(r.name, i, amounts[i])}
                           disabled={planLoading[i]}
                           style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
                         >
@@ -711,6 +725,30 @@ export default function CustomerDashboardPage() {
           </button>
         </div>
       </div>
+
+      {planAmountPrompt && (
+        <div onClick={() => setPlanAmountPrompt(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 22, width: 340 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#2A2925', margin: '0 0 4px' }}>신청 금액 입력</p>
+            <p style={{ fontSize: 12.5, color: '#8A8A85', margin: '0 0 16px' }}>{planAmountPrompt.fundName} — 실제 신청할 금액을 입력하세요. 자금집행계획이 이 금액 기준으로 채워집니다. (한도 참고: {planAmountPrompt.suggested ? `최대 ${planAmountPrompt.suggested.toLocaleString()}만원` : '-'})</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                value={planAmountInput}
+                onChange={(e) => setPlanAmountInput(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="예: 5000"
+                autoFocus
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 14, boxSizing: 'border-box' }}
+              />
+              <span style={{ fontSize: 13, color: '#5F5E5A' }}>만원</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setPlanAmountPrompt(null)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
+              <button onClick={confirmPlanAmount} style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>초안 작성</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

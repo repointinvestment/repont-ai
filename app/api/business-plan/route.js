@@ -84,6 +84,7 @@ async function generateParagraph({ fundName, customer, guidance, minChars, maxCh
 아래 고객 정보와 자금별 강조 포인트를 반영해 "${fundName}" 신청서의 사업내용 문단만 작성하세요.
 - 정중하고 formal한 사업계획서체(자연스러운 서술문)로 작성
 - 제공된 정보 범위 내에서만 작성하고 확인되지 않은 사실을 지어내지 마세요
+- 대표자 경력·인증·특허 등 강점 정보가 있으면 "~한 경력을 바탕으로", "~을 보유하고 있어 기술 경쟁력이 있으며" 같은 방식으로 사업 경쟁력을 뒷받침하는 근거로 문장에 자연스럽게 녹여내세요. "특허 보유: 있음"처럼 사실을 나열식으로 쓰지 마세요.
 - ${instruction}
 - 분량은 ${minChars}자 ~ ${maxChars}자 사이 (띄어쓰기 포함)
 - 문단 텍스트만 출력하고, 제목이나 안내문은 붙이지 마세요`
@@ -174,7 +175,6 @@ ${budget ? budget.map(([label, amt]) => field(label, `${amt.toLocaleString()}만
     const quarterlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 4)) : null
     const isJaedojeon = fundName.startsWith('재도전특별자금')
     const budget = budgetBreakdown(customer.loanAmount)
-    const certText = certLines(customer)
 
     const draft = `<${fundName.startsWith('재도전') ? '재도전특별자금' : '혁신성장촉진자금'} 기업현황 및 사업계획서>
 (소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
@@ -213,8 +213,8 @@ ${field('4분기', quarterlyRevenue)}
 ${field('거래처 정보', null, 10)}
 
 선택9. 지식재산권 및 인증현황, 수상실적
-${field('지식재산권 및 인증', certText)}
-${field('수상실적', null)}
+${field('지식재산권', customer.hasPatent ? '☑ 특허증' : null)}
+${field('인증·수상', null)}
 
 필수10. 사업계획서
 ◦ 필수사업내용 (100자~3,000자)
@@ -254,6 +254,7 @@ ${field('폐업사유', null)}` : ''}
 - 정중하고 formal한 사업계획서체로 작성 (완전한 문장, "~함", "~임" 개조식이 아닌 자연스러운 서술문)
 - 제공된 고객 정보 범위 내에서만 작성하고, 확인되지 않은 사실을 지어내지 마세요
 - 구체적인 숫자(매출액, 신용점수 등)가 있으면 반드시 인용해 신뢰도를 높이세요
+- 대표자 경력·인증·특허 등 강점 정보가 있으면 "2. 대표자 및 기업 현황"에서 "~한 경력을 바탕으로", "~을 보유하고 있어 경쟁력이 있으며" 같은 방식으로 자연스럽게 녹여내세요. "벤처인증: 있음"처럼 사실을 나열식으로 쓰지 마세요.
 - "3. 신청 자금 개요 및 신청 사유" 항목에는 아래 안내된 이 자금 특유의 강조 포인트를 반드시 자연스럽게 녹여내세요
 - 마지막에 "※ 이 초안은 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."라는 안내 문구를 반드시 추가하세요`
 
