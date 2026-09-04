@@ -63,6 +63,7 @@ export default function KosmeScorePage() {
   useEffect(() => {
     const s = getSession();
     if (!s) { router.push('/'); return; }
+    if (s.role !== 'admin') { router.push('/menu'); return; } // 아직 완성 전 — 벤처인증 등 다른 가점 항목도 묶어서 넣을 때까지 대표만
     setUser(s);
   }, []);
 

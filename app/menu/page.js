@@ -72,8 +72,8 @@ const CARDS = {
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
   admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'board', 'admin'],
-  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'myreferrals', 'resources', 'board'],
-  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'myreferrals', 'resources', 'board'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
 }
 
 export default function MenuPage() {
