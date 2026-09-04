@@ -42,6 +42,10 @@ const CARDS = {
     icon: '🔗', title: '내 자가진단 링크', desc: 'SNS·블로그에 붙여넣을 잠재고객 유입 링크',
     path: '/my-link', accent: '#B4713F', tint: '#F6EBE0',
   },
+  kosmescore: {
+    icon: '📊', title: '중진공 평가점수 계산기', desc: '여신심사 반영 100점 만점 평가배점 자동 산출',
+    path: '/kosme-score', accent: '#3A5A78', tint: '#E5EDF3',
+  },
   referrals: {
     icon: '📮', title: '대표 의뢰함', desc: '법인전환·절세·상속 이슈 케이스 이관 목록',
     path: '/admin/referrals', accent: '#9B4B3F', tint: '#F5E6E2',
@@ -67,9 +71,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'mylink', 'referrals', 'resources', 'board', 'admin'],
-  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
-  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'board'],
+  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'board', 'admin'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'myreferrals', 'resources', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'myreferrals', 'resources', 'board'],
 }
 
 export default function MenuPage() {
