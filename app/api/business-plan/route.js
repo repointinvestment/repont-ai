@@ -36,6 +36,34 @@ function won(manwon) {
   return `${(Number(manwon) * 10000).toLocaleString()}원`
 }
 
+// 필수자금집행계획(대출신청 금액과 합계가 같아야 하는 항목)은 지금까지 통째로 빈칸이었음 — 대출 신청 금액만 알면
+// 정책자금 실무에서 흔히 쓰는 비율(인건비>원부자재>판로홍보>생산판매>기타)로 배분해서 초안을 채움.
+// GPT가 아니라 코드로 계산해서 합계가 항상 정확히 맞도록 함(GPT 산술 오류·환각 위험 제거). 컨설턴트가 실제 집행계획에 맞춰 숫자만 바꾸면 됨.
+function budgetBreakdown(loanAmountManwon) {
+  if (!loanAmountManwon) return null
+  const total = Math.round(Number(loanAmountManwon))
+  const ratios = [
+    ['인건비', 0.30],
+    ['원부자재 구입비', 0.25],
+    ['판로확보·홍보 등', 0.20],
+    ['생산·판매 및 부대비용', 0.15],
+    ['기타', 0.10],
+  ]
+  const amounts = ratios.map(([label, r]) => [label, Math.round(total * r)])
+  const sum = amounts.reduce((s, [, v]) => s + v, 0)
+  amounts[0][1] += total - sum // 반올림 오차는 가장 큰 항목(인건비)에서 흡수해 합계를 정확히 맞춤
+  return amounts
+}
+
+function certLines({ hasPatent, hasYellowUmbrella, hasRndCenter, hasVentureCert }) {
+  const items = []
+  if (hasPatent) items.push('특허 보유')
+  if (hasRndCenter) items.push('기업부설연구소 보유')
+  if (hasVentureCert) items.push('벤처기업 인증')
+  if (hasYellowUmbrella) items.push('노란우산공제 가입')
+  return items.length > 0 ? items.join(', ') : null
+}
+
 async function generateParagraph({ fundName, customer, guidance, minChars, maxChars, instruction }) {
   const customerSummary = `
 - 대표자명: ${customer.ownerName || '미입력'}
@@ -47,7 +75,9 @@ async function generateParagraph({ fundName, customer, guidance, minChars, maxCh
 - 신용점수: NICE ${customer.creditNice || '-'} / KCB ${customer.creditKcb || '-'}
 - 직원 수: ${customer.employeeCount ?? '미입력'}명
 - 보유 스마트기기: ${customer.smartDevices && customer.smartDevices.length > 0 ? customer.smartDevices.join(', ') : '없음'}
-- 특허보유: ${customer.hasPatent ? '있음' : '없음'}
+- 대표자 관련업종 경력: ${customer.careerYears ? `약 ${customer.careerYears}년` : '미입력'}
+- 인증·특허 현황: ${certLines(customer) || '없음'}
+- 신청 대출 금액: ${customer.loanAmount ? `${Number(customer.loanAmount).toLocaleString()}만원` : '미입력'}
 `.trim()
 
   const systemPrompt = `당신은 정책자금 신청용 사업계획서를 작성하는 전문 컨설턴트입니다.
@@ -97,6 +127,9 @@ export async function POST(req) {
       instruction: '주 서비스·생산품목의 용도 및 특성(제품/서비스의 주요 내용, 다양성, 인지도 등)을 중심으로 작성',
     })
     const monthlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 12)) : null
+    const ownershipMap = { '자가': '자가', '임대': '임차', '가족소유': '자가(가족소유)' }
+    const ownership = ownershipMap[customer.addressOwnership] || null
+    const budget = budgetBreakdown(customer.loanAmount)
 
     const draft = `<신용취약소상공인자금 기업현황 및 사업계획서>
 (소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
@@ -105,23 +138,25 @@ export async function POST(req) {
 ${field('주 서비스·생산품목', customer.industry)}
 ${field('매출액(월)', monthlyRevenue)}
 ${field('주 사용 플랫폼', null)}
-${field('점포 보유현황', null)}
+${field('점포 보유현황', ownership)}
 
 사업개요:
 ${paragraph}
 
 2. 대표자 및 실제경영자 경력
 ${field('대표자 성명', customer.ownerName)}
-${field('근무 기간', null)}
+${field('근무 기간', customer.careerYears ? `약 ${customer.careerYears}년` : null)}
 ${field('근무처', null)}
 ${field('담당업무', null)}
 
-3. 필수자금집행계획 (대출신청 금액과 합계가 같아야 함)
-${field('원부자재 구입비', null)}
-${field('생산·판매 및 부대비용', null)}
-${field('판로확보·홍보 등', null)}
-${field('인건비', null)}
-${field('기타', null)}
+3. 필수자금집행계획 (대출신청 금액과 합계가 같아야 함)${customer.loanAmount ? ` — 대출신청 금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 수정하세요.` : ''}
+${budget ? budget.map(([label, amt]) => field(label, `${amt.toLocaleString()}만원`)).join('\n') : [
+  field('원부자재 구입비', null),
+  field('생산·판매 및 부대비용', null),
+  field('판로확보·홍보 등', null),
+  field('인건비', null),
+  field('기타', null),
+].join('\n')}
 
 ※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
@@ -136,7 +171,10 @@ ${field('기타', null)}
     const ownershipMap = { '자가': '자가', '임대': '임차', '가족소유': '자가(가족소유)' }
     const ownership = ownershipMap[customer.addressOwnership] || null
     const monthlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 12)) : null
+    const quarterlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 4)) : null
     const isJaedojeon = fundName.startsWith('재도전특별자금')
+    const budget = budgetBreakdown(customer.loanAmount)
+    const certText = certLines(customer)
 
     const draft = `<${fundName.startsWith('재도전') ? '재도전특별자금' : '혁신성장촉진자금'} 기업현황 및 사업계획서>
 (소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
@@ -148,7 +186,7 @@ ${field('연혁', null, 10)}
 ${field('성명', customer.ownerName)}
 ${field('최종학력(학위)', null)}
 ${field('전공', null)}
-${field('동업종 종사기간', customer.bizAge ? `약 ${customer.bizAge}년` : null)}
+${field('동업종 종사기간', customer.careerYears ? `약 ${customer.careerYears}년` : (customer.bizAge ? `약 ${customer.bizAge}년` : null))}
 
 선택3. 경영진 (대표자·실제경영자 제외)
 ${field('명단', null, 10)}
@@ -164,30 +202,32 @@ ${field('판매방식', null)}
 ${field('생산방식', null)}
 ${field('가동상황', null)}
 
-필수7. 매출 현황
+필수7. 매출 현황${customer.revenue ? ' — 분기별 실적 데이터가 없어 연매출을 4등분한 추정치입니다. 실제 분기 실적으로 바꿔주세요.' : ''}
 ${field('현재 매출액(월)', monthlyRevenue)}
-${field('1분기', null)}
-${field('2분기', null)}
-${field('3분기', null)}
-${field('4분기', null)}
+${field('1분기', quarterlyRevenue)}
+${field('2분기', quarterlyRevenue)}
+${field('3분기', quarterlyRevenue)}
+${field('4분기', quarterlyRevenue)}
 
 선택8. 주요거래처
 ${field('거래처 정보', null, 10)}
 
 선택9. 지식재산권 및 인증현황, 수상실적
-${field('지식재산권', customer.hasPatent ? '☑ 특허증' : null)}
-${field('인증·수상', null)}
+${field('지식재산권 및 인증', certText)}
+${field('수상실적', null)}
 
 필수10. 사업계획서
 ◦ 필수사업내용 (100자~3,000자)
 ${paragraph}
 
-◦ 필수자금집행계획
-${field('원부자재 구입비', null)}
-${field('생산·판매 및 부대비용', null)}
-${field('판로확보·홍보 등', null)}
-${field('인건비', null)}
-${field('기타', null)}
+◦ 필수자금집행계획${customer.loanAmount ? ` — 대출신청 금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 수정하세요.` : ''}
+${budget ? budget.map(([label, amt]) => field(label, `${amt.toLocaleString()}만원`)).join('\n') : [
+  field('원부자재 구입비', null),
+  field('생산·판매 및 부대비용', null),
+  field('판로확보·홍보 등', null),
+  field('인건비', null),
+  field('기타', null),
+].join('\n')}
 ${isJaedojeon ? `
 선택11. 과거 폐업 기업 현황 (재창업 초기단계·도약형 신청 시)
 ${field('업체명', null)}
@@ -227,11 +267,19 @@ ${field('폐업사유', null)}` : ''}
 - 신용점수: NICE ${customer.creditNice || '-'} / KCB ${customer.creditKcb || '-'}
 - 직원 수: ${customer.employeeCount ?? '미입력'}명
 - 보유 스마트기기: ${customer.smartDevices && customer.smartDevices.length > 0 ? customer.smartDevices.join(', ') : '없음'}
-- 특허보유: ${customer.hasPatent ? '있음' : '없음'}
+- 대표자 관련업종 경력: ${customer.careerYears ? `약 ${customer.careerYears}년` : '미입력'}
+- 인증·특허 현황: ${certLines(customer) || '없음'}
+- 사업장 소유구분: ${customer.addressOwnership || '미입력'}
+- 신청 대출 금액: ${customer.loanAmount ? `${Number(customer.loanAmount).toLocaleString()}만원` : '미입력'}
 - 신청 자금: ${fundName}
 `.trim()
 
-  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서 초안을 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}`
+  const budgetForGeneric = budgetBreakdown(customer.loanAmount)
+  const budgetHint = budgetForGeneric
+    ? `\n\n[참고용 자금사용계획 배분(통상 비율, 신청금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준) — "4. 자금 사용 계획"에 이 배분을 반영해 서술하세요]\n${budgetForGeneric.map(([label, amt]) => `- ${label}: ${amt.toLocaleString()}만원`).join('\n')}`
+    : ''
+
+  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서 초안을 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}${budgetHint}`
 
   const response = await client.chat.completions.create({
     model: 'gpt-4o',

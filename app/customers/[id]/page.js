@@ -167,7 +167,7 @@ export default function CustomerDashboardPage() {
     await uploadFiles(e.dataTransfer.files);
   }
 
-  async function generatePlan(fundName, index) {
+  async function generatePlan(fundName, index, loanAmountManwon) {
     setPlanLoading((s) => ({ ...s, [index]: true }));
     try {
       const pfd = customer.policy_fund_details || {};
@@ -189,6 +189,12 @@ export default function CustomerDashboardPage() {
             employeeCount: customer.employee_count,
             smartDevices: pfd.smartDevices || [],
             hasPatent: customer.has_patent,
+            addressOwnership: customer.address_ownership,
+            careerYears: customer.owner_career_years,
+            hasYellowUmbrella: customer.has_yellow_umbrella,
+            hasRndCenter: customer.has_rnd_center,
+            hasVentureCert: customer.has_venture_cert,
+            loanAmount: loanAmountManwon || null,
           },
         }),
       });
@@ -468,7 +474,7 @@ export default function CustomerDashboardPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => generatePlan(r.name, i)}
+                          onClick={() => generatePlan(r.name, i, amounts[i])}
                           disabled={planLoading[i]}
                           style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
                         >
