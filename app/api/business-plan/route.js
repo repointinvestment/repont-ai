@@ -124,41 +124,46 @@ export async function POST(req) {
 
   if (template === 'SOJINKONG_SHORT') {
     const paragraph = await generateParagraph({
-      fundName, customer, guidance, minChars: 100, maxChars: 500,
-      instruction: '주 서비스·생산품목의 용도 및 특성(제품/서비스의 주요 내용, 다양성, 인지도 등)을 중심으로 작성',
+      fundName, customer, guidance, minChars: 300, maxChars: 1000,
+      instruction: '주 서비스·생산품목의 용도 및 특성(서비스 및 상품의 주요 내용, 제품의 다양성, 인지도 등)을 중심으로 작성',
     })
-    const monthlyRevenue = customer.revenue ? won(Math.round(Number(customer.revenue) / 12)) : null
-    const ownershipMap = { '자가': '자가', '임대': '임차', '가족소유': '자가(가족소유)' }
-    const ownership = ownershipMap[customer.addressOwnership] || null
+    const annualRevenueWon = customer.revenue ? `${(Number(customer.revenue) * 10000).toLocaleString()}원` : null
+    const ownershipMap = { '자가': '유', '임대': '유', '가족소유': '유' } // 온라인 서식은 자가/임차 구분 없이 "점포 보유현황: 유/무"만 물음
+    const storefront = customer.addressOwnership ? (ownershipMap[customer.addressOwnership] || '유') : null
     const budget = budgetBreakdown(customer.loanAmount)
 
     const draft = `<신용취약소상공인자금 기업현황 및 사업계획서>
-(소진공 공식 서식 기준 — CRM에 없는 항목은 빈칸으로 표시했습니다. 직접 채워 넣어주세요.)
+(소진공 온라인 신청 화면 ols.semas.or.kr 실제 항목·순서 그대로 — 그대로 복사해 각 칸에 붙여넣거나, 다운로드해서 쓰세요. CRM에 없는 항목은 빈칸(________)입니다.)
 
-1. 필수영업현황 및 사업개요
-${field('주 서비스·생산품목', customer.industry)}
-${field('매출액(월)', monthlyRevenue)}
-${field('주 사용 플랫폼', null)}
-${field('점포 보유현황', ownership)}
+1. 영업현황 및 사업개요
 
-사업개요:
+[영업현황]
+${field('주 서비스·생산품목 *', customer.industry)}
+${field('매출액 * (원)', annualRevenueWon)}
+${field('주 사용 플랫폼', null)} (예: 쿠팡, 네이버쇼핑 등 — 해당 없으면 공란)
+${field('점포 보유현황 *', storefront)} (유 / 무 중 선택)
+
+[사업개요 *] — 주서비스·생산품목의 용도 및 특성 (최대 1,000자)
 ${paragraph}
 
 2. 대표자 및 실제경영자 경력
-${field('대표자 성명', customer.ownerName)}
-${field('근무 기간', customer.careerYears ? `약 ${customer.careerYears}년` : null)}
-${field('근무처', null)}
-${field('담당업무', null)}
 
-3. 필수자금집행계획 (대출신청 금액과 합계가 같아야 함)${customer.loanAmount ? ` — 대출신청 금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 수정하세요.` : ''}
-${budget ? budget.map(([label, amt]) => field(label, `${amt.toLocaleString()}만원`)).join('\n') : [
-  field('원부자재 구입비', null),
-  field('생산·판매 및 부대비용', null),
-  field('판로확보·홍보 등', null),
-  field('인건비', null),
-  field('기타', null),
-].join('\n')}
+[공동대표자] * — 표: 성명 | 기간(년월~년월) | 근무처 | 담당업무 | 최종직위
+1행: ${customer.ownerName || '________'} | ________~________ | ________ | ________ | ________
+(공동대표자가 더 있으면 "+ 추가"로 행을 늘려 같은 형식으로 입력)
 
+[실제경영자] — 대표자 본인이 아닌 실제경영자가 있는 경우만 작성 (표: 성명 | 기간 | 근무처 | 담당업무 | 최종직위 | 대표자와의 관계)
+해당 없으면 공란으로 제출
+
+[경영진] — 대표자·실제경영자 제외 (표: 성명 | 연령 | 최종직위 | 대표자·실제경영자와의 관계 | 주요경력 | 근무년수)
+해당 없으면 공란으로 제출
+
+3. 자금집행계획 (1개 이상 필수 입력 — 합계는 대출신청 금액과 반드시 동일해야 함)${customer.loanAmount ? ` — 대출신청 금액 ${(Number(customer.loanAmount) * 10000).toLocaleString()}원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 용도·세부용도·금액을 수정하세요.` : ' — 신청 금액을 입력하지 않아 배분 초안을 만들지 못했습니다. 다시 작성하며 신청 금액을 입력해주세요.'}
+표: 용도(대분류) | 세부용도(30자 이내) | 금액(원)
+${budget ? budget.map(([label, amt]) => `${label} | ________ | ${(amt * 10000).toLocaleString()}원`).join('\n') : '________ | ________ | ________'}
+${budget ? `합계: ${(Number(customer.loanAmount) * 10000).toLocaleString()}원` : ''}
+
+※ 온라인 신청 화면 하단 "유의사항" 동의 체크박스는 컨설턴트/고객이 직접 내용을 읽고 체크해야 합니다(자동 대체 불가).
 ※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
     return saveAndRespond(draft)
