@@ -114,6 +114,12 @@ export default function AdminPage() {
             전체 계약 현황 →
           </button>
           <button
+            onClick={() => router.push('/kosme-score')}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            중진공 평가점수 계산기 (작업중) →
+          </button>
+          <button
             onClick={() => setShowForm((s) => !s)}
             style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
