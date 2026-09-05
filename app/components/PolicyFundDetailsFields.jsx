@@ -91,7 +91,7 @@ export default function PolicyFundDetailsFields({ businessAgeYears, onBusinessAg
       </p>
 
       <label style={labelStyle}>
-        업력 (년)
+        업력 (년) — 위 "사업자등록일" 입력 시 자동 계산되어 채워집니다. 필요하면 직접 수정하세요.
         <input type="number" style={inputStyle} value={businessAgeYears} onChange={(e) => onBusinessAgeYearsChange(e.target.value)} placeholder="예: 3" />
       </label>
 

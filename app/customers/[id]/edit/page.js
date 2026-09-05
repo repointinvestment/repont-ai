@@ -5,6 +5,17 @@ import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../../components/AppHeader';
 import PolicyFundDetailsFields from '../../../components/PolicyFundDetailsFields';
+import DateYMDInput from '../../../components/DateYMDInput';
+
+// 사업자등록일 기준으로 오늘 날짜와 비교해 업력을 자동 계산 — 매출초과차입금 판정 등은 사업자등록일 기준이라
+// 이 값을 그대로 "업력(년)"에 자동 반영. 컨설턴트가 직접 계산해서 따로 입력할 필요 없게 함.
+function yearsSince(dateStr) {
+  if (!dateStr) return null;
+  const then = new Date(dateStr);
+  if (Number.isNaN(then.getTime())) return null;
+  const years = (Date.now() - then.getTime()) / (365.25 * 24 * 3600 * 1000);
+  return Math.round(years * 10) / 10;
+}
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 const SERVICE_PRESETS = ['소진공', '홈택스', '4대보험', '정부24', '아이핀'];
@@ -265,11 +276,24 @@ export default function CustomerDetailPage() {
       <div style={row}>
         <label style={{ ...labelStyle, ...half }}>
           사업자등록일
-          <input style={inputStyle} name="establishDate" value={form.establishDate} onChange={handleChange} />
+          <DateYMDInput
+            value={form.establishDate}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, establishDate: v }));
+              const auto = yearsSince(v);
+              if (auto != null) setBusinessAgeYears(String(auto));
+            }}
+            inputStyle={inputStyle}
+          />
+          {form.establishDate && yearsSince(form.establishDate) != null && (
+            <span style={{ fontSize: 11.5, color: '#8A8A85', marginTop: 4, display: 'block' }}>
+              → 업력 약 {yearsSince(form.establishDate)}년 (오늘 날짜 기준 자동 계산, 아래 "업력(년)"에 반영됨 — 필요하면 직접 수정 가능)
+            </span>
+          )}
         </label>
         <label style={{ ...labelStyle, ...half }}>
           개업연도
-          <input style={inputStyle} name="openDate" value={form.openDate} onChange={handleChange} />
+          <DateYMDInput value={form.openDate} onChange={(v) => setForm((f) => ({ ...f, openDate: v }))} inputStyle={inputStyle} />
         </label>
       </div>
 

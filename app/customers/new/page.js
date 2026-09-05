@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
 import PolicyFundDetailsFields from '../../components/PolicyFundDetailsFields';
+import DateYMDInput from '../../components/DateYMDInput';
+
+function yearsSince(dateStr) {
+  if (!dateStr) return null;
+  const then = new Date(dateStr);
+  if (Number.isNaN(then.getTime())) return null;
+  const years = (Date.now() - then.getTime()) / (365.25 * 24 * 3600 * 1000);
+  return Math.round(years * 10) / 10;
+}
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
 const SERVICE_PRESETS = ['소진공', '홈택스', '4대보험', '정부24', '아이핀'];
@@ -176,11 +185,24 @@ export default function NewCustomerPage() {
                <div style={row}>
           <label style={{ ...labelStyle, ...half }}>
             사업자등록일
-            <input style={inputStyle} name="establishDate" value={form.establishDate} onChange={handleChange} placeholder="예: 2019년 10월 1일" />
+            <DateYMDInput
+              value={form.establishDate}
+              onChange={(v) => {
+                setForm((f) => ({ ...f, establishDate: v }));
+                const auto = yearsSince(v);
+                if (auto != null) setBusinessAgeYears(String(auto));
+              }}
+              inputStyle={inputStyle}
+            />
+            {form.establishDate && yearsSince(form.establishDate) != null && (
+              <span style={{ fontSize: 11.5, color: '#8A8A85', marginTop: 4, display: 'block' }}>
+                → 업력 약 {yearsSince(form.establishDate)}년 (오늘 날짜 기준 자동 계산, 아래 "업력(년)"에 반영됨 — 필요하면 직접 수정 가능)
+              </span>
+            )}
           </label>
           <label style={{ ...labelStyle, ...half }}>
             개업연도
-            <input style={inputStyle} name="openDate" value={form.openDate} onChange={handleChange} placeholder="예: 2019년 10월 1일" />
+            <DateYMDInput value={form.openDate} onChange={(v) => setForm((f) => ({ ...f, openDate: v }))} inputStyle={inputStyle} />
           </label>
         </div>
         <p style={sectionTitle}>재무 / 신용 정보</p>
