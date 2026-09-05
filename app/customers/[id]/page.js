@@ -352,6 +352,7 @@ export default function CustomerDashboardPage() {
       };
   const analysis = hasDetailedData ? analyzePolicyFunds(analysisForm, fundsByKey, rulesByKey) : null;
   const verdict = analysis ? buildVerdict({ analysis, form: analysisForm, fundsByKey, rulesByKey, docFacts: docData?.facts || null }) : null;
+  const fundAmounts = analysis ? analysis.results.map((r) => Number((r.limit.match(/[\d,]+/) || ['0'])[0].replace(/,/g, ''))) : [];
   const limits = estimateInstitutionLimits(customer, fundsByKey, rulesByKey);
   const maxLimit = Math.max(...limits.map((l) => l.limit || 0), 1);
 
@@ -429,6 +430,34 @@ export default function CustomerDashboardPage() {
         {/* 1층: 초보자도 이것만 보고 움직이면 되는 결론 */}
         {verdict && <ConclusionBox verdict={verdict} analysis={analysis} />}
 
+        {/* 항상 보이는 사업계획서 작성 — 아래 "신청 가능한 자금 상세"가 접혀 있어도 이 핵심 액션만은 바로 눌러야 해서 따로 뺌 */}
+        {hasDetailedData && analysis.results.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: 14, padding: '18px 22px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+            <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px', color: '#2A2925' }}>📝 사업계획서 작성</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {analysis.results.map((r, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', background: '#FAF9F6', borderRadius: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#2A2925' }}>{r.name}</span>
+                    <span style={{ fontSize: 12, color: '#8A8A85', marginLeft: 8 }}>{r.limit}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openPlanAmountPrompt(r.name, i, fundAmounts[i])}
+                    disabled={planLoading[i]}
+                    style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '초안 작성'}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {analysis.results.some((_, i) => planDrafts[i]) && (
+              <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>작성된 초안은 아래 "신청 가능한 자금 상세"를 펼치면 전체 내용을 볼 수 있습니다.</p>
+            )}
+          </div>
+        )}
+
         {/* 2층: 근거 — 접힘 */}
         {verdict && (
           <Collapsible title="왜 그런지 보기" badge="기관별 판정 · 4요소">
@@ -472,7 +501,7 @@ export default function CustomerDashboardPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {(() => {
-                  const amounts = analysis.results.map((r) => Number((r.limit.match(/[\d,]+/) || ['0'])[0].replace(/,/g, '')));
+                  const amounts = fundAmounts;
                   return analysis.results.map((r, i) => (
                     <div key={i} style={{ border: `1px solid ${r.color}22`, borderLeft: `4px solid ${r.color}`, borderRadius: 8, padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
