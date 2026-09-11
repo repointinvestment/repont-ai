@@ -25,7 +25,9 @@ export async function POST(request, { params }) {
 
   const body = await request.json().catch(() => ({}))
   const fundName = body.fundName || '새로운 정책자금'
-  const message = `${customer.owner_name}님, ${fundName} 자금 신청이 가능해진 것으로 확인됩니다.`
+  const siteOrigin = new URL(request.url).origin
+  const inquiryLink = `${siteOrigin}/apply/${customer.consultant_id || username}`
+  const message = `[머니콕] ${customer.owner_name}님, ${fundName} 자금 신청이 가능해진 것으로 확인됩니다. 문의: ${inquiryLink}`
   const sendingConsultant = customer.consultant_id || username
 
   if (!(await isKakaoSendConfigured(sendingConsultant))) {
@@ -34,7 +36,13 @@ export async function POST(request, { params }) {
   }
 
   try {
-    await sendAlimtalk({ consultantUsername: sendingConsultant, phone: customer.phone, variables: { '#{고객명}': customer.owner_name, '#{자금명}': fundName } })
+    // 템플릿 변수명은 실제 솔라피에 승인된 알림톡 템플릿의 변수명과 정확히 일치해야 함(심사 시 확정).
+    // #{문의링크}는 그 고객 담당 컨설턴트의 /apply/[아이디] 자가진단 공개 링크 — 고객이 "문의하기"를
+    // 누르면 그 컨설턴트의 자금비서 CRM에 리드로 자동 등록됨(이미 구현된 흐름 재사용).
+    await sendAlimtalk({
+      consultantUsername: sendingConsultant, phone: customer.phone,
+      variables: { '#{고객명}': customer.owner_name, '#{자금명}': fundName, '#{문의링크}': inquiryLink },
+    })
     const log = await logNotification({ customerId: id, channel: 'kakao', message, status: 'sent', sentBy: username })
     return NextResponse.json({ ok: true, log })
   } catch (err) {

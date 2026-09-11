@@ -1,10 +1,13 @@
 'use client';
 
 // app/apply/[username]/page.js
-// 자가진단 공개 링크 (로드맵 8번). 로그인 없이 접근 가능. SNS·블로그·문자에 공유되는 페이지라
-// "OOO 컨설턴트"보다 "내가 받을 수 있는 자금 확인"이 먼저 보이도록 헤드라인을 혜택 중심으로 재설계.
+// 자가진단 공개 링크 (로드맵 8번). 로그인 없이 접근 가능. SNS·블로그·문자·카카오 알림톡(머니콕)에 공유되는
+// 페이지라 "OOO 컨설턴트"보다 "내가 받을 수 있는 자금 확인"이 먼저 보이도록 헤드라인을 혜택 중심으로 재설계.
 // 이름+"컨설턴트" 조합 표기는 쓰지 않음(대표 요청) — 대신 이름 없이 "전문 컨설턴트가 직접 검토해드려요"로 일반화해서 표기.
 // 디자인 톤: 정책자금 = 사업 성장을 돕는 돈 → 성장 그래프/새싹 모티프의 커스텀 SVG, 짙은 포레스트 그린 팔레트.
+// 브랜딩: "머니콕"은 고객이 보는 대외용 브랜드(카카오 알림 채널명) — "자금비서"는 컨설턴트 전용 내부 툴 이름이라
+// 고객은 절대 안 보므로 이 페이지엔 등장하지 않음. 머니콕 카톡을 보고 들어온 고객이 이질감 없게 이 페이지에도
+// "머니콕" 워드마크를 노출.
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -145,6 +148,9 @@ export default function PublicApplyPage() {
       <div style={{ maxWidth: 460, margin: '0 auto', padding: '52px 20px 60px' }}>
         {/* 히어로 */}
         <div className={`apply-hero${mounted ? ' in' : ''}`} style={{ textAlign: 'center', marginBottom: 30 }}>
+          <p style={{ fontFamily: "'Noto Serif KR', serif", fontWeight: 900, fontSize: 15, letterSpacing: '0.04em', color: ACCENT_DEEP, margin: '0 0 10px' }}>
+            머니콕
+          </p>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: 999, background: GOLD_SOFT, marginBottom: 20 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>무료 · 1분 · 가입 없이</span>
           </div>
@@ -243,6 +249,8 @@ export default function PublicApplyPage() {
             </p>
           </div>
         )}
+
+        <p style={{ fontSize: 11, color: '#A8AFA5', textAlign: 'center', margin: '28px 0 0' }}>머니콕 — 정책자금·지원금·노무 소식을 콕 집어 알려드려요</p>
       </div>
     </div>
   );
