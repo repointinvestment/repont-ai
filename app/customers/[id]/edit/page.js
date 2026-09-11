@@ -136,6 +136,7 @@ export default function CustomerDetailPage() {
           residenceOwnership: c.residence_ownership || '자가',
           loanStatus: c.loan_status || '',
           memo: c.memo || '',
+          marketingConsent: !!c.marketing_consent,
           status: c.status || '상담중',
           residentNumber: '',
           certPassword: '',
@@ -347,6 +348,10 @@ export default function CustomerDetailPage() {
       <label style={labelStyle}>
         기타 메모
         <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical' }} name="memo" value={form.memo} onChange={handleChange} />
+      </label>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
+        <input type="checkbox" name="marketingConsent" checked={!!form.marketingConsent} onChange={handleChange} style={{ marginTop: 2 }} />
+        <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 새로 신청 가능한 자금이 생기면 연락드릴 수 있습니다.</span>
       </label>
 
       <PolicyFundDetailsFields

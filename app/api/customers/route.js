@@ -2,6 +2,7 @@
 // 담당 컨설턴트 본인 고객만 조회. role='admin'이면 전체 조회.
 import { sql } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
+import { ensureSchema as ensureRecheckSchema } from '@/lib/customerRecheckStore'
 import { NextResponse } from 'next/server'
 
 export async function GET(request) {
@@ -33,6 +34,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  await ensureRecheckSchema()
   const rawConsultantId = request.headers.get('x-consultant-id')
   const consultantId = rawConsultantId ? rawConsultantId : null
   const body = await request.json()
@@ -45,14 +47,16 @@ export async function POST(request) {
         business_content, employee_count, last_year_sales, credit_nice, credit_kcb,
         revenue_amount, address_ownership, residence_address, residence_ownership,
         loan_status, memo, has_patent, has_yellow_umbrella, has_rnd_center, has_venture_cert, owner_career_years,
-        has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status
+        has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status,
+        marketing_consent, marketing_consent_at
       ) VALUES (
         ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
         ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
         ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
         ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
         ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${body.ownerCareerYears || null},
-        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'}
+        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'},
+        ${!!body.marketingConsent}, ${body.marketingConsent ? new Date().toISOString() : null}
       )
       RETURNING *
     `

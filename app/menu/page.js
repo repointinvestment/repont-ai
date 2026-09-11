@@ -7,6 +7,7 @@ import DeadlineWidget from '../components/DeadlineWidget'
 import ReminderWidget from '../components/ReminderWidget'
 import ReapplyReminderWidget from '../components/ReapplyReminderWidget'
 import ContractExpiryWidget from '../components/ContractExpiryWidget'
+import OldCustomerRecheckWidget from '../components/OldCustomerRecheckWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 
 const CARDS = {
@@ -167,6 +168,7 @@ export default function MenuPage() {
         <ReminderWidget user={user} />
         <ReapplyReminderWidget user={user} />
         <ContractExpiryWidget user={user} />
+        <OldCustomerRecheckWidget user={user} />
       </div>
     </div>
   )

@@ -46,6 +46,7 @@ export default function NewCustomerPage() {
     residenceOwnership: '자가',
     loanStatus: '',
     memo: '',
+    marketingConsent: false,
     residentNumber: '',
     certPassword: '',
     hasPatent: false,
@@ -267,6 +268,10 @@ export default function NewCustomerPage() {
             onChange={handleChange}
             placeholder="특이사항, 상담 이력 등 자유롭게 입력"
           />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
+          <input type="checkbox" name="marketingConsent" checked={!!form.marketingConsent} onChange={handleChange} style={{ marginTop: 2 }} />
+          <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 새로 신청 가능한 자금이 생기면 연락드릴 수 있습니다.</span>
         </label>
 
         <PolicyFundDetailsFields

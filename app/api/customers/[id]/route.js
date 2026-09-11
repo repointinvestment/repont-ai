@@ -2,6 +2,7 @@
 import { sql } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
 import { upsertNamedCredential } from '@/lib/credentials'
+import { ensureSchema as ensureRecheckSchema } from '@/lib/customerRecheckStore'
 import { NextResponse } from 'next/server'
 
 // 고객 1명 상세 조회
@@ -40,8 +41,12 @@ async function upsertCredential(customerId, serviceName, plainValue) {
 export async function PATCH(request, { params }) {
   const { id } = params
   const body = await request.json()
+  await ensureRecheckSchema()
 
-  const [before] = await sql`SELECT status FROM customers WHERE id = ${id}`
+  const [before] = await sql`SELECT status, marketing_consent, marketing_consent_at FROM customers WHERE id = ${id}`
+  const nextConsentAt = body.marketingConsent
+    ? (before?.marketing_consent ? before.marketing_consent_at : new Date().toISOString())
+    : null
 
   const [customer] = await sql`
     UPDATE customers SET
@@ -76,6 +81,8 @@ export async function PATCH(request, { params }) {
       has_sojinkong_good_repayment = ${!!body.hasSojinkongGoodRepayment},
       business_age_years = ${body.businessAgeYears || null},
       policy_fund_details = ${JSON.stringify(body.policyFundDetails || {})},
+      marketing_consent = ${!!body.marketingConsent},
+      marketing_consent_at = ${nextConsentAt},
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *
