@@ -16,7 +16,7 @@ const CARDS = {
     path: '/chat', accent: '#0B2440', tint: '#E8EEF5',
   },
   kakaoSettings: {
-    icon: '💬', title: '카카오 알림 설정', desc: '내 솔라피 계정 연결 — 내 고객한테 카톡 발송',
+    icon: '💬', title: '카카오 알림 설정', desc: '기본정보만 내면 연동 신청 — 나머지는 저희가 처리',
     path: '/settings/kakao', accent: '#3A5A78', tint: '#E5EDF3',
   },
   resources: {
