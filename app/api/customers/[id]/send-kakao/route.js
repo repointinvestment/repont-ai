@@ -26,14 +26,15 @@ export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}))
   const fundName = body.fundName || '새로운 정책자금'
   const message = `${customer.owner_name}님, ${fundName} 자금 신청이 가능해진 것으로 확인됩니다.`
+  const sendingConsultant = customer.consultant_id || username
 
-  if (!isKakaoSendConfigured()) {
-    await logNotification({ customerId: id, channel: 'kakao', message, status: 'failed', error: '발송 미설정(SOLAPI 환경변수 없음)', sentBy: username })
-    return NextResponse.json({ error: '카카오 알림톡 발송이 아직 설정되지 않았습니다. 솔라피 계약 후 관리자에게 환경변수 설정을 요청하세요.' }, { status: 501 })
+  if (!(await isKakaoSendConfigured(sendingConsultant))) {
+    await logNotification({ customerId: id, channel: 'kakao', message, status: 'failed', error: '발송 미연결(카카오 알림 설정 필요)', sentBy: username })
+    return NextResponse.json({ error: '카카오 알림 발송이 아직 연결되지 않았습니다. "카카오 알림 설정" 메뉴에서 솔라피 계정을 연결해주세요.' }, { status: 501 })
   }
 
   try {
-    await sendAlimtalk({ phone: customer.phone, variables: { '#{고객명}': customer.owner_name, '#{자금명}': fundName } })
+    await sendAlimtalk({ consultantUsername: sendingConsultant, phone: customer.phone, variables: { '#{고객명}': customer.owner_name, '#{자금명}': fundName } })
     const log = await logNotification({ customerId: id, channel: 'kakao', message, status: 'sent', sentBy: username })
     return NextResponse.json({ ok: true, log })
   } catch (err) {
