@@ -16,9 +16,10 @@ export default function ReapplyReminderWidget({ user }) {
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
+    const headers = { 'x-consultant-id': user.username, 'x-consultant-role': user.role }
     Promise.all([
-      fetch('/api/applications/reminders?within=14').then((r) => r.json()),
-      fetch('/api/announcements/match').then((r) => r.json()).catch(() => ({ matches: [] })),
+      fetch('/api/applications/reminders?within=14', { headers }).then((r) => r.json()),
+      fetch('/api/announcements/match', { headers }).then((r) => r.json()).catch(() => ({ matches: [] })),
     ])
       .then(([d, m]) => { setDated(d.dated || []); setAnnouncement(d.announcement || []); setMatches(m.matches || []) })
       .catch(() => { setDated([]); setAnnouncement([]); setMatches([]) })

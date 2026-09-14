@@ -23,8 +23,11 @@ function guessInstitution(text) {
   return null
 }
 
-export async function GET() {
-  const waiting = await listAwaitingAnnouncement()
+export async function GET(request) {
+  const username = request.headers.get('x-consultant-id')
+  const role = request.headers.get('x-consultant-role')
+  if (!username) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  const waiting = await listAwaitingAnnouncement(role === 'admin' ? null : username)
   if (waiting.length === 0) return NextResponse.json({ matches: [] })
 
   let listings = []
