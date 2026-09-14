@@ -1,7 +1,7 @@
 'use client'
 
 // app/notifications/page.js
-// 내 발송 내역 — 내 고객한테 나간 머니콕 알림을 확인하고, 필요하면 재발송.
+// 고객 카톡 발송 내역 — 내 고객한테 나간 머니콕 알림을 확인하고, 필요하면 재발송.
 // 발송 시점이 컨설턴트마다 다를 수 있어서(자동발송 놓쳤거나 다시 챙기고 싶을 때) 재발송 버튼을 둠.
 
 import { useEffect, useState } from 'react'
@@ -60,7 +60,7 @@ export default function MyNotificationsPage() {
     <div style={{ minHeight: '100vh', background: '#F7F6F2' }}>
       <AppHeader user={user} />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '28px 20px 60px' }}>
-        <h2 style={{ color: '#1a1a2e', margin: '0 0 4px' }}>내 발송 내역</h2>
+        <h2 style={{ color: '#1a1a2e', margin: '0 0 4px' }}>고객 카톡 발송 내역</h2>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 16px' }}>내 고객한테 나간 머니콕 알림입니다. 놓친 것 같으면 재발송하세요.</p>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>

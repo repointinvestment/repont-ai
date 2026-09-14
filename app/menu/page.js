@@ -20,7 +20,7 @@ const CARDS = {
     path: '/settings/kakao', accent: '#3A5A78', tint: '#E5EDF3',
   },
   myNotifications: {
-    icon: '📨', title: '내 발송 내역', desc: '내 고객한테 나간 머니콕 알림 확인·재발송',
+    icon: '📨', title: '고객 카톡 발송 내역', desc: '내 고객한테 나간 머니콕 알림 확인·재발송',
     path: '/notifications', accent: '#3A5A78', tint: '#E5EDF3',
   },
   myProfile: {
