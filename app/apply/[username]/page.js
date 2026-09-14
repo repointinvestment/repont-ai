@@ -67,6 +67,8 @@ export default function PublicApplyPage() {
   const params = useParams();
   const [status, setStatus] = useState('checking'); // checking | invalid | form | submitting | done
   const [consultantName, setConsultantName] = useState('');
+  const [consultantPhoto, setConsultantPhoto] = useState('');
+  const [consultantIntro, setConsultantIntro] = useState('');
   const [fundsByKey, setFundsByKey] = useState({});
   const [rulesByKey, setRulesByKey] = useState({});
   const [form, setForm] = useState({ ownerName: '', phone: '', industry: '', businessAgeYears: '', revenueAmount: '', employeeCount: '' });
@@ -76,12 +78,15 @@ export default function PublicApplyPage() {
   useEffect(() => {
     async function init() {
       try {
-        const [cr, fundsData] = await Promise.all([
+        const [cr, fundsData, profileData] = await Promise.all([
           fetch(`/api/public/consultant/${params.username}`).then((r) => r.json()),
           fetchPolicyFundsData({ activeOnly: true }),
+          fetch(`/api/consultant/profile?username=${params.username}`).then((r) => r.json()).catch(() => ({})),
         ]);
         if (!cr.valid) { setStatus('invalid'); return; }
         setConsultantName(cr.name);
+        setConsultantPhoto(profileData?.profile?.profile_photo_url || '');
+        setConsultantIntro(profileData?.profile?.profile_intro || '');
         setFundsByKey(fundsData.fundsByKey);
         setRulesByKey(fundsData.rulesByKey);
         setStatus('form');
@@ -166,6 +171,15 @@ export default function PublicApplyPage() {
           <p style={{ fontSize: 14, color: '#5C6B62', margin: 0, lineHeight: 1.6 }}>
             전문 컨설턴트가 직접 검토해드려요
           </p>
+          {consultantPhoto && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '10px 16px 10px 10px', background: '#fff', borderRadius: 999, border: `1px solid ${LINE}` }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: `url(${consultantPhoto}) center/cover`, flexShrink: 0, border: `1.5px solid ${ACCENT_SOFT}` }} />
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: INK, margin: 0 }}>{consultantName} 담당자</p>
+                {consultantIntro && <p style={{ fontSize: 11.5, color: '#8A9188', margin: '2px 0 0' }}>{consultantIntro}</p>}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 신뢰 요소 3개 */}
