@@ -48,7 +48,8 @@ export default function CustomerDashboardPage() {
 
   async function loadReferrals() {
     try {
-      const r = await fetch(`/api/customers/${params.id}/referrals`);
+      const s = getSession();
+      const r = await fetch(`/api/customers/${params.id}/referrals`, { headers: { 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' } });
       const d = await r.json();
       setReferrals(d.referrals || []);
     } catch { setReferrals([]); }
@@ -56,7 +57,8 @@ export default function CustomerDashboardPage() {
 
   async function loadApplications() {
     try {
-      const r = await fetch(`/api/customers/${params.id}/applications`);
+      const s = getSession();
+      const r = await fetch(`/api/customers/${params.id}/applications`, { headers: { 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' } });
       const d = await r.json();
       setApplications(d.applications || []);
     } catch { setApplications([]); }
@@ -64,7 +66,8 @@ export default function CustomerDashboardPage() {
 
   async function loadDocFacts() {
     try {
-      const r = await fetch(`/api/customers/${params.id}/document-facts`);
+      const s = getSession();
+      const r = await fetch(`/api/customers/${params.id}/document-facts`, { headers: { 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' } });
       const d = await r.json();
       setDocData(d);
       if (d?.autoApplied && d.customer) setCustomer(d.customer); // 업력·폐업이력·현재 사업자 개수를 서류 기준으로 자동 반영
@@ -94,12 +97,12 @@ export default function CustomerDashboardPage() {
         loadDocFacts();
         loadApplications();
         loadReferrals();
-        fetch(`/api/customers/${params.id}/credentials`)
+        fetch(`/api/customers/${params.id}/credentials`, { headers: { 'x-consultant-id': session?.username || '', 'x-consultant-role': session?.role || '' } })
           .then((r) => r.json())
           .then((d) => setCredentials(d.credentials || []))
           .catch(() => {});
         loadFiles();
-        fetch(`/api/customers/${params.id}/status-history`)
+        fetch(`/api/customers/${params.id}/status-history`, { headers: { 'x-consultant-id': session?.username || '', 'x-consultant-role': session?.role || '' } })
           .then((r) => r.json())
           .then((d) => setStatusHistory(d.history || []))
           .catch(() => {});
@@ -114,7 +117,8 @@ export default function CustomerDashboardPage() {
 
   async function loadFiles() {
     try {
-      const res = await fetch(`/api/customers/${params.id}/files`);
+      const s = getSession();
+      const res = await fetch(`/api/customers/${params.id}/files`, { headers: { 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' } });
       const data = await res.json();
       setFiles(data.files || []);
     } catch (err) {
@@ -134,7 +138,7 @@ export default function CustomerDashboardPage() {
         formData.append('file', file);
         const res = await fetch(`/api/customers/${params.id}/files`, {
           method: 'POST',
-          headers: { 'x-consultant-id': user?.username || '' },
+          headers: { 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' },
           body: formData,
         });
         if (!res.ok) {
@@ -276,7 +280,7 @@ export default function CustomerDashboardPage() {
   async function handleFileDelete(fileId) {
     if (!confirm('이 파일을 삭제하시겠어요?')) return;
     try {
-      await fetch(`/api/customers/${params.id}/files/${fileId}`, { method: 'DELETE' });
+      await fetch(`/api/customers/${params.id}/files/${fileId}`, { method: 'DELETE', headers: { 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' } });
       setFiles((prev) => prev.filter((f) => f.id !== fileId));
     } catch (err) {
       setError('파일 삭제 중 오류가 발생했습니다.');
@@ -379,7 +383,7 @@ export default function CustomerDashboardPage() {
             style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
             🖨 상담 리포트
           </button>
-          <ReferralButton customerId={params.id} existing={referrals} />
+          <ReferralButton customerId={params.id} existing={referrals} user={user} />
         </div>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>
           {customer.industry} {customer.phone ? `· ${customer.phone}` : ''} {customer.email ? `· ${customer.email}` : ''}
@@ -475,7 +479,7 @@ export default function CustomerDashboardPage() {
               data={docData}
               embedded
               onApply={async (fields) => {
-                const r = await fetch(`/api/customers/${params.id}/document-facts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
+                const r = await fetch(`/api/customers/${params.id}/document-facts`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' }, body: JSON.stringify({ fields }) });
                 const d = await r.json();
                 if (r.ok && d.customer) { setCustomer(d.customer); loadDocFacts(); }
               }}
@@ -485,7 +489,7 @@ export default function CustomerDashboardPage() {
 
         {/* 파이프라인: 실제 접수 진행 상황 */}
         <Collapsible title="접수 파이프라인" badge={applications.length ? `${applications.length}건` : '진행 중인 접수 없음'} defaultOpen={applications.some((a) => a.stage !== '상담' && a.stage !== '승인' && a.stage !== '부결')}>
-          <ApplicationPipeline customerId={params.id} applications={applications} funds={Object.values(fundsByKey)} onChange={loadApplications} />
+          <ApplicationPipeline customerId={params.id} applications={applications} funds={Object.values(fundsByKey)} onChange={loadApplications} user={user} />
         </Collapsible>
 
         {/* 4층: 기존 상세 목록 — 접힘 */}

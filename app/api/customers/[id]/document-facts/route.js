@@ -6,9 +6,12 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getDocumentFacts, compareWithCustomer } from '@/lib/documentFacts'
+import { requireCustomerOwnership } from '@/lib/authz'
 
 export async function GET(request, { params }) {
   const id = Number(params.id)
+  const check = await requireCustomerOwnership(id, request)
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
   const [customer] = await sql`SELECT * FROM customers WHERE id = ${id}`
   if (!customer) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   try {
@@ -63,6 +66,8 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const id = Number(params.id)
+  const check = await requireCustomerOwnership(id, request)
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
   const body = await request.json().catch(() => ({}))
   const f = body.fields || {}
   const [customer] = await sql`SELECT policy_fund_details FROM customers WHERE id = ${id}`

@@ -102,8 +102,14 @@ async function generateParagraph({ fundName, customer, guidance, minChars, maxCh
   return response.choices[0].message.content.trim()
 }
 
+import { requireCustomerOwnership } from '@/lib/authz'
+
 export async function POST(req) {
   const { customer, fundName, customerId } = await req.json()
+  if (customerId) {
+    const check = await requireCustomerOwnership(customerId, req)
+    if (!check.ok) return Response.json({ error: check.error }, { status: check.status })
+  }
   const guidance = FUND_GUIDANCE[fundName] || '이 자금의 세부 요건에 맞춰 사업의 강점을 자연스럽게 강조하세요.'
   const template = resolveTemplate(fundName)
   const createdBy = req.headers.get('x-consultant-id') || null

@@ -8,7 +8,7 @@ import { useState } from 'react';
 
 const ISSUE_TYPES = ['법인전환', '절세', '상속', '기타'];
 
-export default function ReferralButton({ customerId, existing = [] }) {
+export default function ReferralButton({ customerId, existing = [], user }) {
   const [open, setOpen] = useState(false);
   const [issueType, setIssueType] = useState('법인전환');
   const [note, setNote] = useState('');
@@ -21,7 +21,7 @@ export default function ReferralButton({ customerId, existing = [] }) {
     setSaving(true);
     try {
       await fetch(`/api/customers/${customerId}/referrals`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' },
         body: JSON.stringify({ issueType, note }),
       });
       setOpen(false);

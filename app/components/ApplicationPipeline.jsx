@@ -30,13 +30,13 @@ const input = { width: '100%', padding: '8px 10px', borderRadius: 7, border: '1p
 const btn = { padding: '7px 12px', borderRadius: 7, border: 'none', background: '#2A2925', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' };
 const btnGhost = { ...btn, background: '#fff', color: '#2A2925', border: '1px solid #2A2925' };
 
-export default function ApplicationPipeline({ customerId, applications, funds, onChange }) {
+export default function ApplicationPipeline({ customerId, applications, funds, onChange, user }) {
   const [adding, setAdding] = useState(false);
   const [newApp, setNewApp] = useState({ fundKey: '', fundName: '', institution: '', requestedAmount: '' });
   const [editingStage, setEditingStage] = useState(null); // { app, stage, decidedAt, rejectionReason, approvedAmount, region }
   const [saving, setSaving] = useState(false);
 
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' };
 
   async function submitNew() {
     if (!newApp.fundName.trim()) return;
@@ -73,7 +73,7 @@ export default function ApplicationPipeline({ customerId, applications, funds, o
 
   async function removeApp(app) {
     if (!confirm(`"${app.fund_name}" 접수 건을 삭제할까요?`)) return;
-    await fetch(`/api/customers/${customerId}/applications/${app.id}`, { method: 'DELETE' });
+    await fetch(`/api/customers/${customerId}/applications/${app.id}`, { method: 'DELETE', headers });
     onChange();
   }
 

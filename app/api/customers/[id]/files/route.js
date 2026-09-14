@@ -3,6 +3,7 @@
 // 실제 열람은 /api/customers/[id]/files/[fileId]/download 를 통해서만 가능합니다.
 import { sql } from '@/lib/db'
 import { put } from '@vercel/blob'
+import { requireCustomerOwnership } from '@/lib/authz'
 import { NextResponse } from 'next/server'
 
 const ALLOWED_TYPES = [
@@ -20,6 +21,8 @@ const ALLOWED_TYPES = [
 
 export async function GET(request, { params }) {
   const { id } = params
+  const check = await requireCustomerOwnership(Number(id), request)
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
   const rows = await sql`
     SELECT id, file_name, blob_url, size_bytes, uploaded_by, created_at
     FROM customer_files
@@ -31,6 +34,8 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const { id } = params
+  const check = await requireCustomerOwnership(Number(id), request)
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
   const uploadedBy = request.headers.get('x-consultant-id') || null
 
   try {
