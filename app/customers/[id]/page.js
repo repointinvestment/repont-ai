@@ -86,7 +86,8 @@ export default function CustomerDashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/customers/${params.id}`);
+        const session = getSession();
+        const res = await fetch(`/api/customers/${params.id}`, { headers: { 'x-consultant-id': session?.username || '', 'x-consultant-role': session?.role || '' } });
         const data = await res.json();
         if (!res.ok) throw new Error();
         setCustomer(data.customer);

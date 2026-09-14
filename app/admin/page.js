@@ -26,14 +26,14 @@ export default function AdminPage() {
     if (!session) { router.push('/'); return }
     if (session.role !== 'admin') { router.push('/menu'); return }
     setUser(session)
-    loadAccounts()
+    loadAccounts(session)
     // 가벼운 활동 현황용 — 이미 있는 고객 목록 API를 그대로 재사용(추가 API 없음), 컨설턴트별로 묶어서 개수·최근활동만 계산
     fetch('/api/customers', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
       .then((r) => r.json()).then((d) => setCustomers(d.customers || []))
   }, [])
 
-  function loadAccounts() {
-    fetch('/api/users').then(r => r.json()).then(data => setAccounts(data.users))
+  function loadAccounts(s = user) {
+    fetch('/api/users', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } }).then(r => r.json()).then(data => setAccounts(data.users))
   }
 
   async function handleCreate(e) {
@@ -47,7 +47,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role },
         body: JSON.stringify(form),
       })
       const data = await res.json()

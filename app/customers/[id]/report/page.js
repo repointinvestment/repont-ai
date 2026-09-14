@@ -31,8 +31,9 @@ export default function ConsultationReportPage() {
   useEffect(() => {
     async function load() {
       try {
+        const session = getSession();
         const [cr, fundsData] = await Promise.all([
-          fetch(`/api/customers/${params.id}`).then((r) => r.json()),
+          fetch(`/api/customers/${params.id}`, { headers: { 'x-consultant-id': session?.username || '', 'x-consultant-role': session?.role || '' } }).then((r) => r.json()),
           fetchPolicyFundsData({ activeOnly: true }),
         ]);
         setCustomer(cr.customer);

@@ -98,7 +98,8 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/customers/${params.id}`);
+        const session = getSession();
+        const res = await fetch(`/api/customers/${params.id}`, { headers: { 'x-consultant-id': session?.username || '', 'x-consultant-role': session?.role || '' } });
         const data = await res.json();
         if (!res.ok) throw new Error();
         const c = data.customer;
@@ -170,7 +171,7 @@ export default function CustomerDetailPage() {
     try {
       const res = await fetch(`/api/customers/${params.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' },
         body: JSON.stringify({ ...form, businessAgeYears, policyFundDetails }),
       });
       if (!res.ok) throw new Error();
@@ -186,7 +187,7 @@ export default function CustomerDetailPage() {
     if (!confirm('정말 이 고객을 삭제하시겠어요? 되돌릴 수 없습니다.')) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/customers/${params.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/customers/${params.id}`, { method: 'DELETE', headers: { 'x-consultant-id': user?.username || '', 'x-consultant-role': user?.role || '' } });
       if (!res.ok) throw new Error();
       router.push('/customers');
     } catch (err) {
