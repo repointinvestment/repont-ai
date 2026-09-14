@@ -126,6 +126,12 @@ export default function AdminPage() {
             카카오 알림 연동 신청함 →
           </button>
           <button
+            onClick={() => router.push('/admin/notifications')}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            머니콕 발송 현황 →
+          </button>
+          <button
             onClick={() => setShowForm((s) => !s)}
             style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
