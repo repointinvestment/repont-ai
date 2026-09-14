@@ -26,9 +26,13 @@ export async function POST(request, { params }) {
   const body = await request.json().catch(() => ({}))
   const fundName = body.fundName || '새로운 정책자금'
   const siteOrigin = new URL(request.url).origin
-  const inquiryLink = `${siteOrigin}/apply/${customer.consultant_id || username}`
-  const message = `[머니콕] ${customer.owner_name}님, ${fundName} 자금 신청이 가능해진 것으로 확인됩니다. 문의: ${inquiryLink}`
   const sendingConsultant = customer.consultant_id || username
+  const inquiryLink = `${siteOrigin}/apply/${sendingConsultant}`
+  const [consultantAccount] = await sql`SELECT name FROM accounts WHERE username = ${sendingConsultant}`
+  const consultantName = consultantAccount?.name || '담당자'
+  // 발신자 표시(카톡 채널명)는 그 컨설턴트가 만든 채널 이름 그대로 뜨므로, 본문도 "머니콕" 대신
+  // 담당자 이름으로 시작 — 고객이 "누구지?"가 아니라 "아 그 사람" 하고 바로 알아보게.
+  const message = `${consultantName} 담당자입니다. ${customer.owner_name}님, ${fundName} 자금 신청이 가능해진 것으로 확인됩니다. 문의: ${inquiryLink}`
 
   if (!(await isKakaoSendConfigured(sendingConsultant))) {
     await logNotification({ customerId: id, channel: 'kakao', message, status: 'failed', error: '발송 미연결(카카오 알림 설정 필요)', sentBy: username })
@@ -41,7 +45,7 @@ export async function POST(request, { params }) {
     // 누르면 그 컨설턴트의 자금비서 CRM에 리드로 자동 등록됨(이미 구현된 흐름 재사용).
     await sendAlimtalk({
       consultantUsername: sendingConsultant, phone: customer.phone,
-      variables: { '#{고객명}': customer.owner_name, '#{자금명}': fundName, '#{문의링크}': inquiryLink },
+      variables: { '#{담당자명}': consultantName, '#{고객명}': customer.owner_name, '#{자금명}': fundName, '#{문의링크}': inquiryLink },
     })
     const log = await logNotification({ customerId: id, channel: 'kakao', message, status: 'sent', sentBy: username })
     return NextResponse.json({ ok: true, log })

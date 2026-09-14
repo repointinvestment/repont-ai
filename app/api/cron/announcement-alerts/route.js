@@ -41,7 +41,11 @@ export async function GET(request) {
     const policyItems = allItems.filter((it) => POLICY_KEYWORDS.some((k) => (it.pblancNm || '').includes(k)))
     const newItems = await filterUnseen('bizinfo', policyItems, 'pblancId')
 
-    const consented = await sql`SELECT id, owner_name, phone, industry, address, consultant_id FROM customers WHERE marketing_consent = true AND phone IS NOT NULL`
+    const consented = await sql`
+      SELECT c.id, c.owner_name, c.phone, c.industry, c.address, c.consultant_id, a.name AS consultant_name
+      FROM customers c LEFT JOIN accounts a ON a.username = c.consultant_id
+      WHERE c.marketing_consent = true AND c.phone IS NOT NULL
+    `
 
     const summary = []
     for (const item of newItems) {
@@ -58,7 +62,8 @@ export async function GET(request) {
       let sentCount = 0
       for (const c of matched) {
         const configured = await isKakaoSendConfigured(c.consultant_id)
-        const message = `[머니콕] ${region ? `${region} ` : ''}${title} 공고가 떴습니다.`
+        const consultantName = c.consultant_name || '담당자'
+        const message = `${consultantName} 담당자입니다. ${region ? `${region} ` : ''}${title} 공고가 떴습니다.`
         if (!configured) {
           await logNotification({ customerId: c.id, channel: 'kakao', message, status: 'failed', error: '담당 컨설턴트 채널 미연동', sentBy: 'cron' })
           continue
@@ -67,7 +72,7 @@ export async function GET(request) {
           await sendAlimtalk({
             consultantUsername: c.consultant_id,
             phone: c.phone,
-            variables: { '#{고객명}': c.owner_name, '#{자금명}': title, '#{문의링크}': `${new URL(request.url).origin}/apply/${c.consultant_id}` },
+            variables: { '#{담당자명}': consultantName, '#{고객명}': c.owner_name, '#{자금명}': title, '#{문의링크}': `${new URL(request.url).origin}/apply/${c.consultant_id}` },
           })
           await logNotification({ customerId: c.id, channel: 'kakao', message, status: 'sent', sentBy: 'cron' })
           sentCount++

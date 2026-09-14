@@ -87,6 +87,9 @@ export default function KakaoSettingsPage() {
           <p style={{ fontSize: 12.5, color: '#5F5E5A', margin: 0, lineHeight: 1.8 }}>
             내 명의(또는 사업체 명의) 카카오톡 채널 하나만 있으면 됩니다 (센터.kakao.com에서 무료 개설, 5분이면 됩니다). 아직 없으면 신청 먼저 넣으셔도 되고, 채널 만드신 뒤에 저희가 연락드려 채널 아이디만 확인하겠습니다.
           </p>
+          <p style={{ fontSize: 12.5, color: '#B24A2B', margin: '10px 0 0', fontWeight: 600, lineHeight: 1.7 }}>
+            ⚠ 채널 이름은 꼭 본인 이름(예: "문수환" 또는 "문수환 정책자금상담")으로 만들어주세요. 고객 카톡 목록에 그 이름 그대로 발신자로 뜹니다 — "머니콕" 같은 회사 브랜드로 만들면 고객이 "누구지?" 하고 못 알아볼 수 있어요.
+          </p>
         </div>
 
         <div style={{ background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 2px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 14 }}>
