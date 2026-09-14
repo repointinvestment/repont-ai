@@ -297,7 +297,7 @@ export default function CodefDocumentIssuance({
         const doc = DOCUMENTS[s.docKey];
         return fetch(doc.confirmPath, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-consultant-id': consultantUsername || '' },
           body: JSON.stringify({ sessionId: s.sessionId }),
         }).then(async (res) => {
           const data = await res.json();

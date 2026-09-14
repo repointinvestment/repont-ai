@@ -22,6 +22,16 @@ export async function POST(request) {
   if (!session) {
     return NextResponse.json({ error: '세션을 찾을 수 없습니다.' }, { status: 404 })
   }
+  // sessionId는 순번이라 추측 가능 — 인증 헤더와 세션을 만든 사람이 일치하는지(또는 관리자인지) 확인 안 하면
+  // 남이 만든 세션의 sessionId를 추측해서 발급된 서류 원문을 가로챌 수 있었음.
+  const confirmConsultantId = request.headers.get('x-consultant-id')
+  const confirmRole = request.headers.get('x-consultant-role')
+  if (!confirmConsultantId) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
+  if (session.created_by && confirmRole !== 'admin' && String(session.created_by) !== String(confirmConsultantId)) {
+    return NextResponse.json({ error: '본인이 요청한 세션만 확인할 수 있습니다.' }, { status: 403 })
+  }
   if (session.status !== 'pending') {
     return NextResponse.json({ error: `이미 처리된 세션입니다 (status: ${session.status}).` }, { status: 409 })
   }

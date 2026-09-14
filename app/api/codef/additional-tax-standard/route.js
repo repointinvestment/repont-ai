@@ -30,7 +30,20 @@ function defaultVatPeriod() {
 
 export async function POST(request) {
   const consultantId = request.headers.get('x-consultant-id')
+  const role = request.headers.get('x-consultant-role')
+  if (!consultantId) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
   const body = await request.json().catch(() => ({}))
+  // customerId가 있으면(테스트용 호출이 아니면) 그 컨설턴트 본인 담당 고객인지 확인 —
+  // 안 그러면 남의 customerId를 끼워 넣어서 CODEF 요청 결과가 엉뚱한 고객 파일함에 저장될 수 있음.
+  if (body.customerId) {
+    const [owner] = await sql`SELECT consultant_id FROM customers WHERE id = ${body.customerId}`
+    if (!owner) return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
+    if (role !== 'admin' && String(owner.consultant_id) !== String(consultantId)) {
+      return NextResponse.json({ error: '본인이 담당하는 고객만 서류를 발급받을 수 있습니다.' }, { status: 403 })
+    }
+  }
   const {
     customerId,
     userName,
