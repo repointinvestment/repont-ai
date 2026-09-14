@@ -19,6 +19,10 @@ const CARDS = {
     icon: '💬', title: '카카오 알림 설정', desc: '기본정보만 내면 연동 신청 — 나머지는 저희가 처리',
     path: '/settings/kakao', accent: '#3A5A78', tint: '#E5EDF3',
   },
+  myNotifications: {
+    icon: '📨', title: '내 발송 내역', desc: '내 고객한테 나간 머니콕 알림 확인·재발송',
+    path: '/notifications', accent: '#3A5A78', tint: '#E5EDF3',
+  },
   myProfile: {
     icon: '🙂', title: '내 프로필', desc: '사진·소개 등록 — 자가진단 링크에 내 얼굴이 보여요',
     path: '/settings/profile', accent: '#B4713F', tint: '#F6EBE0',
@@ -80,9 +84,9 @@ const CARDS = {
 // 역할별로 보여줄 메뉴 구성. student는 과거 계정 호환용 별칭일 뿐 —
 // "수강생 = 컨설턴트"라 관리자만 빼고 완전히 동일하게 씀.
 const ROLE_MENUS = {
-  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'kakaoSettings', 'myProfile', 'board', 'admin'],
-  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'board'],
-  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'board'],
+  admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'board', 'admin'],
+  consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'board'],
+  student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'board'],
 }
 
 export default function MenuPage() {

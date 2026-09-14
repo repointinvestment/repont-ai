@@ -351,7 +351,7 @@ export default function CustomerDetailPage() {
       </label>
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
         <input type="checkbox" name="marketingConsent" checked={!!form.marketingConsent} onChange={handleChange} style={{ marginTop: 2 }} />
-        <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 새로 신청 가능한 자금이 생기면 연락드릴 수 있습니다.</span>
+        <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 상담 시 확인했으면 체크 유지, 고객이 원치 않으면 해제해주세요.</span>
       </label>
 
       <PolicyFundDetailsFields

@@ -1,16 +1,15 @@
 'use client';
 
 // app/apply/[username]/page.js
-// 자가진단 공개 링크 (로드맵 8번). 로그인 없이 접근 가능. SNS·블로그·문자·카카오 알림톡(머니콕)에 공유되는
-// 페이지라 "OOO 컨설턴트"보다 "내가 받을 수 있는 자금 확인"이 먼저 보이도록 헤드라인을 혜택 중심으로 재설계.
-// 이름+"컨설턴트" 조합 표기는 쓰지 않음(대표 요청) — 대신 이름 없이 "전문 컨설턴트가 직접 검토해드려요"로 일반화해서 표기.
-// 디자인 톤: 정책자금 = 사업 성장을 돕는 돈 → 성장 그래프/새싹 모티프의 커스텀 SVG, 짙은 포레스트 그린 팔레트.
-// 브랜딩: "머니콕"은 고객이 보는 대외용 브랜드(카카오 알림 채널명) — "자금비서"는 컨설턴트 전용 내부 툴 이름이라
-// 고객은 절대 안 보므로 이 페이지엔 등장하지 않음. 머니콕 카톡을 보고 들어온 고객이 이질감 없게 이 페이지에도
-// "머니콕" 워드마크를 노출.
+// 자가진단 공개 링크. 로그인 없이 접근 가능. 두 가지 유입 경로를 하나의 페이지에서 처리:
+//   1) 콜드 유입(SNS·블로그 공유 링크, /apply/아이디) — 이름·업력·매출 등을 직접 입력받는 기존 폼 흐름
+//   2) 웜 유입(머니콕 카톡 "문의하기", /apply/아이디?t=토큰) — 이미 CRM에 저장된 정보가 있는 고객이라
+//      다시 입력받지 않고 토큰으로 저장된 정보를 그대로 불러와 즉시 결과를 보여줌(귀찮아할 걸 감안).
+// 브랜딩: "머니콕"은 고객이 보는 대외용 브랜드 — "자금비서"는 컨설턴트 전용 내부 툴이라 여기 안 나옴.
+// 사진을 올린 컨설턴트는 "머니콕" 대신 본인 사진+이름이 먼저 보이도록 개인화됨(내 프로필 기능).
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { analyzePolicyFunds } from '@/lib/policyFundAnalysis';
 import { buildVerdict } from '@/lib/policyFundVerdict';
 import { fetchPolicyFundsData } from '@/lib/policyFundsLookup';
@@ -26,7 +25,6 @@ const GOLD_SOFT = '#F6EEDD';
 const PAPER = '#FBF8F2';
 const LINE = '#E4E0D3';
 
-// 성장 그래프 + 동전 모티프 커스텀 일러스트 (외부 이미지 없이 SVG로 직접 구성)
 function GrowthIllustration({ size = 156 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -63,8 +61,23 @@ const input = {
 };
 const label = { fontSize: 13, color: '#5C6B62', display: 'block', marginBottom: 6, fontWeight: 600 };
 
-export default function PublicApplyPage() {
+// snapshot(customer-snapshot API 응답) → analyzePolicyFunds 입력 형태로 변환. 고객 대시보드와 같은 매핑.
+function snapshotToAnalysisForm(c) {
+  const pfd = c.policy_fund_details || {};
+  return {
+    industry: c.industry, bizAge: c.business_age_years, sales: c.revenue_amount, employees: c.employee_count,
+    creditKCB: c.credit_kcb, creditNICE: c.credit_nice, sojingongLoans: pfd.sojingongLoans, loans: pfd.loans,
+    hasBankruptcy: pfd.hasBankruptcy, currentBizCount: pfd.currentBizCount, smartDevices: pfd.smartDevices,
+    exportRecord: pfd.exportRecord, salesGrowth: pfd.salesGrowth, taxDelinquent: pfd.taxDelinquent,
+    isFranchise: pfd.isFranchise, hasPatent: c.has_patent, careerYears: c.owner_career_years,
+  };
+}
+
+function PublicApplyPageInner() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('t');
+
   const [status, setStatus] = useState('checking'); // checking | invalid | form | submitting | done
   const [consultantName, setConsultantName] = useState('');
   const [consultantPhoto, setConsultantPhoto] = useState('');
@@ -74,6 +87,8 @@ export default function PublicApplyPage() {
   const [form, setForm] = useState({ ownerName: '', phone: '', industry: '', businessAgeYears: '', revenueAmount: '', employeeCount: '' });
   const [result, setResult] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [returningName, setReturningName] = useState(''); // 토큰 흐름일 때 인사말에 쓸 저장된 이름
+  const [inquireState, setInquireState] = useState('idle'); // idle | sending | done
 
   useEffect(() => {
     async function init() {
@@ -89,6 +104,23 @@ export default function PublicApplyPage() {
         setConsultantIntro(profileData?.profile?.profile_intro || '');
         setFundsByKey(fundsData.fundsByKey);
         setRulesByKey(fundsData.rulesByKey);
+
+        if (token) {
+          // 웜 유입 — 저장된 정보로 폼 없이 바로 결과 계산
+          const snap = await fetch(`/api/public/customer-snapshot?t=${token}`).then((r) => r.json());
+          if (snap.customer) {
+            setReturningName(snap.customer.owner_name || '');
+            const analysisForm = snapshotToAnalysisForm(snap.customer);
+            try {
+              const analysis = analyzePolicyFunds(analysisForm, fundsData.fundsByKey, fundsData.rulesByKey);
+              setResult(buildVerdict({ analysis, form: analysisForm, fundsByKey: fundsData.fundsByKey, rulesByKey: fundsData.rulesByKey }));
+            } catch { /* 계산 실패해도 화면은 정상 표시 */ }
+            setStatus('done');
+            requestAnimationFrame(() => setMounted(true));
+            return;
+          }
+          // 토큰이 유효하지 않으면 일반 폼으로 폴백
+        }
         setStatus('form');
         requestAnimationFrame(() => setMounted(true));
       } catch {
@@ -96,7 +128,7 @@ export default function PublicApplyPage() {
       }
     }
     init();
-  }, [params.username]);
+  }, [params.username, token]);
 
   async function submit(e) {
     e.preventDefault();
@@ -128,6 +160,16 @@ export default function PublicApplyPage() {
     setStatus('done');
   }
 
+  async function requestConsult() {
+    setInquireState('sending');
+    try {
+      await fetch('/api/public/customer-snapshot/inquire', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
+      });
+    } catch { /* 실패해도 사용자한텐 완료로 보여줌 — 재시도 유도보다 혼란 방지 우선 */ }
+    setInquireState('done');
+  }
+
   if (status === 'checking') return <div style={{ minHeight: '100vh', background: PAPER }} />;
   if (status === 'invalid') {
     return (
@@ -140,6 +182,8 @@ export default function PublicApplyPage() {
   const ready = (result?.institutions || []).filter((i) => i.status === '접수 가능');
   const cond = (result?.institutions || []).filter((i) => i.status === '조건부');
   const short = (name) => name.replace(/\s*\(.*?\)\s*/g, '');
+  const isReturning = !!token && !!returningName;
+  const greetingName = isReturning ? returningName : form.ownerName;
 
   return (
     <div style={{ minHeight: '100vh', background: PAPER, fontFamily: "'Noto Sans KR', sans-serif" }}>
@@ -156,9 +200,11 @@ export default function PublicApplyPage() {
           <p style={{ fontFamily: "'Noto Serif KR', serif", fontWeight: 900, fontSize: 15, letterSpacing: '0.04em', color: ACCENT_DEEP, margin: '0 0 10px' }}>
             머니콕
           </p>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: 999, background: GOLD_SOFT, marginBottom: 20 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>무료 · 1분 · 가입 없이</span>
-          </div>
+          {!isReturning && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 13px', borderRadius: 999, background: GOLD_SOFT, marginBottom: 20 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>무료 · 1분 · 가입 없이</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
             <GrowthIllustration />
           </div>
@@ -166,10 +212,10 @@ export default function PublicApplyPage() {
             fontFamily: "'Noto Serif KR', serif", fontWeight: 900, color: INK,
             fontSize: 'clamp(26px, 7vw, 32px)', lineHeight: 1.35, margin: '0 0 12px', letterSpacing: '-0.01em',
           }}>
-            내가 받을 수 있는<br />정책자금, 지금 확인하세요
+            {isReturning ? <>{greetingName}님, 다시<br />확인해봤어요</> : <>내가 받을 수 있는<br />정책자금, 지금 확인하세요</>}
           </h1>
           <p style={{ fontSize: 14, color: '#5C6B62', margin: 0, lineHeight: 1.6 }}>
-            전문 컨설턴트가 직접 검토해드려요
+            {isReturning ? '전에 남겨주신 정보로 다시 계산했어요' : '전문 컨설턴트가 직접 검토해드려요'}
           </p>
           {consultantPhoto && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 18, padding: '10px 16px 10px 10px', background: '#fff', borderRadius: 999, border: `1px solid ${LINE}` }}>
@@ -182,7 +228,7 @@ export default function PublicApplyPage() {
           )}
         </div>
 
-        {/* 신뢰 요소 3개 */}
+        {/* 신뢰 요소 3개 — 폼을 채울 때만 (재방문 흐름은 입력이 없으니 생략) */}
         {status !== 'done' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
             {FEATURES.map((f, i) => (
@@ -239,7 +285,7 @@ export default function PublicApplyPage() {
           </form>
         ) : (
           <div style={{ background: '#fff', borderRadius: '22px 22px 18px 18px', padding: 26, boxShadow: '0 12px 32px rgba(23,38,31,0.08)', border: `1px solid ${LINE}` }}>
-            <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 19, fontWeight: 700, color: INK, margin: '0 0 16px' }}>{form.ownerName}님, 확인해봤어요</p>
+            <p style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 19, fontWeight: 700, color: INK, margin: '0 0 16px' }}>{greetingName}님, 확인해봤어요</p>
             {ready.length > 0 ? (
               <div style={{ background: ACCENT_SOFT, borderRadius: 14, padding: '17px 18px', marginBottom: 10 }}>
                 <p style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT_DEEP, margin: '0 0 8px' }}>검토해볼 만한 지원</p>
@@ -258,14 +304,45 @@ export default function PublicApplyPage() {
             ) : (
               <p style={{ fontSize: 13.5, color: '#5C6B62' }}>입력하신 조건으로는 자동으로 판단하기 어려운 부분이 있어요. 상담을 통해 정확히 확인해드릴게요.</p>
             )}
-            <p style={{ fontSize: 13, color: '#5C6B62', lineHeight: 1.7, marginTop: 16, marginBottom: 0 }}>
-              정확한 한도와 신청 절차는 실제 서류 확인 후 결정됩니다. 전문 컨설턴트가 입력하신 연락처로 곧 연락드릴게요.
-            </p>
+
+            {isReturning ? (
+              <>
+                <p style={{ fontSize: 13, color: '#5C6B62', lineHeight: 1.7, marginTop: 16, marginBottom: 14 }}>
+                  정확한 한도와 신청 절차는 실제 서류 확인 후 결정됩니다.
+                </p>
+                <button
+                  onClick={requestConsult}
+                  disabled={inquireState !== 'idle'}
+                  style={{
+                    width: '100%', padding: '15px', borderRadius: 12, border: 'none',
+                    background: inquireState === 'done' ? ACCENT_SOFT : ACCENT_DEEP,
+                    color: inquireState === 'done' ? ACCENT_DEEP : '#fff',
+                    fontSize: 15, fontWeight: 700, cursor: inquireState === 'idle' ? 'pointer' : 'default',
+                  }}
+                >
+                  {inquireState === 'idle' && '상담 요청하기'}
+                  {inquireState === 'sending' && '요청 중…'}
+                  {inquireState === 'done' && '✓ 요청했어요, 곧 연락드릴게요'}
+                </button>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: '#5C6B62', lineHeight: 1.7, marginTop: 16, marginBottom: 0 }}>
+                정확한 한도와 신청 절차는 실제 서류 확인 후 결정됩니다. 전문 컨설턴트가 입력하신 연락처로 곧 연락드릴게요.
+              </p>
+            )}
           </div>
         )}
 
         <p style={{ fontSize: 11, color: '#A8AFA5', textAlign: 'center', margin: '28px 0 0' }}>머니콕 — 정책자금·지원금·노무 소식을 콕 집어 알려드려요</p>
       </div>
     </div>
+  );
+}
+
+export default function PublicApplyPage() {
+  return (
+    <Suspense fallback={null}>
+      <PublicApplyPageInner />
+    </Suspense>
   );
 }

@@ -132,6 +132,17 @@ export default function AdminPage() {
             머니콕 발송 현황 →
           </button>
           <button
+            onClick={async () => {
+              if (!confirm('신규 등록 전 고객들도 전부 수신동의 처리할까요? (이미 개별적으로 동의 해제한 고객은 안 건드립니다)')) return
+              const res = await fetch('/api/admin/backfill-consent', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
+              const d = await res.json()
+              alert(res.ok ? `${d.updated}명 소급 동의 처리했습니다.` : (d.error || '처리 실패'))
+            }}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            기존 고객 수신동의 일괄처리 (1회성) →
+          </button>
+          <button
             onClick={() => setShowForm((s) => !s)}
             style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#D85A30', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
           >
