@@ -1,8 +1,8 @@
-// app/api/admin/messaging-requests/route.js
-// 관리자 전용 — 컨설턴트들의 카카오 알림 연동 신청 목록 조회, 그리고 처리 완료 후 실제 키를 대신 입력.
+// app/api/admin/channel-requests/route.js
+// 관리자 전용 — 컨설턴트들의 카카오 채널 연동 신청 큐. 처리 완료 후 pfId만 입력하면 연동 켜짐.
 
 import { NextResponse } from 'next/server'
-import { listRequests, upsertConfig, setRequestStatus } from '@/lib/consultantMessagingStore'
+import { listRequests, setSenderKey, setRequestStatus } from '@/lib/consultantChannelStore'
 
 function requireAdmin(request) {
   return request.headers.get('x-consultant-role') === 'admin'
@@ -19,12 +19,10 @@ export async function PUT(request) {
   const body = await request.json().catch(() => ({}))
   if (!body.consultantUsername) return NextResponse.json({ error: 'consultantUsername이 필요합니다.' }, { status: 400 })
 
-  if (body.status && !body.apiKey) {
-    // 상태만 바꾸는 경우 (예: '처리중'으로 표시)
+  if (body.status && !body.senderKey) {
     await setRequestStatus(body.consultantUsername, body.status)
     return NextResponse.json({ ok: true })
   }
-
-  const row = await upsertConfig(body.consultantUsername, body)
-  return NextResponse.json({ ok: true, config: row })
+  const row = await setSenderKey(body.consultantUsername, body.senderKey)
+  return NextResponse.json({ ok: true, channel: row })
 }
