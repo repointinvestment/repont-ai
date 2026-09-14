@@ -88,9 +88,10 @@ function ChatPageInner() {
     setMessages(newMessages)
     setLoading(true)
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    const s = getSession()
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' },
       body: JSON.stringify({ messages: newMessages.filter((m, i) => i > 0) })
     })
     const data = await res.json()
@@ -105,9 +106,10 @@ function ChatPageInner() {
     setMessages(newMessages)
     setInput('')
     setLoading(true)
+    const s = getSession()
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' },
       body: JSON.stringify({ messages: newMessages.filter((m, i) => i > 0) })
     })
     const data = await res.json()

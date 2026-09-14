@@ -110,6 +110,9 @@ async function buildSystemPrompt() {
 }
 
 export async function POST(req) {
+  if (!req.headers.get('x-consultant-id')) {
+    return new Response(JSON.stringify({ error: '로그인이 필요합니다.' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  }
   const { messages } = await req.json()
 
   let systemPrompt

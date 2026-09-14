@@ -16,7 +16,7 @@ export default function BoardListPage() {
     if (!session) { router.push('/'); return; }
     setUser(session);
 
-    fetch('/api/board/posts')
+    fetch('/api/board/posts', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
       .then((r) => r.json())
       .then((d) => setPosts(d.posts || []))
       .catch(() => {})

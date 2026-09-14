@@ -26,7 +26,8 @@ export default function BoardPostPage() {
 
   async function load() {
     try {
-      const res = await fetch(`/api/board/posts/${params.id}`);
+      const s = getSession();
+      const res = await fetch(`/api/board/posts/${params.id}`, { headers: { 'x-consultant-id': s?.username || '', 'x-consultant-role': s?.role || '' } });
       const data = await res.json();
       if (!res.ok) throw new Error();
       setPost(data.post);

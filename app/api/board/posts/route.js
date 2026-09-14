@@ -4,7 +4,10 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request) {
+  if (!request.headers.get('x-consultant-id')) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
   const rows = await sql`
     SELECT p.id, p.title, p.content, p.author_name, p.author_role, p.created_at,
            (SELECT COUNT(*)::int FROM board_comments c WHERE c.post_id = p.id) AS comment_count,

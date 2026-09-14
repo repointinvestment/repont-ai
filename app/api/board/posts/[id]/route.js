@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
+  if (!request.headers.get('x-consultant-id')) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
   const { id } = params
   const [post] = await sql`SELECT * FROM board_posts WHERE id = ${id}`
   if (!post) {
