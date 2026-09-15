@@ -96,7 +96,18 @@ export default function AdminMaterialsPage() {
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: '#2A2925', cursor: 'pointer' }} onClick={() => window.open(`/m/${m.id}`, '_blank')}>{m.title}</span>
                     <span style={{ fontSize: 11.5, color: '#8A8A85', marginLeft: 8 }}>{m.consultant_name || m.consultant_username}</span>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: m.inquiry_count > 0 ? '#085041' : '#B0AEA5', flexShrink: 0 }}>문의 {m.inquiry_count}건</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: m.inquiry_count > 0 ? '#085041' : '#B0AEA5' }}>문의 {m.inquiry_count}건</span>
+                    <button
+                      onClick={async () => {
+                        await fetch(`/api/materials/${m.id}/clone`, { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
+                        alert('내 "안내자료 만들기" 목록에 복사본이 추가됐습니다.')
+                      }}
+                      style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 11.5, cursor: 'pointer' }}
+                    >
+                      복제해서 쓰기
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
