@@ -132,6 +132,12 @@ export default function AdminPage() {
             머니콕 발송 현황 →
           </button>
           <button
+            onClick={() => router.push('/admin/materials')}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            전체 안내자료 현황 →
+          </button>
+          <button
             onClick={async () => {
               if (!confirm('신규 등록 전 고객들도 전부 수신동의 처리할까요? (이미 개별적으로 동의 해제한 고객은 안 건드립니다)')) return
               const res = await fetch('/api/admin/backfill-consent', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
