@@ -18,6 +18,7 @@ export default function ProfileSettingsPage() {
   const [preview, setPreview] = useState(null)
   const [file, setFile] = useState(null)
   const [intro, setIntro] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
@@ -29,7 +30,7 @@ export default function ProfileSettingsPage() {
     setUser(s)
     fetch(`/api/consultant/profile`, { headers: { 'x-consultant-id': s.username } })
       .then((r) => r.json())
-      .then((d) => { setProfile(d.profile); setIntro(d.profile?.profile_intro || '') })
+      .then((d) => { setProfile(d.profile); setIntro(d.profile?.profile_intro || ''); setDisplayName(d.profile?.display_name || d.profile?.name || ''); })
   }, [])
 
   function pickFile(f) {
@@ -43,6 +44,7 @@ export default function ProfileSettingsPage() {
       const formData = new FormData()
       if (file) formData.append('photo', file)
       formData.append('intro', intro)
+      formData.append('displayName', displayName)
       const res = await fetch('/api/consultant/profile', {
         method: 'POST', headers: { 'x-consultant-id': user.username }, body: formData,
       })
@@ -87,6 +89,15 @@ export default function ProfileSettingsPage() {
           <button onClick={() => fileInputRef.current?.click()} style={{ fontSize: 12.5, color: '#3A5A78', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>사진 {photoSrc ? '변경' : '올리기'}</button>
 
           <p style={{ fontSize: 17, fontWeight: 700, color: '#2A2925', margin: 0 }}>{user.name}</p>
+
+          <div style={{ width: '100%' }}>
+            <span style={{ fontSize: 12.5, color: '#5F5E5A', display: 'block', marginBottom: 6, fontWeight: 600 }}>카카오 알림에 표시할 이름</span>
+            <input
+              value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="예: 문수환 대표, 김동훈 컨설턴트"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 13.5, boxSizing: 'border-box' }}
+            />
+            <p style={{ fontSize: 11, color: '#B0AEA5', margin: '5px 0 0' }}>고객한테 나가는 카톡 메시지("○○○입니다")에 이 이름이 들어갑니다. 비워두면 계정 이름이 그대로 쓰여요.</p>
+          </div>
 
           <div style={{ width: '100%' }}>
             <span style={{ fontSize: 12.5, color: '#5F5E5A', display: 'block', marginBottom: 6, fontWeight: 600 }}>한 줄 소개 (선택)</span>

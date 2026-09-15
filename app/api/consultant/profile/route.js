@@ -11,18 +11,19 @@ async function ensureSchema() {
   if (schemaReady) return
   await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`
   await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS profile_intro TEXT`
+  await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS display_name TEXT`
   schemaReady = true
 }
 
-// 본인 것 조회 (사진·소개) — 인증 없이도 자가진단 공개 페이지에서 읽을 수 있어야 해서 username을
-// 쿼리 파라미터로도 받음(그 경우 소개 텍스트만, 민감정보 없음이라 문제 없음).
+// 본인 것 조회 (사진·소개·메시지 표시 이름) — 인증 없이도 자가진단 공개 페이지에서 읽을 수 있어야 해서
+// username을 쿼리 파라미터로도 받음(그 경우도 민감정보 없음이라 문제 없음).
 export async function GET(request) {
   await ensureSchema()
   const { searchParams } = new URL(request.url)
   const qUsername = searchParams.get('username')
   const username = qUsername || request.headers.get('x-consultant-id')
   if (!username) return NextResponse.json({ error: '아이디가 필요합니다.' }, { status: 400 })
-  const [row] = await sql`SELECT username, name, profile_photo_url, profile_intro FROM accounts WHERE username = ${username}`
+  const [row] = await sql`SELECT username, name, profile_photo_url, profile_intro, display_name FROM accounts WHERE username = ${username}`
   if (!row) return NextResponse.json({ profile: null })
   return NextResponse.json({ profile: row })
 }
@@ -36,6 +37,7 @@ export async function POST(request) {
     const formData = await request.formData()
     const file = formData.get('photo')
     const intro = formData.get('intro')
+    const displayName = formData.get('displayName')
 
     let photoUrl
     if (file && typeof file === 'object' && file.size > 0) {
@@ -49,9 +51,10 @@ export async function POST(request) {
     const [row] = await sql`
       UPDATE accounts SET
         profile_photo_url = COALESCE(${photoUrl || null}, profile_photo_url),
-        profile_intro = COALESCE(${intro ?? null}, profile_intro)
+        profile_intro = COALESCE(${intro ?? null}, profile_intro),
+        display_name = COALESCE(${displayName ?? null}, display_name)
       WHERE username = ${username}
-      RETURNING username, name, profile_photo_url, profile_intro
+      RETURNING username, name, profile_photo_url, profile_intro, display_name
     `
     if (!row) return NextResponse.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 })
     return NextResponse.json({ ok: true, profile: row })
