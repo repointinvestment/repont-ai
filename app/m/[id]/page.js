@@ -7,6 +7,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import { renderFormattedText } from '@/lib/materialFormat';
 
 const INK = '#17261F';
 const ACCENT_DEEP = '#1F4E39';
@@ -79,7 +80,12 @@ function MaterialViewInner() {
             block.type === 'image' ? (
               <img key={i} src={block.url} alt="" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
             ) : (
-              <p key={i} style={{ fontSize: 15, color: '#2A2925', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap' }}>{block.content}</p>
+              <p key={i} style={{
+                fontSize: block.heading ? 20 : 15, fontWeight: block.heading ? 800 : 400, fontFamily: block.heading ? "'Noto Serif KR', serif" : "'Noto Sans KR', sans-serif",
+                color: INK, lineHeight: block.heading ? 1.5 : 1.8, margin: 0, whiteSpace: 'pre-wrap',
+              }}>
+                {renderFormattedText(block.content)}
+              </p>
             )
           ))}
         </div>

@@ -6,6 +6,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { renderFormattedText } from '@/lib/materialFormat'
 
 const btn = { padding: '9px 16px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }
 const btnGhost = { ...btn, background: '#fff', color: '#2A2925', border: '1px solid #2A2925' }
@@ -21,10 +22,24 @@ export default function MaterialBuilder({ user, initial, materialId }) {
   const fileInputRef = useRef(null)
 
   function addText() {
-    setBlocks((b) => [...b, { type: 'text', content: '' }])
+    setBlocks((b) => [...b, { type: 'text', content: '', heading: false }])
   }
   function updateText(idx, content) {
     setBlocks((b) => b.map((blk, i) => (i === idx ? { ...blk, content } : blk)))
+  }
+  function toggleHeading(idx) {
+    setBlocks((b) => b.map((blk, i) => (i === idx ? { ...blk, heading: !blk.heading } : blk)))
+  }
+  const textareaRefs = useRef({})
+  // 텍스트칸에서 선택한 부분을 **굵게** 또는 ==강조색==으로 감싸기 — 선택 없으면 그냥 마커만 커서 위치에 삽입.
+  function wrapSelection(idx, marker) {
+    const el = textareaRefs.current[idx]
+    if (!el) return
+    const { selectionStart: s, selectionEnd: e, value } = el
+    const selected = value.slice(s, e) || '텍스트'
+    const next = `${value.slice(0, s)}${marker}${selected}${marker}${value.slice(e)}`
+    updateText(idx, next)
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(s + marker.length, s + marker.length + selected.length) })
   }
   function removeBlock(idx) {
     setBlocks((b) => b.filter((_, i) => i !== idx))
@@ -82,10 +97,26 @@ export default function MaterialBuilder({ user, initial, materialId }) {
           <div key={i} style={{ background: '#fff', borderRadius: 10, padding: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'relative' }}>
             <button onClick={() => removeBlock(i)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: '#B0AEA5', fontSize: 16, cursor: 'pointer' }}>×</button>
             {block.type === 'text' ? (
-              <textarea
-                value={block.content} onChange={(e) => updateText(i, e.target.value)} placeholder="내용을 입력하세요"
-                style={{ width: '100%', minHeight: 90, padding: '8px 10px', border: '1px solid #E4E2DB', borderRadius: 6, fontSize: 13.5, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }}
-              />
+              <>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <button type="button" onClick={() => wrapSelection(i, '**')} title="굵게" style={{ width: 30, height: 28, borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>B</button>
+                  <button type="button" onClick={() => wrapSelection(i, '==')} title="강조색" style={{ width: 30, height: 28, borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', color: '#B9862F', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>A</button>
+                  <button
+                    type="button" onClick={() => toggleHeading(i)}
+                    style={{ padding: '0 10px', height: 28, borderRadius: 6, border: block.heading ? '1.5px solid #2A2925' : '1px solid #D3D1C7', background: block.heading ? '#F0EFEA' : '#fff', fontSize: 11.5, fontWeight: block.heading ? 700 : 400, cursor: 'pointer' }}
+                  >
+                    제목 크기
+                  </button>
+                </div>
+                <textarea
+                  ref={(el) => { textareaRefs.current[i] = el }}
+                  value={block.content} onChange={(e) => updateText(i, e.target.value)} placeholder="내용을 입력하세요 (선택 후 B/A 눌러서 서식 적용)"
+                  style={{
+                    width: '100%', minHeight: block.heading ? 60 : 90, padding: '8px 10px', border: '1px solid #E4E2DB', borderRadius: 6,
+                    fontSize: block.heading ? 17 : 13.5, fontWeight: block.heading ? 700 : 400, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical',
+                  }}
+                />
+              </>
             ) : (
               <img src={block.url} alt="" style={{ width: '100%', borderRadius: 6, display: 'block' }} />
             )}
@@ -93,13 +124,14 @@ export default function MaterialBuilder({ user, initial, materialId }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
         <button style={btnGhost} onClick={addText}>+ 텍스트 추가</button>
         <button style={btnGhost} onClick={() => fileInputRef.current?.click()} disabled={uploading}>
           {uploading ? '업로드 중…' : '+ 이미지 추가'}
         </button>
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }} onChange={(e) => e.target.files[0] && addImage(e.target.files[0])} />
       </div>
+      <p style={{ fontSize: 11, color: '#B0AEA5', margin: '0 0 20px' }}>텍스트칸에서 원하는 부분을 드래그로 선택한 뒤 <strong>B</strong>(굵게) 또는 <strong style={{ color: '#B9862F' }}>A</strong>(강조색) 버튼을 누르면 서식이 적용됩니다. "제목 크기"는 그 블록 전체를 소제목처럼 크게 보여줘요.</p>
 
       {error && <p style={{ color: '#C0392B', fontSize: 13, margin: '0 0 12px' }}>{error}</p>}
 
