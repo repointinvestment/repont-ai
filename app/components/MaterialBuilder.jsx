@@ -30,6 +30,9 @@ export default function MaterialBuilder({ user, initial, materialId }) {
   function toggleHeading(idx) {
     setBlocks((b) => b.map((blk, i) => (i === idx ? { ...blk, heading: !blk.heading } : blk)))
   }
+  function setFont(idx, font) {
+    setBlocks((b) => b.map((blk, i) => (i === idx ? { ...blk, font } : blk)))
+  }
   const textareaRefs = useRef({})
   // 텍스트칸에서 선택한 부분을 **굵게** 또는 ==강조색==으로 감싸기 — 선택 없으면 그냥 마커만 커서 위치에 삽입.
   function wrapSelection(idx, marker) {
@@ -82,6 +85,7 @@ export default function MaterialBuilder({ user, initial, materialId }) {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px 80px' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Gowun+Dodum&display=swap');`}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ color: '#1a1a2e', margin: 0 }}>{materialId ? '안내자료 수정' : '안내자료 만들기'}</h2>
         <button style={btnGhost} onClick={() => router.push('/materials')}>목록으로</button>
@@ -98,7 +102,7 @@ export default function MaterialBuilder({ user, initial, materialId }) {
             <button onClick={() => removeBlock(i)} style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: '#B0AEA5', fontSize: 16, cursor: 'pointer' }}>×</button>
             {block.type === 'text' ? (
               <>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
                   <button type="button" onClick={() => wrapSelection(i, '**')} title="굵게" style={{ width: 30, height: 28, borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>B</button>
                   <button type="button" onClick={() => wrapSelection(i, '==')} title="강조색" style={{ width: 30, height: 28, borderRadius: 6, border: '1px solid #D3D1C7', background: '#fff', color: '#B9862F', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>A</button>
                   <button
@@ -107,13 +111,29 @@ export default function MaterialBuilder({ user, initial, materialId }) {
                   >
                     제목 크기
                   </button>
+                  <span style={{ width: 1, background: '#E4E2DB', margin: '0 2px' }} />
+                  {[['sans', '고딕'], ['serif', '명조'], ['hand', '손글씨']].map(([key, label]) => (
+                    <button
+                      key={key} type="button" onClick={() => setFont(i, key)}
+                      style={{
+                        padding: '0 10px', height: 28, borderRadius: 6, cursor: 'pointer', fontSize: 11.5,
+                        border: (block.font || 'sans') === key ? '1.5px solid #2A2925' : '1px solid #D3D1C7',
+                        background: (block.font || 'sans') === key ? '#F0EFEA' : '#fff',
+                        fontWeight: (block.font || 'sans') === key ? 700 : 400,
+                        fontFamily: key === 'serif' ? "'Noto Serif KR', serif" : key === 'hand' ? "'Gowun Dodum', sans-serif" : "'Noto Sans KR', sans-serif",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
                 <textarea
                   ref={(el) => { textareaRefs.current[i] = el }}
                   value={block.content} onChange={(e) => updateText(i, e.target.value)} placeholder="내용을 입력하세요 (선택 후 B/A 눌러서 서식 적용)"
                   style={{
                     width: '100%', minHeight: block.heading ? 60 : 90, padding: '8px 10px', border: '1px solid #E4E2DB', borderRadius: 6,
-                    fontSize: block.heading ? 17 : 13.5, fontWeight: block.heading ? 700 : 400, boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical',
+                    fontSize: block.heading ? 17 : 13.5, fontWeight: block.heading ? 700 : 400, boxSizing: 'border-box', resize: 'vertical',
+                    fontFamily: (block.font || 'sans') === 'serif' ? "'Noto Serif KR', serif" : (block.font || 'sans') === 'hand' ? "'Gowun Dodum', sans-serif" : "'Noto Sans KR', sans-serif",
                   }}
                 />
               </>

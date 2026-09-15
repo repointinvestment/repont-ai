@@ -66,7 +66,7 @@ function MaterialViewInner() {
 
   return (
     <div style={{ minHeight: '100vh', background: PAPER, fontFamily: "'Noto Sans KR', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Gowun+Dodum&display=swap');`}</style>
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '40px 20px 60px' }}>
         <p style={{ fontFamily: "'Noto Serif KR', serif", fontWeight: 900, fontSize: 13, letterSpacing: '0.04em', color: ACCENT_DEEP, margin: '0 0 16px', textAlign: 'center' }}>
           머니콕
@@ -81,7 +81,8 @@ function MaterialViewInner() {
               <img key={i} src={block.url} alt="" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
             ) : (
               <p key={i} style={{
-                fontSize: block.heading ? 20 : 15, fontWeight: block.heading ? 800 : 400, fontFamily: block.heading ? "'Noto Serif KR', serif" : "'Noto Sans KR', sans-serif",
+                fontSize: block.heading ? 20 : 15, fontWeight: block.heading ? 800 : 400,
+                fontFamily: (block.font || 'sans') === 'serif' ? "'Noto Serif KR', serif" : (block.font || 'sans') === 'hand' ? "'Gowun Dodum', sans-serif" : "'Noto Sans KR', sans-serif",
                 color: INK, lineHeight: block.heading ? 1.5 : 1.8, margin: 0, whiteSpace: 'pre-wrap',
               }}>
                 {renderFormattedText(block.content)}
