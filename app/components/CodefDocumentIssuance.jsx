@@ -63,6 +63,7 @@ function buildVatRangeOptions() {
 export const DOCUMENTS = {
   'corporate-registration': {
     label: '사업자등록 증명',
+    institution: '홈택스', institutionIcon: '🏛️',
     requestPath: '/api/codef/business-registration',
     confirmPath: '/api/codef/business-registration/confirm',
     memberOnly: false,
@@ -70,6 +71,7 @@ export const DOCUMENTS = {
   },
   'additional-tax-standard': {
     label: '부가세과세표준증명',
+    institution: '홈택스', institutionIcon: '🏛️',
     requestPath: '/api/codef/additional-tax-standard',
     confirmPath: '/api/codef/additional-tax-standard/confirm',
     memberOnly: true,
@@ -77,6 +79,7 @@ export const DOCUMENTS = {
   },
   'tax-payment-certificate': {
     label: '납세증명서 (국세완납증명)',
+    institution: '홈택스', institutionIcon: '🏛️',
     requestPath: '/api/codef/tax-payment-certificate',
     confirmPath: '/api/codef/tax-payment-certificate/confirm',
     memberOnly: false,
@@ -84,6 +87,7 @@ export const DOCUMENTS = {
   },
   'financial-statement': {
     label: '재무제표',
+    institution: '홈택스', institutionIcon: '🏛️',
     requestPath: '/api/codef/financial-statement',
     confirmPath: '/api/codef/financial-statement/confirm',
     memberOnly: false,
@@ -92,6 +96,7 @@ export const DOCUMENTS = {
   },
   'localtax-payment-certificate': {
     label: '지방세 납세증명서',
+    institution: '정부24', institutionIcon: '🏢',
     requestPath: '/api/codef/localtax-payment-certificate',
     confirmPath: '/api/codef/localtax-payment-certificate/confirm',
     memberOnly: false,
@@ -392,17 +397,31 @@ export default function CodefDocumentIssuance({
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field label="발급 서류 (여러 개 선택 가능 — 인증 한 번으로 함께 발급을 시도합니다)">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #E0DFDA', borderRadius: 8, padding: 12 }}>
-            {Object.entries(DOCUMENTS).map(([key, d]) => (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={selectedDocs.includes(key)}
-                  onChange={() => toggleDoc(key)}
-                />
-                {d.label}
-              </label>
-            ))}
+          <div style={{ border: '1px solid #E0DFDA', borderRadius: 10, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#F8F7F4' }}>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, color: '#8A8272', fontWeight: 600, width: 90 }}>수집기관</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, color: '#8A8272', fontWeight: 600 }}>요청서류</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11.5, color: '#8A8272', fontWeight: 600, width: 60 }}>선택</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(DOCUMENTS).map(([key, d], i) => (
+                  <tr
+                    key={key}
+                    onClick={() => toggleDoc(key)}
+                    style={{ cursor: 'pointer', borderTop: i === 0 ? 'none' : '1px solid #F0EFEA', background: selectedDocs.includes(key) ? '#FFF6F2' : '#fff' }}
+                  >
+                    <td style={{ padding: '11px 14px', fontSize: 13, color: '#5A5952', whiteSpace: 'nowrap' }}>{d.institutionIcon} {d.institution}</td>
+                    <td style={{ padding: '11px 14px', fontSize: 14, color: '#2A2925', fontWeight: selectedDocs.includes(key) ? 700 : 400 }}>{d.label}</td>
+                    <td style={{ padding: '11px 14px', textAlign: 'right' }}>
+                      <input type="checkbox" checked={selectedDocs.includes(key)} onChange={() => toggleDoc(key)} onClick={(e) => e.stopPropagation()} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Field>
         {(anyMemberOnly || selectedDocs.length > 1 || hasSoloDoc) && (
