@@ -139,6 +139,17 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
+              const res = await fetch('/api/admin/seed-demo', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
+              const d = await res.json()
+              if (res.ok) alert(`데모 계정 준비 완료!\n\n아이디: ${d.username}\n비밀번호: ${d.password}\n\n이 계정으로 로그인하시면 가짜 예시 고객 2명이 들어있어서 바로 기능을 보여줄 수 있어요.`)
+              else alert(d.error || '실패')
+            }}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            데모 계정 만들기 →
+          </button>
+          <button
+            onClick={async () => {
               if (!confirm('신규 등록 전 고객들도 전부 수신동의 처리할까요? (이미 개별적으로 동의 해제한 고객은 안 건드립니다)')) return
               const res = await fetch('/api/admin/backfill-consent', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
               const d = await res.json()
