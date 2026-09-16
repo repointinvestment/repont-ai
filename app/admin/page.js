@@ -139,10 +139,14 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
-              const res = await fetch('/api/admin/seed-demo', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
-              const d = await res.json()
-              if (res.ok) alert(`데모 계정 준비 완료!\n\n아이디: ${d.username}\n비밀번호: ${d.password}\n\n이 계정으로 로그인하시면 가짜 예시 고객 2명이 들어있어서 바로 기능을 보여줄 수 있어요.`)
-              else alert(d.error || '실패')
+              try {
+                const res = await fetch('/api/admin/seed-demo', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
+                const d = await res.json().catch(() => ({}))
+                if (res.ok) alert(`데모 계정 준비 완료!\n\n아이디: ${d.username}\n비밀번호: ${d.password}\n\n이 계정으로 로그인하시면 가짜 예시 고객 2명이 들어있어서 바로 기능을 보여줄 수 있어요.`)
+                else alert(`실패: ${d.error || `서버 오류 (상태 ${res.status})`}`)
+              } catch (err) {
+                alert(`요청 자체가 실패했습니다: ${err.message}`)
+              }
             }}
             style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
           >
