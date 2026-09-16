@@ -8,7 +8,15 @@ import { NextResponse } from 'next/server'
 export async function GET(request) {
   const consultantId = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
-  const rows = (role === 'admin' || !consultantId)
+
+  // consultantId 헤더가 없으면 무조건 거부 — 예전엔 이 경우를 "전체 조회 허용"으로 잘못 처리해서,
+  // 로그인 헤더를 안 보내기만 하면 아무나 전체 고객(주민등록번호 등 민감정보 포함) 목록을 볼 수 있는
+  // 구멍이 있었음. business-plans에서 찾았던 것과 똑같은 패턴의 버그였음.
+  if (!consultantId) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
+
+  const rows = role === 'admin'
     ? await sql`
         SELECT c.*, h.first_consulted_at
         FROM customers c
