@@ -500,8 +500,11 @@ export default function CodefDocumentIssuance({
             <Field label="사업자 유형 (재무제표용)">
               <select value={form.businessType} onChange={(e) => update('businessType', e.target.value)} style={inputStyle}>
                 <option value="individual">개인사업자</option>
-                <option value="corporate">법인사업자</option>
+                <option value="corporate" disabled>법인사업자 (인증 방식 확인 중 — 준비중)</option>
               </select>
+              <p style={{ fontSize: 11.5, color: '#B0763F', margin: '6px 0 0' }}>
+                법인사업자는 홈택스 로그인 방식(법인 명의 인증서 등)이 개인과 달라, 확인될 때까지 잠시 막아뒀습니다.
+              </p>
             </Field>
             <Field label="조회 방식 (재무제표용)">
               <select value={form.attrYearMode} onChange={(e) => update('attrYearMode', e.target.value)} style={inputStyle}>
