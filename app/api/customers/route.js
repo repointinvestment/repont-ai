@@ -41,6 +41,15 @@ export async function GET(request) {
   return NextResponse.json({ customers: rows })
 }
 
+// 빈칸/공백 문자열을 null로 바꿔줌 — 숫자·날짜 컬럼에 ''가 그대로 들어가면
+// Postgres가 "invalid input syntax for type integer/date: ''" 에러를 던짐.
+// 전화 상담만 하고 일부 정보만 입력해서 '상담중' 상태로 빠르게 등록할 때 자주 발생.
+function blankToNull(v) {
+  if (v === undefined || v === null) return null
+  if (typeof v === 'string' && v.trim() === '') return null
+  return v
+}
+
 export async function POST(request) {
   await ensureRecheckSchema()
   const rawConsultantId = request.headers.get('x-consultant-id')
@@ -58,12 +67,12 @@ export async function POST(request) {
         has_woman_biz_cert, has_sojinkong_good_repayment, business_age_years, policy_fund_details, status,
         marketing_consent, marketing_consent_at
       ) VALUES (
-        ${consultantId}, ${body.businessName}, ${body.businessType}, ${body.ownerName}, ${body.phone}, ${body.email},
-        ${body.bizRegNumber}, ${body.establishDate}, ${body.openDate}, ${body.address}, ${body.industry},
-        ${body.businessContent}, ${body.employeeCount || 0}, ${body.lastYearSales}, ${body.creditNice}, ${body.creditKcb},
-        ${body.revenueAmount}, ${body.addressOwnership}, ${body.residenceAddress}, ${body.residenceOwnership},
-        ${body.loanStatus}, ${body.memo}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${body.ownerCareerYears || null},
-        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${body.businessAgeYears || null}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'},
+        ${consultantId}, ${blankToNull(body.businessName)}, ${blankToNull(body.businessType)}, ${blankToNull(body.ownerName)}, ${blankToNull(body.phone)}, ${blankToNull(body.email)},
+        ${blankToNull(body.bizRegNumber)}, ${blankToNull(body.establishDate)}, ${blankToNull(body.openDate)}, ${blankToNull(body.address)}, ${blankToNull(body.industry)},
+        ${blankToNull(body.businessContent)}, ${blankToNull(body.employeeCount) ?? 0}, ${blankToNull(body.lastYearSales)}, ${blankToNull(body.creditNice)}, ${blankToNull(body.creditKcb)},
+        ${blankToNull(body.revenueAmount)}, ${blankToNull(body.addressOwnership)}, ${blankToNull(body.residenceAddress)}, ${blankToNull(body.residenceOwnership)},
+        ${blankToNull(body.loanStatus)}, ${blankToNull(body.memo)}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${blankToNull(body.ownerCareerYears)},
+        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${blankToNull(body.businessAgeYears)}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'},
         ${!!body.marketingConsent}, ${body.marketingConsent ? new Date().toISOString() : null}
       )
       RETURNING *

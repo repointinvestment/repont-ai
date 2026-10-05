@@ -49,6 +49,14 @@ async function upsertCredential(customerId, serviceName, plainValue) {
   }
 }
 
+// 빈칸/공백 문자열을 null로 바꿔줌 — 숫자·날짜 컬럼에 ''가 그대로 들어가면
+// Postgres가 "invalid input syntax for type integer/date: ''" 에러를 던짐.
+function blankToNull(v) {
+  if (v === undefined || v === null) return null
+  if (typeof v === 'string' && v.trim() === '') return null
+  return v
+}
+
 // 고객 정보 수정
 export async function PATCH(request, { params }) {
   const { id } = params
@@ -64,36 +72,36 @@ export async function PATCH(request, { params }) {
 
   const [customer] = await sql`
     UPDATE customers SET
-      business_name = ${body.businessName},
-      business_type = ${body.businessType},
-      owner_name = ${body.ownerName},
-      phone = ${body.phone},
-      email = ${body.email},
-      biz_reg_number = ${body.bizRegNumber},
-      establish_date = ${body.establishDate},
-      open_date = ${body.openDate},
-      address = ${body.address},
-      industry = ${body.industry},
-      business_content = ${body.businessContent},
-      employee_count = ${body.employeeCount || 0},
-      last_year_sales = ${body.lastYearSales},
-      credit_nice = ${body.creditNice},
-      credit_kcb = ${body.creditKcb},
-      revenue_amount = ${body.revenueAmount},
-      address_ownership = ${body.addressOwnership},
-      residence_address = ${body.residenceAddress},
-      residence_ownership = ${body.residenceOwnership},
-      loan_status = ${body.loanStatus},
-      memo = ${body.memo},
+      business_name = ${blankToNull(body.businessName)},
+      business_type = ${blankToNull(body.businessType)},
+      owner_name = ${blankToNull(body.ownerName)},
+      phone = ${blankToNull(body.phone)},
+      email = ${blankToNull(body.email)},
+      biz_reg_number = ${blankToNull(body.bizRegNumber)},
+      establish_date = ${blankToNull(body.establishDate)},
+      open_date = ${blankToNull(body.openDate)},
+      address = ${blankToNull(body.address)},
+      industry = ${blankToNull(body.industry)},
+      business_content = ${blankToNull(body.businessContent)},
+      employee_count = ${blankToNull(body.employeeCount) ?? 0},
+      last_year_sales = ${blankToNull(body.lastYearSales)},
+      credit_nice = ${blankToNull(body.creditNice)},
+      credit_kcb = ${blankToNull(body.creditKcb)},
+      revenue_amount = ${blankToNull(body.revenueAmount)},
+      address_ownership = ${blankToNull(body.addressOwnership)},
+      residence_address = ${blankToNull(body.residenceAddress)},
+      residence_ownership = ${blankToNull(body.residenceOwnership)},
+      loan_status = ${blankToNull(body.loanStatus)},
+      memo = ${blankToNull(body.memo)},
       status = ${body.status},
       has_patent = ${!!body.hasPatent},
       has_yellow_umbrella = ${!!body.hasYellowUmbrella},
       has_rnd_center = ${!!body.hasRndCenter},
       has_venture_cert = ${!!body.hasVentureCert},
-      owner_career_years = ${body.ownerCareerYears || null},
+      owner_career_years = ${blankToNull(body.ownerCareerYears)},
       has_woman_biz_cert = ${!!body.hasWomanBizCert},
       has_sojinkong_good_repayment = ${!!body.hasSojinkongGoodRepayment},
-      business_age_years = ${body.businessAgeYears || null},
+      business_age_years = ${blankToNull(body.businessAgeYears)},
       policy_fund_details = ${JSON.stringify(body.policyFundDetails || {})},
       marketing_consent = ${!!body.marketingConsent},
       marketing_consent_at = ${nextConsentAt},
