@@ -47,6 +47,7 @@ export default function NewCustomerPage() {
     loanStatus: '',
     memo: '',
     marketingConsent: true,
+    metaAlertSubscribed: false,
     residentNumber: '',
     certPassword: '',
     hasPatent: false,
@@ -272,6 +273,11 @@ export default function NewCustomerPage() {
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
           <input type="checkbox" name="marketingConsent" checked={!!form.marketingConsent} onChange={handleChange} style={{ marginTop: 2 }} />
           <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 상담 시 확인했으면 체크 유지, 고객이 원치 않으면 해제해주세요.</span>
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
+          <input type="checkbox" name="metaAlertSubscribed" checked={!!form.metaAlertSubscribed} onChange={handleChange} style={{ marginTop: 2 }} />
+          <span>인스타(메타) 양식에서 고객이 &apos;소식 알림 신청: 예&apos;를 직접 선택함 — 메타 응답에 실제로 &quot;예&quot;가 있을 때만 체크하세요. 체크한 고객에게만 주기 알림이 발송됩니다.</span>
         </label>
 
         <PolicyFundDetailsFields

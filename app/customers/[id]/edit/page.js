@@ -138,6 +138,8 @@ export default function CustomerDetailPage() {
           loanStatus: c.loan_status || '',
           memo: c.memo || '',
           marketingConsent: !!c.marketing_consent,
+          metaAlertSubscribed: false,
+          alertSubscribedAt: c.alert_subscribed_at || null,
           status: c.status || '상담중',
           residentNumber: '',
           certPassword: '',
@@ -354,6 +356,15 @@ export default function CustomerDetailPage() {
         <input type="checkbox" name="marketingConsent" checked={!!form.marketingConsent} onChange={handleChange} style={{ marginTop: 2 }} />
         <span>정책자금 관련 안내(카카오톡 알림 등) 수신에 동의함 — 상담 시 확인했으면 체크 유지, 고객이 원치 않으면 해제해주세요.</span>
       </label>
+
+      {form.alertSubscribedAt ? (
+        <div style={{ fontSize: 13, marginTop: 4, color: '#1E7B4A' }}>✓ 소식 알림 신청됨 ({new Date(form.alertSubscribedAt).toLocaleDateString('ko-KR')})</div>
+      ) : (
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 4, color: '#2A2925' }}>
+          <input type="checkbox" name="metaAlertSubscribed" checked={!!form.metaAlertSubscribed} onChange={handleChange} style={{ marginTop: 2 }} />
+          <span>인스타(메타) 양식에서 고객이 &apos;소식 알림 신청: 예&apos;를 직접 선택함 — 메타 응답에 실제로 &quot;예&quot;가 있을 때만 체크하세요.</span>
+        </label>
+      )}
 
       <PolicyFundDetailsFields
         businessAgeYears={businessAgeYears}

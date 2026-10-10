@@ -110,6 +110,14 @@ export async function PATCH(request, { params }) {
     RETURNING *
   `
 
+  // 메타 양식에서 '소식 알림 신청: 예'를 확인한 경우에만 신청 처리 (이미 신청된 고객의 기록은 덮어쓰지 않음)
+  if (body.metaAlertSubscribed) {
+    await sql`
+      UPDATE customers SET alert_subscribed_at = NOW(), alert_source = 'meta_lead'
+      WHERE id = ${id} AND alert_subscribed_at IS NULL
+    `
+  }
+
   if (!customer) {
     return NextResponse.json({ error: '고객을 찾을 수 없습니다.' }, { status: 404 })
   }

@@ -78,6 +78,11 @@ export async function POST(request) {
       RETURNING *
     `
 
+    // 인스타(메타) 양식에서 고객이 직접 '소식 알림 신청: 예'를 고른 경우 — 컨설턴트가 메타 응답을 확인하고 체크.
+    if (body.metaAlertSubscribed) {
+      await sql`UPDATE customers SET alert_subscribed_at = NOW(), alert_source = 'meta_lead' WHERE id = ${customer.id}`
+    }
+
     // 진행 단계 이력 첫 기록
     await sql`
       INSERT INTO customer_status_history (customer_id, status)
