@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/announcement-alerts",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/gov-support-match",
+      "schedule": "0 23 * * *"
     }
   ]
 }
