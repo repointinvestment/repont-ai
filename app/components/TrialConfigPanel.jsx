@@ -7,6 +7,11 @@ export default function TrialConfigPanel({ user }) {
   const [cfg, setCfg] = useState({ code: '', maxSignups: 300, days: 7, active: false })
   const [stats, setStats] = useState(null)
   const [msg, setMsg] = useState('')
+  const [copied, setCopied] = useState('')
+  const trialUrl = typeof window !== 'undefined' ? `${window.location.origin}/trial` : ''
+  const copy = async (label, text) => {
+    try { await navigator.clipboard.writeText(text); setCopied(label); setTimeout(() => setCopied(''), 2000) } catch { setMsg('복사에 실패했어요. 직접 선택해서 복사해주세요.') }
+  }
 
   const load = async () => {
     const res = await fetch('/api/admin/trial-config', { headers })
@@ -47,6 +52,19 @@ export default function TrialConfigPanel({ user }) {
         <label style={{ fontSize: 13 }}><input type="checkbox" checked={cfg.active} onChange={(e) => setCfg({ ...cfg, active: e.target.checked })} /> 신청 받는 중</label>
         <button onClick={save} style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>저장</button>
         <button onClick={cleanup} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #999', background: '#fff', cursor: 'pointer' }}>만료 계정 정리</button>
+      </div>
+      <div style={{ marginTop: 14, padding: 12, background: '#F4F7FB', borderRadius: 8, fontSize: 13 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>📋 시청자에게 공유할 내용</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+          <span>가입 주소</span>
+          <input readOnly value={trialUrl} onFocus={(e) => e.target.select()} style={{ ...input, width: 280 }} />
+          <button onClick={() => copy('url', trialUrl)} style={{ padding: '7px 12px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: 'pointer' }}>{copied === 'url' ? '복사됨 ✓' : '주소 복사'}</button>
+        </div>
+        <button disabled={!cfg.code} onClick={() => copy('msg', `🎁 자금비서 ${cfg.days}일 무료 이용권\n가입 주소: ${trialUrl}\n입장코드: ${cfg.code}\n(가입 후 ${cfg.days}일간 사용 가능합니다)`)}
+          style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #0f3460', background: '#fff', color: '#0f3460', cursor: cfg.code ? 'pointer' : 'not-allowed' }}>
+          {copied === 'msg' ? '복사됨 ✓' : '안내문 통째로 복사 (주소+입장코드)'}
+        </button>
+        {!cfg.code && <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>입장코드를 먼저 입력·저장하세요</span>}
       </div>
       {msg && <p style={{ fontSize: 12.5, color: '#2A7D46', margin: '10px 0 0' }}>{msg}</p>}
     </div>
