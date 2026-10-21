@@ -35,6 +35,7 @@ export default function CustomerDashboardPage() {
   const [planDrafts, setPlanDrafts] = useState({});
   const [planLoading, setPlanLoading] = useState({});
   const [planCopyState, setPlanCopyState] = useState({});
+  const [planExtra, setPlanExtra] = useState('');
   const [planAmountPrompt, setPlanAmountPrompt] = useState(null); // { fundName, index, suggested }
   const [planAmountInput, setPlanAmountInput] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -179,7 +180,7 @@ export default function CustomerDashboardPage() {
     setPlanAmountInput(suggested ? String(suggested) : '');
   }
 
-  async function runGeneratePlan(fundName, index, loanAmountManwon) {
+  async function runGeneratePlan(fundName, index, loanAmountManwon, extra) {
     setPlanLoading((s) => ({ ...s, [index]: true }));
     try {
       const pfd = customer.policy_fund_details || {};
@@ -188,6 +189,7 @@ export default function CustomerDashboardPage() {
         headers: { 'Content-Type': 'application/json', 'x-consultant-id': user?.username || '' },
         body: JSON.stringify({
           fundName,
+          extra: extra || '',
           customerId: params.id,
           customer: {
             ownerName: customer.owner_name,
@@ -224,7 +226,7 @@ export default function CustomerDashboardPage() {
     const amt = Number(String(planAmountInput).replace(/[^0-9]/g, ''));
     const { fundName, index } = planAmountPrompt;
     setPlanAmountPrompt(null);
-    runGeneratePlan(fundName, index, amt || null);
+    runGeneratePlan(fundName, index, amt || null, planExtra);
   }
 
   async function copyPlan(index) {
@@ -776,6 +778,14 @@ export default function CustomerDashboardPage() {
               />
               <span style={{ fontSize: 13, color: '#5F5E5A' }}>만원</span>
             </div>
+            <p style={{ fontSize: 12, color: '#5F5E5A', margin: '0 0 6px', fontWeight: 600 }}>상담에서 알게 된 내용 (선택) — 적을수록 초안이 구체적이에요</p>
+            <textarea
+              value={planExtra}
+              onChange={(e) => setPlanExtra(e.target.value)}
+              placeholder="예: 주력 메뉴는 갈비탕, 점심 직장인 70%, 인근 경쟁업체 3곳이지만 우리는 전 메뉴 국내산. 올해 포장·배달 매출 늘리는 중. 주방기기 교체 필요"
+              rows={4}
+              style={{ width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid #D3D1C7', fontSize: 12.5, boxSizing: 'border-box', marginBottom: 14, fontFamily: 'inherit' }}
+            />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setPlanAmountPrompt(null)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
               <button onClick={confirmPlanAmount} style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>초안 작성</button>

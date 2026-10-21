@@ -112,7 +112,7 @@ export async function POST(req) {
   }
   const usage = await checkAndCountAiUsage(req.headers.get('x-consultant-id'), req.headers.get('x-consultant-role'), 'plan')
   if (!usage.ok) return Response.json({ error: usage.error }, { status: 429 })
-  const { customer, fundName, customerId } = await req.json()
+  const { customer, fundName, customerId, extra } = await req.json()
   if (customerId) {
     const check = await requireCustomerOwnership(customerId, req)
     if (!check.ok) return Response.json({ error: check.error }, { status: check.status })
@@ -257,24 +257,50 @@ ${field('폐업사유', null)}` : ''}
     return saveAndRespond(draft)
   }
 
-  // GENERIC: 아직 공식 서식이 등록되지 않은 기관(재단/신보/기보 등) — 일반 사업계획서 형식으로 작성
-  const systemPrompt = `당신은 정책자금 신청용 사업계획서 초안을 작성하는 전문 컨설턴트입니다.
-아래 제공되는 고객 정보와 신청하려는 자금의 특성을 바탕으로, 실제 제출 가능한 수준의 사업계획서 초안을 작성하세요.
+  // GENERIC: 공식 서식이 없는 기관(재단/신보/기보 등) — 심사역이 실제로 보는 항목 중심의 종합 사업계획서.
+  // 숫자(매출 전망·상환 스케줄·자금배분)는 GPT가 아니라 코드로 계산해 표로 붙임 → 합계 오류·환각 방지.
+  const ASSUMED_RATE = 0.055 // 상환 시뮬레이션용 가정 금리(연 5.5%) — 실제 금리는 기관·등급별로 다름
+  const loanMw = customer.loanAmount ? Number(customer.loanAmount) : null
+  const revMw = customer.revenue ? Number(customer.revenue) : null
 
-[사업계획서 구성 - 이 순서와 소제목을 그대로 사용]
-1. 사업 개요
-2. 대표자 및 기업 현황
-3. 신청 자금 개요 및 신청 사유
-4. 자금 사용 계획
-5. 향후 사업 계획 및 기대 효과
+  // 매출 3개년 전망(보수/기준/낙관) — 현재 매출 대비 연 성장률 가정이 명시된 시뮬레이션
+  const growth = [['보수적', 0.03], ['기준', 0.08], ['낙관적', 0.15]]
+  const projection = revMw
+    ? growth.map(([label, g]) => `${label}(연 ${Math.round(g * 100)}% 성장 가정) | ${[1, 2, 3].map((n) => Math.round(revMw * Math.pow(1 + g, n)).toLocaleString() + '만원').join(' | ')}`)
+    : null
+
+  // 상환능력: 5년(거치 1년 + 4년 균등분할) 가정, 월 원리금 및 연 매출 대비 비중
+  let repay = null
+  if (loanMw) {
+    const principalYear = loanMw / 4
+    const interestY1 = loanMw * ASSUMED_RATE
+    const interestY2 = (loanMw - 0) * ASSUMED_RATE // 거치기간 종료 직후 연도 초 잔액 기준 단순화
+    const firstRepayYear = principalYear + interestY2
+    repay = {
+      interestY1: Math.round(interestY1), principalYear: Math.round(principalYear),
+      peakYear: Math.round(firstRepayYear), monthlyPeak: Math.round(firstRepayYear / 12),
+      ratio: revMw ? ((firstRepayYear / revMw) * 100).toFixed(1) : null,
+    }
+  }
+
+  const systemPrompt = `당신은 10년차 정책자금 전문 컨설턴트이며, 신용보증재단·신보·기보 심사역이 실제로 보는 관점으로 사업계획서를 씁니다.
+심사역은 (1) 이 사업이 돈을 버는 구조인가 (2) 대표자가 믿을 만한가 (3) 빌린 돈을 갚을 수 있는가 (4) 자금이 실제 사업에 쓰이는가 를 봅니다. 이 네 가지가 설득되도록 작성하세요.
+
+[구성 - 이 순서와 소제목을 그대로 사용. 숫자표는 시스템이 따로 붙이므로 직접 만들지 마세요]
+1. 사업 개요 (무엇을, 누구에게, 어떻게 파는지 / 수익 구조)
+2. 대표자 및 기업 현황 (경력·인증·특허·업력을 신뢰 근거로 녹여서)
+3. 시장 환경 및 경쟁력 (고객층, 경쟁 환경, 차별점 3가지, 간단한 SWOT 문단)
+4. 신청 자금 개요 및 신청 사유 (자금별 강조 포인트 반드시 반영)
+5. 자금 사용 계획 (제공된 배분을 바탕으로 항목별로 왜 필요한지 서술)
+6. 향후 사업 계획 및 기대 효과 (매출·고용·상환 선순환 흐름, 단기 6개월/중기 1~3년)
+7. 리스크 및 대응 방안 (매출 변동, 금리, 경쟁 등 2~3개와 구체적 대응)
 
 [작성 원칙]
-- 정중하고 formal한 사업계획서체로 작성 (완전한 문장, "~함", "~임" 개조식이 아닌 자연스러운 서술문)
-- 제공된 고객 정보 범위 내에서만 작성하고, 확인되지 않은 사실을 지어내지 마세요
-- 구체적인 숫자(매출액, 신용점수 등)가 있으면 반드시 인용해 신뢰도를 높이세요
-- 대표자 경력·인증·특허 등 강점 정보가 있으면 "2. 대표자 및 기업 현황"에서 "~한 경력을 바탕으로", "~을 보유하고 있어 경쟁력이 있으며" 같은 방식으로 자연스럽게 녹여내세요. "벤처인증: 있음"처럼 사실을 나열식으로 쓰지 마세요.
-- "3. 신청 자금 개요 및 신청 사유" 항목에는 아래 안내된 이 자금 특유의 강조 포인트를 반드시 자연스럽게 녹여내세요
-- 마지막에 "※ 이 초안은 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."라는 안내 문구를 반드시 추가하세요`
+- 완전한 문장의 정중한 서술문. 개조식 나열 금지. 항목당 3~6문장 이상으로 충실하게
+- 제공된 정보 범위 안에서만 구체화하고, 없는 사실(거래처명, 수치, 수상 등)은 지어내지 마세요. 정보가 부족한 부분은 일반적으로 타당한 서술을 하되 단정하지 말고, 문장 끝에 [확인필요]를 붙여 컨설턴트가 채우게 하세요
+- 컨설턴트가 추가로 알려준 사항(아래 [추가 정보])이 있으면 최우선으로 반영
+- 구체적인 숫자(매출, 신용점수, 직원수)는 반드시 인용
+- 마지막 줄에 "※ 이 초안은 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."를 추가`
 
   const customerSummary = `
 - 대표자명: ${customer.ownerName || '미입력'}
@@ -295,10 +321,11 @@ ${field('폐업사유', null)}` : ''}
 
   const budgetForGeneric = budgetBreakdown(customer.loanAmount)
   const budgetHint = budgetForGeneric
-    ? `\n\n[참고용 자금사용계획 배분(통상 비율, 신청금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준) — "4. 자금 사용 계획"에 이 배분을 반영해 서술하세요]\n${budgetForGeneric.map(([label, amt]) => `- ${label}: ${amt.toLocaleString()}만원`).join('\n')}`
+    ? `\n\n[자금사용계획 배분(신청금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준) — "5. 자금 사용 계획"에 반영]\n${budgetForGeneric.map(([label, amt]) => `- ${label}: ${amt.toLocaleString()}만원`).join('\n')}`
     : ''
+  const extraHint = extra ? `\n\n[추가 정보 - 컨설턴트가 상담에서 확인한 내용]\n${String(extra).slice(0, 1500)}` : ''
 
-  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서 초안을 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}${budgetHint}`
+  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서 초안을 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}${budgetHint}${extraHint}`
 
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
@@ -306,8 +333,32 @@ ${field('폐업사유', null)}` : ''}
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
-    max_tokens: 2000,
+    max_tokens: 4000,
   })
 
-  return saveAndRespond(response.choices[0].message.content)
+  let body = response.choices[0].message.content.trim()
+  // 안내 문구는 표 뒤에 오도록 분리
+  const noteIdx = body.lastIndexOf('※ 이 초안은')
+  const note = noteIdx >= 0 ? body.slice(noteIdx) : '※ 이 초안은 참고용입니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요.'
+  if (noteIdx >= 0) body = body.slice(0, noteIdx).trim()
+
+  const tables = []
+  if (projection) {
+    tables.push(`[별첨1] 매출 3개년 전망 시뮬레이션 (최근 매출 ${revMw.toLocaleString()}만원 기준, 성장률은 가정치이며 실제 계획에 맞게 수정)\n구분 | 1년차 | 2년차 | 3년차\n${projection.join('\n')}`)
+  }
+  if (repay) {
+    tables.push(`[별첨2] 상환능력 시뮬레이션 (대출 ${loanMw.toLocaleString()}만원, 5년: 거치 1년 + 4년 균등분할, 가정 금리 연 ${(ASSUMED_RATE * 100).toFixed(1)}% — 실제 금리·조건은 기관 확정 후 수정)\n- 거치기간 연 이자 부담: 약 ${repay.interestY1.toLocaleString()}만원\n- 상환 첫해 원금 ${repay.principalYear.toLocaleString()}만원 + 이자 → 연 약 ${repay.peakYear.toLocaleString()}만원(월 약 ${repay.monthlyPeak.toLocaleString()}만원)\n${repay.ratio ? `- 최근 연 매출 대비 상환 부담 비중: 약 ${repay.ratio}%` : '- 매출 미입력으로 부담 비중 미산출'}`)
+  }
+  if (budgetForGeneric) {
+    tables.push(`[별첨3] 자금 사용 계획표 (합계 ${loanMw.toLocaleString()}만원)\n용도 | 금액 | 비중\n${budgetForGeneric.map(([label, amt]) => `${label} | ${amt.toLocaleString()}만원 | ${Math.round((amt / loanMw) * 100)}%`).join('\n')}`)
+  }
+
+  const missing = []
+  if (!customer.businessContent) missing.push('사업 내용(주력 상품·서비스, 주 고객층)')
+  if (!customer.revenue) missing.push('최근 연 매출')
+  if (!customer.loanAmount) missing.push('신청 금액')
+  if (!customer.careerYears) missing.push('대표자 관련업종 경력')
+  const checklist = `[컨설턴트 확인 체크리스트]\n${missing.length ? '- 비어 있는 정보: ' + missing.join(', ') + '\n' : ''}- 본문에 [확인필요]가 붙은 문장은 고객에게 확인해 사실로 고치거나 삭제\n- 별첨 숫자(성장률·금리)는 가정치 — 실제 매출 추이와 기관 금리로 교체\n- 매출 증빙(부가세과세표준증명, 카드매출), 사업장 임대차계약서 등 서류와 숫자가 일치하는지 확인`
+
+  return saveAndRespond([body, ...tables, checklist, note].join('\n\n'))
 }
