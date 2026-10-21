@@ -155,6 +155,18 @@ export default function AdminPage() {
           </button>
           <button
             onClick={async () => {
+              try {
+                const res = await fetch('/api/admin/seed-board-guides', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role }, body: JSON.stringify({ authorName: user.name }) })
+                const d = await res.json().catch(() => ({}))
+                alert(res.ok ? `게시판에 기관별 서류 가이드 ${d.created}개를 등록했어요. (이미 있던 글 ${d.skipped}개는 건너뜀)` : `실패: ${d.error || res.status}`)
+              } catch (err) { alert(`요청 실패: ${err.message}`) }
+            }}
+            style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', marginLeft: 8 }}
+          >
+            게시판에 기관별 서류 가이드 올리기 →
+          </button>
+          <button
+            onClick={async () => {
               if (!confirm('신규 등록 전 고객들도 전부 수신동의 처리할까요? (이미 개별적으로 동의 해제한 고객은 안 건드립니다)')) return
               const res = await fetch('/api/admin/backfill-consent', { method: 'POST', headers: { 'x-consultant-id': user.username, 'x-consultant-role': user.role } })
               const d = await res.json()
