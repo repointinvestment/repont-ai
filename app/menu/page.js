@@ -147,7 +147,7 @@ export default function MenuPage() {
             fontFamily: "'Noto Serif KR', serif", fontSize: 'clamp(26px, 4vw, 34px)',
             color: '#FBF7EE', fontWeight: 700, margin: '0 0 10px', lineHeight: 1.4,
           }}>
-            {user.name}님, 오늘도 좋은 하루예요 👋
+            {user.name} 컨설턴트님, 오늘도 좋은 하루예요 👋
           </h1>
           <p style={{ fontSize: 14, color: '#8FA6C0', margin: 0 }}>
             {user.role === 'student' ? 'AI 자금진단으로 정책자금부터 알아보세요.' : '아래에서 원하시는 메뉴를 선택하세요.'}
