@@ -116,6 +116,14 @@ export default function MyContractsPage() {
     load()
   }
 
+  async function saveFee(c, patch) {
+    await fetch(`/api/contracts/${c.id}/fee`, { method: 'POST', headers: headers(), body: JSON.stringify(patch) })
+    load()
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const overdue = contracts.filter((c) => c.success_fee_due_at && !c.success_fee_received_at && String(c.success_fee_due_at).slice(0, 10) < today)
+
   if (!user) return null
 
   return (
@@ -129,6 +137,12 @@ export default function MyContractsPage() {
           </div>
           <button style={btn} onClick={openCreate}>+ 계약 생성</button>
         </div>
+
+        {overdue.length > 0 && (
+          <div style={{ background: '#FDECEA', border: '1px solid #F5C6C0', color: '#9B2C20', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 12, fontWeight: 600 }}>
+            ⚠ 성공보수 입금 기한이 지난 건이 {overdue.length}건 있어요: {overdue.map((c) => c.owner_name || '고객').join(', ')}
+          </div>
+        )}
 
         {contracts.length === 0 && <p style={{ fontSize: 13, color: '#B0AEA5' }}>아직 만든 계약이 없습니다.</p>}
 
@@ -158,6 +172,39 @@ export default function MyContractsPage() {
                     {c.status === '서명완료' && <button style={{ ...btn, padding: '6px 11px', fontSize: 11.5 }} onClick={() => confirmPayment(c)}>입금확인</button>}
                   </div>
                 </div>
+                {c.fee_structure === 'flat_plus_success' && ['서명완료', '입금확인'].includes(c.status) && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #E0DFDA', fontSize: 12.5, color: '#2A2925' }}>
+                    <p style={{ margin: '0 0 8px', fontWeight: 700 }}>성공보수 정산 (후불 {c.success_fee_pct}%)</p>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+                      <input type="checkbox" checked={!!c.cms_consent_received_at} onChange={(e) => saveFee(c, { cmsConsentReceived: e.target.checked })} />
+                      CMS 출금동의서 수령 완료{c.cms_consent_received_at ? ` (${new Date(c.cms_consent_received_at).toLocaleDateString('ko-KR')})` : ' — 계약 시 같이 받으세요'}
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span>자금 실행일</span>
+                      <input type="date" style={{ ...input, width: 140, padding: '5px 8px' }} defaultValue={c.fund_disbursed_at ? String(c.fund_disbursed_at).slice(0, 10) : ''}
+                        onBlur={(e) => { const v = e.target.value; if (v !== String(c.fund_disbursed_at || '').slice(0, 10)) saveFee(c, { fundDisbursedAt: v }) }} />
+                      <span>실행금액(원)</span>
+                      <input style={{ ...input, width: 130, padding: '5px 8px' }} defaultValue={c.fund_disbursed_amount || ''}
+                        onBlur={(e) => { const v = e.target.value.replace(/[^0-9]/g, ''); if (v !== String(c.fund_disbursed_amount || '')) saveFee(c, { fundDisbursedAmount: v }) }} />
+                    </div>
+                    {c.fund_disbursed_amount ? (
+                      <p style={{ margin: '8px 0 0' }}>
+                        받을 성공보수: <strong>{Math.round(Number(c.fund_disbursed_amount) * Number(c.success_fee_pct || 5) / 100).toLocaleString()}원</strong>
+                        {' · '}입금기한 {c.success_fee_due_at ? String(c.success_fee_due_at).slice(0, 10) : '미설정'}
+                        <button style={{ ...btnGhost, padding: '3px 8px', fontSize: 11, marginLeft: 6 }} onClick={() => {
+                          const base = c.fund_disbursed_at ? new Date(c.fund_disbursed_at) : new Date()
+                          base.setDate(base.getDate() + 3)
+                          saveFee(c, { successFeeDueAt: base.toISOString().slice(0, 10) })
+                        }}>실행일+3일로 설정</button>
+                      </p>
+                    ) : null}
+                    <p style={{ margin: '8px 0 0' }}>
+                      {c.success_fee_received_at
+                        ? <span style={{ color: '#1E7B4B', fontWeight: 700 }}>✓ 성공보수 입금 확인 ({String(c.success_fee_received_at).slice(0, 10)})</span>
+                        : <button style={{ ...btn, padding: '5px 10px', fontSize: 11.5 }} onClick={() => saveFee(c, { successFeeReceivedAt: today })}>성공보수 입금확인</button>}
+                    </p>
+                  </div>
+                )}
               </div>
             )
           })}
