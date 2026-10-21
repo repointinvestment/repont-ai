@@ -79,6 +79,8 @@ export async function POST(request) {
     `
   } catch (err) {
     console.error('체험 계정 생성 실패:', err)
+    // 계정만 생기고 예시 고객 입력이 실패한 경우 아이디가 잠기지 않도록 정리
+    await sql`DELETE FROM accounts WHERE username = ${username} AND role = 'trial'`.catch(() => {})
     return NextResponse.json({ error: '계정 생성 중 오류가 발생했습니다.' }, { status: 500 })
   }
 
