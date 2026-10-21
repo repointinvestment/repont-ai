@@ -10,7 +10,19 @@ const CATEGORIES = [
   { key: '경영', label: '📊 경영', color: '#be185d' },
 ]
 
-const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자']
+const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자', '정책자금']
+// 정책자금 캘린더 기관 필터: 소관/수행기관명 또는 공고명에 포함된 단어로 판별
+const ORGS = [
+  { key: '전체', words: [] },
+  { key: '소진공', words: ['소상공인시장진흥공단', '소진공'] },
+  { key: '중진공', words: ['중소벤처기업진흥공단', '중진공'] },
+  { key: '신보·기보', words: ['신용보증기금', '기술보증기금', '신보', '기보'] },
+  { key: '신용보증재단', words: ['신용보증재단', '재단'] },
+  { key: '지자체', words: ['시청', '도청', '군청', '구청', '광역시', '특별시', '특별자치'] },
+]
+function orgText(item) {
+  return `${item.jrsdInsttNm || ''} ${item.excInsttNm || ''} ${item.pblancNm || ''}`
+}
 const REGIONS = ['전체', '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
 
 // 예산소진/상시 여부 판단
@@ -34,6 +46,7 @@ function PolicyCalendar() {
   const [selectedDay, setSelectedDay] = useState(null)
   const [view, setView] = useState('calendar')
   const [selectedRegion, setSelectedRegion] = useState('전체')
+  const [selectedOrg, setSelectedOrg] = useState('전체')
 
   useEffect(() => {
     fetchData(selectedRegion)
@@ -66,6 +79,9 @@ function PolicyCalendar() {
     }
     setLoading(false)
   }
+  // 기관 필터는 이미 받아온 목록에서 바로 걸러냄(재조회 없음)
+  const orgWords = (ORGS.find(o => o.key === selectedOrg) || ORGS[0]).words
+  const shownItems = orgWords.length ? items.filter(it => orgWords.some(w => orgText(it).includes(w))) : items
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -76,7 +92,7 @@ function PolicyCalendar() {
   const itemsByDay = {}
   const alwaysOnItems = []
 
-  items.forEach(item => {
+  shownItems.forEach(item => {
     if (isAlwaysOn(item)) {
       alwaysOnItems.push(item)
       return
@@ -119,6 +135,22 @@ function PolicyCalendar() {
       }}>
         💡 <strong>정책자금 캘린더</strong> — 이차보전·자금·보증·육성·융자 관련 지역별 금융지원 공고를 모아봅니다.<br />
         고객이 금리 문의 시, 시·도의 이차보전·육성사업을 지역별로 빠르게 확인하세요.
+      </div>
+
+      {/* 기관 필터 */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: '#888', marginRight: 4 }}>기관</span>
+        {ORGS.map(o => (
+          <button key={o.key} onClick={() => { setSelectedOrg(o.key); setSelectedDay(null) }}
+            style={{
+              padding: '5px 12px', borderRadius: 20, border: '1px solid ' + (selectedOrg === o.key ? '#0f3460' : '#e0e0e0'), cursor: 'pointer',
+              fontSize: 12, fontWeight: 700,
+              background: selectedOrg === o.key ? '#0f3460' : '#fff',
+              color: selectedOrg === o.key ? 'white' : '#555',
+            }}>
+            {o.key}
+          </button>
+        ))}
       </div>
 
       {/* 지역 필터 */}
@@ -233,8 +265,8 @@ function PolicyCalendar() {
       ) : (
         // 목록 뷰
         <div>
-          <div style={{ marginBottom: 12, color: '#666', fontSize: 13 }}>총 {items.length}건</div>
-          {items.map((item, i) => <AnnouncementCard key={i} item={item} color={color} getDday={getDday} alwaysOn={isAlwaysOn(item)} />)}
+          <div style={{ marginBottom: 12, color: '#666', fontSize: 13 }}>총 {shownItems.length}건</div>
+          {shownItems.map((item, i) => <AnnouncementCard key={i} item={item} color={color} getDday={getDday} alwaysOn={isAlwaysOn(item)} />)}
         </div>
       )}
     </div>
@@ -245,7 +277,7 @@ function PolicyCalendar() {
 // 지원사업 캘린더 (전 카테고리, 전 지역, 전체 공고)
 // ────────────────────────────────────────────
 function SupportCalendar() {
-  const [selectedCategory, setSelectedCategory] = useState('금융')
+  const [selectedCategory, setSelectedCategory] = useState('경영')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -264,7 +296,10 @@ function SupportCalendar() {
       const data = await res.json()
       let list = data?.jsonArray || []
 
-      // 지원사업 캘린더는 키워드 필터 없이 전체
+      // 지원사업 캘린더: 정책자금 캘린더와 겹치지 않게, 금융 카테고리에서는 융자·보증 등 정책자금성 공고를 뺌
+      if (category === '금융') {
+        list = list.filter(item => !POLICY_KEYWORDS.some(k => (item.pblancNm || '').includes(k)))
+      }
       if (region !== '전체') {
         list = list.filter(item => {
           const hashtags = item.hashtags || ''
@@ -514,8 +549,8 @@ export default function BizCalendar() {
         background: 'white', paddingLeft: 24,
       }}>
         {[
-          { key: 'policy', label: '💰 정책자금 캘린더', desc: '이차보전·융자·보증 금융지원' },
-          { key: 'support', label: '📋 지원사업 캘린더', desc: '전체 지원금 공고' },
+          { key: 'policy', label: '💰 정책자금 캘린더', desc: '소진공·중진공·보증기관·이차보전 접수' },
+          { key: 'support', label: '📋 지원사업 캘린더', desc: '창업·경영·기술·인력·수출 등 지원금' },
         ].map(({ key, label, desc }) => (
           <button key={key} onClick={() => setCalTab(key)}
             style={{
