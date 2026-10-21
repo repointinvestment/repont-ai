@@ -1,4 +1,7 @@
+import './globals.css'
 import AuthFetchGuard from './components/AuthFetchGuard'
+
+export const viewport = { width: 'device-width', initialScale: 1 }
 
 export const metadata = {
   title: '자금비서',

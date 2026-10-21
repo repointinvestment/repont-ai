@@ -1,0 +1,35 @@
+/* 모바일 반응형 보정 — 화면이 좁을 때(폰) 가로 여러 칸 배치를 세로로 쌓고, 큰 여백·고정 너비를 줄임 */
+img, video { max-width: 100%; height: auto; }
+body { -webkit-text-size-adjust: 100%; }
+
+@media (max-width: 640px) {
+  /* 2~3칸 격자는 1칸으로 (달력 7칸 격자는 그대로 둠) */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns: repeat(3, 1fr)"],
+  [style*="grid-template-columns: repeat(2, 1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 큰 안쪽 여백 줄이기 */
+  [style*="padding: 32px 40px"], [style*="padding: 40px 48px"], [style*="padding: 48px 40px"],
+  [style*="padding: 36px 32px"], [style*="padding: 28px 32px"] { padding: 20px 16px !important; }
+  [style*="padding: 22px 28px"], [style*="padding: 24px 28px"], [style*="padding: 22px 26px"],
+  [style*="padding: 20px 24px"], [style*="padding: 30px 26px"] { padding: 16px 14px !important; }
+  [style*="padding: 16px 28px"], [style*="padding: 14px 24px"], [style*="padding: 12px 24px"] { padding-left: 14px !important; padding-right: 14px !important; }
+  [style*="padding: 4px 28px 20px"] { padding: 4px 14px 16px !important; }
+  [style*="padding: 48px 24px 64px"] { padding: 32px 16px 44px !important; }
+  [style*="padding: 28px 20px 60px"] { padding: 20px 12px 48px !important; }
+
+  /* 팝업(모달)이 화면 밖으로 나가지 않게 */
+  [style*="position: fixed"] > div { max-width: 94vw !important; box-sizing: border-box; }
+  [style*="width: 380px"], [style*="width: 340px"], [style*="width: 400px"], [style*="width: 360px"] { width: 100% !important; }
+
+  /* 제목+부가문구가 한 줄에 몰린 헤더는 줄바꿈 허용 */
+  [style*="justify-content: space-between"] { flex-wrap: wrap; gap: 8px; }
+
+  /* 표는 옆으로 밀어서 보기 */
+  table { display: block; overflow-x: auto; max-width: 100%; }
+
+  /* 입력창·버튼 크기(확대 방지: 폰 브라우저는 16px 미만 입력창을 확대함) */
+  input, select, textarea { font-size: 16px !important; max-width: 100%; box-sizing: border-box; }
+}
