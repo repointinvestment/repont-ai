@@ -66,7 +66,7 @@ export default function TrialSignupPage() {
               {loading ? '처리 중...' : '체험 이용권 받기'}
             </button>
             <p style={{ fontSize: 11, color: '#999', marginTop: 14, lineHeight: 1.6 }}>
-              체험 계정에는 예시 고객 2건이 들어 있어요. 실제 고객 정보는 입력하지 마세요. 체험 기간이 끝나면 계정과 입력한 데이터는 삭제됩니다.
+              체험 기간이 끝나면 계정과 입력한 데이터는 삭제됩니다.
             </p>
           </form>
         )}
