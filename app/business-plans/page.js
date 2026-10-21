@@ -46,13 +46,13 @@ export default function BusinessPlansPage() {
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>작성 서비스</p>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>사업계획서 보관함</h1>
         <p style={{ fontSize: 14, color: '#8A8A85', margin: '0 0 24px' }}>
-          고객 대시보드에서 생성한 사업계획서 초안이 모두 여기 모입니다.
+          고객 대시보드에서 생성한 사업계획서가 모두 여기 모입니다.
         </p>
 
         {loading && <p style={{ fontSize: 14, color: '#8A8A85' }}>불러오는 중...</p>}
         {!loading && plans.length === 0 && (
           <p style={{ fontSize: 14, color: '#8A8A85' }}>
-            아직 생성한 사업계획서가 없습니다. 고객 대시보드에서 "사업계획서 초안" 버튼을 눌러보세요.
+            아직 생성한 사업계획서가 없습니다. 고객 대시보드에서 "사업계획서" 버튼을 눌러보세요.
           </p>
         )}
 

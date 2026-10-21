@@ -54,7 +54,7 @@ const CARDS = {
     path: '/documents', accent: '#2A7D46', tint: '#E6F1EA',
   },
   plans: {
-    icon: '📝', title: '사업계획서 보관함', desc: '생성한 사업계획서 초안 모아보기',
+    icon: '📝', title: '사업계획서 보관함', desc: '생성한 사업계획서 모아보기',
     path: '/business-plans', accent: '#3B6FB5', tint: '#E4EAF1',
   },
   simulator: {
@@ -97,7 +97,7 @@ const ROLE_MENUS = {
   admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board', 'admin'],
   consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board'],
   // 웨비나 체험 계정: 핵심 체험 기능만(외부 발송·서류발급·공개 발행·내부 게시판 등은 제외)
-  trial: ['chat', 'customers', 'plans', 'simulator', 'kosmescore'],
+  trial: ['chat', 'customers', 'plans', 'simulator'],
   student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board'],
 }
 

@@ -216,7 +216,7 @@ export default function CustomerDashboardPage() {
       if (!res.ok) throw new Error();
       setPlanDrafts((s) => ({ ...s, [index]: data.draft }));
     } catch (err) {
-      setError('사업계획서 초안 생성 중 오류가 발생했습니다.');
+      setError('사업계획서 생성 중 오류가 발생했습니다.');
     } finally {
       setPlanLoading((s) => ({ ...s, [index]: false }));
     }
@@ -528,7 +528,7 @@ export default function CustomerDashboardPage() {
                           disabled={planLoading[i]}
                           style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap' }}
                         >
-                          {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '📝 사업계획서 초안'}
+                          {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '📝 사업계획서'}
                         </button>
                       </div>
                       {planDrafts[i] && (

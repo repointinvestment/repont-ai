@@ -37,7 +37,7 @@ export default function TrialSignupPage() {
         <div style={{ textAlign: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 34 }}>🎁</div>
           <h1 style={{ margin: '6px 0 4px', fontSize: 20, color: '#1a1a2e' }}>자금비서 1주일 체험 이용권</h1>
-          <p style={{ margin: 0, color: '#888', fontSize: 13 }}>웨비나 시청 선물 · AI 자금진단, 사업계획서 초안, 고객관리를 체험해보세요</p>
+          <p style={{ margin: 0, color: '#888', fontSize: 13 }}>자금설계사 문수환 대표 무료강의 시청 선물 · AI 자금 진단 및 고객 관리</p>
         </div>
 
         {done ? (
