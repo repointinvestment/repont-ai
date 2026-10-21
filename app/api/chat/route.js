@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { listFunds, listCommonRules } from '@/lib/policyFundsStore'
 import { buildPolicyKnowledgeSection } from '@/lib/policyFundsPromptBuilder'
+import { checkAndCountAiUsage } from '@/lib/accountsStore'
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -112,6 +113,10 @@ async function buildSystemPrompt() {
 export async function POST(req) {
   if (!req.headers.get('x-consultant-id')) {
     return new Response(JSON.stringify({ error: '로그인이 필요합니다.' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  }
+  const usage = await checkAndCountAiUsage(req.headers.get('x-consultant-id'), req.headers.get('x-consultant-role'), 'chat')
+  if (!usage.ok) {
+    return new Response(JSON.stringify({ error: usage.error }), { status: 429, headers: { 'Content-Type': 'application/json' } })
   }
   const { messages } = await req.json()
 

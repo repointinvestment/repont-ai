@@ -94,6 +94,8 @@ const CARDS = {
 const ROLE_MENUS = {
   admin: ['chat', 'customers', 'documents', 'contracts', 'plans', 'simulator', 'kosmescore', 'mylink', 'referrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board', 'admin'],
   consultant: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board'],
+  // 웨비나 체험 계정: 핵심 체험 기능만(외부 발송·서류발급·공개 발행·내부 게시판 등은 제외)
+  trial: ['chat', 'customers', 'plans', 'simulator', 'kosmescore'],
   student: ['chat', 'customers', 'documents', 'mycontracts', 'plans', 'simulator', 'mylink', 'myreferrals', 'resources', 'kakaoSettings', 'myProfile', 'myNotifications', 'inviteSubscribe', 'myMaterials', 'board'],
 }
 

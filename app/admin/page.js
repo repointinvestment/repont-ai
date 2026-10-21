@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
+import TrialConfigPanel from '../components/TrialConfigPanel'
 
-const ROLE_LABEL = { admin: '관리자', consultant: '컨설턴트', student: '컨설턴트' } // student는 과거 계정 호환용 라벨일 뿐 — 이제 신규 생성 옵션에는 없음
+const ROLE_LABEL = { admin: '관리자', consultant: '컨설턴트', student: '컨설턴트', trial: '체험' } // student는 과거 계정 호환용 라벨일 뿐 — 이제 신규 생성 옵션에는 없음
 
 export default function AdminPage() {
   const router = useRouter()
@@ -33,7 +34,7 @@ export default function AdminPage() {
   }, [])
 
   function loadAccounts(s = user) {
-    fetch('/api/users', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } }).then(r => r.json()).then(data => setAccounts(data.users))
+    fetch('/api/users', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } }).then(r => r.json()).then(data => setAccounts((data.users || []).filter((u) => u.role !== 'trial')))
   }
 
   async function handleCreate(e) {
@@ -174,6 +175,7 @@ export default function AdminPage() {
           새로 만든 계정의 이름은 로그인 후 화면 곳곳(고객명단, 메뉴 등)에 자동으로 반영됩니다.
         </p>
 
+        <TrialConfigPanel user={user} />
         {showForm && (
           <form onSubmit={handleCreate} style={{ background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', padding: 24, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>

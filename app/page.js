@@ -31,7 +31,11 @@ export default function LoginPage() {
       setSession(data.user)
       router.push('/menu')
     } else {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다.')
+      setError(
+        data.error === 'expired' ? '이용 기간이 끝난 계정입니다.'
+        : data.error === 'too_many_attempts' ? '로그인 시도가 너무 많습니다. 10분 뒤에 다시 시도해주세요.'
+        : '아이디 또는 비밀번호가 올바르지 않습니다.'
+      )
     }
   }
 

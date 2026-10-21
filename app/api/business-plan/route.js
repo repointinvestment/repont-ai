@@ -4,6 +4,7 @@
 // 파일이 아닌 화면 텍스트로 반환 (웹폼 제출/복사 붙여넣기 용도).
 import OpenAI from 'openai'
 import { sql } from '@/lib/db'
+import { checkAndCountAiUsage } from '@/lib/accountsStore'
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -105,6 +106,12 @@ async function generateParagraph({ fundName, customer, guidance, minChars, maxCh
 import { requireCustomerOwnership } from '@/lib/authz'
 
 export async function POST(req) {
+  // 로그인 필수(예전에는 인증 없이 호출 가능해서 OpenAI 비용이 새는 구멍이었음) + 체험 계정은 하루 사용량 제한
+  if (!req.headers.get('x-consultant-id')) {
+    return Response.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
+  const usage = await checkAndCountAiUsage(req.headers.get('x-consultant-id'), req.headers.get('x-consultant-role'), 'plan')
+  if (!usage.ok) return Response.json({ error: usage.error }, { status: 429 })
   const { customer, fundName, customerId } = await req.json()
   if (customerId) {
     const check = await requireCustomerOwnership(customerId, req)

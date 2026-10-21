@@ -28,6 +28,14 @@ export default function AppHeader({ user }) {
         <span style={{ fontWeight: 700, fontSize: 16 }}>💼 자금비서</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {user.role === 'trial' && user.expiresAt && (() => {
+          const daysLeft = Math.max(0, Math.ceil((new Date(user.expiresAt).getTime() - Date.now()) / 86400000))
+          return (
+            <span style={{ fontSize: 12, background: '#E9C979', color: '#0B2440', borderRadius: 999, padding: '4px 10px', fontWeight: 700 }}>
+              체험 이용권 · {daysLeft}일 남음
+            </span>
+          )
+        })()}
         <span style={{ fontSize: 13, opacity: 0.85 }}>{user.name}님</span>
         {user.role === 'admin' && (
           <button

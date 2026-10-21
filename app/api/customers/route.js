@@ -53,7 +53,17 @@ function blankToNull(v) {
 export async function POST(request) {
   await ensureRecheckSchema()
   const rawConsultantId = request.headers.get('x-consultant-id')
-  const consultantId = rawConsultantId ? rawConsultantId : null
+  if (!rawConsultantId) {
+    return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
+  }
+  const consultantId = rawConsultantId
+  // 체험 계정은 고객 5명까지만 등록 가능(저장공간 남용 방지)
+  if (request.headers.get('x-consultant-role') === 'trial') {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM customers WHERE consultant_id = ${consultantId}`
+    if (n >= 5) {
+      return NextResponse.json({ error: '체험 계정은 고객을 5명까지 등록할 수 있어요.' }, { status: 403 })
+    }
+  }
   const body = await request.json()
 
   try {
