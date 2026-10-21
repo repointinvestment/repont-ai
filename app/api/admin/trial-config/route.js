@@ -23,7 +23,13 @@ export async function GET(request) {
            COUNT(*) FILTER (WHERE expires_at > NOW())::int AS active
     FROM accounts WHERE role = 'trial'
   `
-  return NextResponse.json({ config: cfg || null, stats })
+  const accounts = await sql`
+    SELECT a.username, a.name, a.created_at, a.expires_at,
+           (SELECT COUNT(*)::int FROM customers c WHERE c.consultant_id = a.username) AS customers,
+           (SELECT COALESCE(SUM(u.count), 0)::int FROM ai_usage u WHERE u.username = a.username) AS ai_uses
+    FROM accounts a WHERE a.role = 'trial' ORDER BY a.created_at DESC LIMIT 500
+  `
+  return NextResponse.json({ config: cfg || null, stats, accounts })
 }
 
 export async function POST(request) {
@@ -40,6 +46,17 @@ export async function POST(request) {
       await sql`DELETE FROM accounts WHERE username = ${username} AND role = 'trial'`
     }
     return NextResponse.json({ ok: true, deleted: expired.length })
+  }
+
+  if (body.action === 'extend' && body.username) {
+    const days = Math.max(1, Math.min(60, Number(body.days) || 7))
+    await sql`UPDATE accounts SET expires_at = GREATEST(expires_at, NOW()) + (${days}::text || ' days')::interval WHERE username = ${body.username} AND role = 'trial'`
+    return NextResponse.json({ ok: true })
+  }
+  if (body.action === 'delete' && body.username) {
+    await sql`DELETE FROM customers WHERE consultant_id = ${body.username}`
+    await sql`DELETE FROM accounts WHERE username = ${body.username} AND role = 'trial'`
+    return NextResponse.json({ ok: true })
   }
 
   const code = String(body.code || '').trim()

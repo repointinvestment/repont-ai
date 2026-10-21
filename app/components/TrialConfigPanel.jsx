@@ -6,6 +6,7 @@ export default function TrialConfigPanel({ user }) {
   const headers = { 'x-consultant-id': user.username, 'x-consultant-role': user.role, 'Content-Type': 'application/json' }
   const [cfg, setCfg] = useState({ code: '', maxSignups: 300, days: 7, active: false })
   const [stats, setStats] = useState(null)
+  const [accounts, setAccounts] = useState([])
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState('')
   const trialUrl = typeof window !== 'undefined' ? `${window.location.origin}/trial` : ''
@@ -19,6 +20,7 @@ export default function TrialConfigPanel({ user }) {
     const d = await res.json()
     if (d.config) setCfg({ code: d.config.code || '', maxSignups: d.config.max_signups, days: d.config.days, active: d.config.active })
     setStats(d.stats)
+    setAccounts(d.accounts || [])
   }
   useEffect(() => { load() }, [])
 
@@ -37,6 +39,19 @@ export default function TrialConfigPanel({ user }) {
     load()
   }
 
+  const act = async (body, confirmMsg) => {
+    if (confirmMsg && !confirm(confirmMsg)) return
+    await fetch('/api/admin/trial-config', { method: 'POST', headers, body: JSON.stringify(body) })
+    load()
+  }
+  const remain = (exp) => {
+    const ms = new Date(exp).getTime() - Date.now()
+    if (ms <= 0) return { text: '만료', color: '#B3261E' }
+    const d = Math.floor(ms / 86400000)
+    const h = Math.floor((ms % 86400000) / 3600000)
+    return { text: d > 0 ? `${d}일 ${h}시간 남음` : `${h}시간 남음`, color: d <= 1 ? '#B26A00' : '#2A7D46' }
+  }
+  const fmt = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   const input = { padding: '8px 10px', border: '1px solid #ccc', borderRadius: 6, fontSize: 13, width: 110 }
   return (
     <div style={{ background: '#fff', border: '1px solid #E4E0D6', borderRadius: 10, padding: 16, margin: '0 0 20px' }}>
@@ -65,6 +80,40 @@ export default function TrialConfigPanel({ user }) {
           {copied === 'msg' ? '복사됨 ✓' : '안내문 통째로 복사 (주소+입장코드)'}
         </button>
         {!cfg.code && <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>입장코드를 먼저 입력·저장하세요</span>}
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>👥 체험 가입자 ({accounts.length}명)</div>
+        {accounts.length === 0 ? <p style={{ fontSize: 12.5, color: '#999', margin: 0 }}>아직 가입자가 없어요.</p> : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ textAlign: 'left', color: '#777', borderBottom: '1px solid #E4E0D6' }}>
+                  <th style={{ padding: '6px 8px' }}>이름</th><th style={{ padding: '6px 8px' }}>아이디</th><th style={{ padding: '6px 8px' }}>가입일시</th>
+                  <th style={{ padding: '6px 8px' }}>남은 기한</th><th style={{ padding: '6px 8px' }}>고객</th><th style={{ padding: '6px 8px' }}>AI 사용</th><th style={{ padding: '6px 8px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((a) => {
+                  const r = remain(a.expires_at)
+                  return (
+                    <tr key={a.username} style={{ borderBottom: '1px solid #F0EEE8' }}>
+                      <td style={{ padding: '6px 8px' }}>{a.name}</td>
+                      <td style={{ padding: '6px 8px', color: '#666' }}>{a.username}</td>
+                      <td style={{ padding: '6px 8px', color: '#666' }}>{fmt(a.created_at)}</td>
+                      <td style={{ padding: '6px 8px', color: r.color, fontWeight: 600 }}>{r.text}</td>
+                      <td style={{ padding: '6px 8px' }}>{a.customers}명</td>
+                      <td style={{ padding: '6px 8px' }}>{a.ai_uses}회</td>
+                      <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => act({ action: 'extend', username: a.username, days: 7 }, `${a.name}님 기간을 7일 연장할까요?`)} style={{ padding: '3px 8px', marginRight: 4, border: '1px solid #aaa', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 11.5 }}>+7일</button>
+                        <button onClick={() => act({ action: 'delete', username: a.username }, `${a.name}(${a.username}) 계정과 데이터를 삭제할까요?`)} style={{ padding: '3px 8px', border: '1px solid #E0B4B0', color: '#B3261E', borderRadius: 5, background: '#fff', cursor: 'pointer', fontSize: 11.5 }}>삭제</button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       {msg && <p style={{ fontSize: 12.5, color: '#2A7D46', margin: '10px 0 0' }}>{msg}</p>}
     </div>
