@@ -53,7 +53,7 @@ export async function POST(request) {
   }
   const username = request.headers.get('x-consultant-id')
   const body = await request.json().catch(() => ({}))
-  const authorName = body.authorName || '리포인트파트너스'
+  const authorName = body.authorName || '문수환'
   try {
     let created = 0
     let skipped = 0
