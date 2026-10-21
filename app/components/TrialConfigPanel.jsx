@@ -7,6 +7,7 @@ export default function TrialConfigPanel({ user }) {
   const [cfg, setCfg] = useState({ code: '', maxSignups: 300, days: 7, active: false })
   const [stats, setStats] = useState(null)
   const [accounts, setAccounts] = useState([])
+  const [inquiries, setInquiries] = useState([])
   const [msg, setMsg] = useState('')
   const [copied, setCopied] = useState('')
   const trialUrl = typeof window !== 'undefined' ? `${window.location.origin}/trial` : ''
@@ -21,6 +22,7 @@ export default function TrialConfigPanel({ user }) {
     if (d.config) setCfg({ code: d.config.code || '', maxSignups: d.config.max_signups, days: d.config.days, active: d.config.active })
     setStats(d.stats)
     setAccounts(d.accounts || [])
+    setInquiries(d.inquiries || [])
   }
   useEffect(() => { load() }, [])
 
@@ -81,6 +83,17 @@ export default function TrialConfigPanel({ user }) {
         </button>
         {!cfg.code && <span style={{ marginLeft: 8, color: '#999', fontSize: 12 }}>입장코드를 먼저 입력·저장하세요</span>}
       </div>
+      {inquiries.length > 0 && (
+        <div style={{ marginTop: 14, padding: 12, background: '#FFF8E6', border: '1px solid #F0DDA8', borderRadius: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>📞 연장·강의 문의 ({inquiries.length}건)</div>
+          {inquiries.map((q) => (
+            <div key={q.id} style={{ fontSize: 12.5, padding: '6px 0', borderTop: '1px solid #F3E7C2' }}>
+              <b>{q.name || q.username}</b> · <a href={`tel:${q.phone}`} style={{ color: '#0f3460' }}>{q.phone}</a> · <span style={{ color: '#888' }}>{fmt(q.created_at)}</span>
+              {q.message && <div style={{ color: '#555', marginTop: 2 }}>{q.message}</div>}
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ marginTop: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 8 }}>👥 체험 가입자 ({accounts.length}명)</div>
         {accounts.length === 0 ? <p style={{ fontSize: 12.5, color: '#999', margin: 0 }}>아직 가입자가 없어요.</p> : (

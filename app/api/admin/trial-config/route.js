@@ -29,7 +29,9 @@ export async function GET(request) {
            (SELECT COALESCE(SUM(u.count), 0)::int FROM ai_usage u WHERE u.username = a.username) AS ai_uses
     FROM accounts a WHERE a.role = 'trial' ORDER BY a.created_at DESC LIMIT 500
   `
-  return NextResponse.json({ config: cfg || null, stats, accounts })
+  await sql`CREATE TABLE IF NOT EXISTS trial_inquiries (id SERIAL PRIMARY KEY, username TEXT NOT NULL, name TEXT, phone TEXT NOT NULL, message TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`
+  const inquiries = await sql`SELECT id, username, name, phone, message, created_at FROM trial_inquiries ORDER BY created_at DESC LIMIT 100`
+  return NextResponse.json({ config: cfg || null, stats, accounts, inquiries })
 }
 
 export async function POST(request) {

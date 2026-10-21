@@ -10,6 +10,7 @@ import ContractExpiryWidget from '../components/ContractExpiryWidget'
 import OldCustomerRecheckWidget from '../components/OldCustomerRecheckWidget'
 import MonthlyReportWidget from '../components/MonthlyReportWidget'
 import AlertPhoneBox from '../components/AlertPhoneBox'
+import TrialInquiryBox from '../components/TrialInquiryBox'
 
 const CARDS = {
   chat: {
@@ -127,6 +128,7 @@ export default function MenuPage() {
     <div style={{ minHeight: '100vh', background: '#F7F5F0' }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');`}</style>
       <AppHeader user={user} />
+      {user.role === 'trial' && <div style={{ padding: '0 16px' }}><TrialInquiryBox user={user} /></div>}
       {user.role !== 'trial' && <div style={{ padding: '0 16px' }}><AlertPhoneBox user={user} /></div>}
 
       {/* 히어로 */}
