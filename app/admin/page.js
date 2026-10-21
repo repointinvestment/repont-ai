@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import AppHeader from '../components/AppHeader'
 import TrialConfigPanel from '../components/TrialConfigPanel'
+import SchedulePanel from '../components/SchedulePanel'
 
 const ROLE_LABEL = { admin: '관리자', consultant: '컨설턴트', student: '컨설턴트', trial: '체험' } // student는 과거 계정 호환용 라벨일 뿐 — 이제 신규 생성 옵션에는 없음
 
@@ -188,6 +189,7 @@ export default function AdminPage() {
         </p>
 
         <TrialConfigPanel user={user} />
+        <SchedulePanel user={user} />
         {showForm && (
           <form onSubmit={handleCreate} style={{ background: 'white', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', padding: 24, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 
 const CATEGORIES = [
+  { key: '소상공인', label: '🏪 소상공인', color: '#d97706' },
   { key: '금융', label: '💰 금융', color: '#2563eb' },
   { key: '기술', label: '⚙️ 기술', color: '#7c3aed' },
   { key: '창업', label: '🚀 창업', color: '#16a34a' },
@@ -11,6 +12,8 @@ const CATEGORIES = [
 ]
 
 const POLICY_KEYWORDS = ['이차보전', '자금', '보증', '육성', '융자', '정책자금']
+const SMALLBIZ_KEYWORDS = ['소상공인', '스마트상점', '스마트 상점', '자영업', '전통시장', '상점가', '음식점', '외식', '요식', '배달', '키오스크', '디지털전환', '온라인 판로', '희망리턴', '폐업', '재창업', '소공인', '골목상권']
+const LOAN_KEYWORDS = ['이차보전', '융자', '보증', '대출']
 // 정책자금 캘린더 기관 필터: 소관/수행기관명 또는 공고명에 포함된 단어로 판별
 const ORGS = [
   { key: '전체', words: [] },
@@ -20,6 +23,7 @@ const ORGS = [
   { key: '신용보증재단', words: ['신용보증재단', '재단'] },
   { key: '지자체', words: ['시청', '도청', '군청', '구청', '광역시', '특별시', '특별자치'] },
 ]
+const ORG_FULL = { 소진공: '소상공인시장진흥공단', 중진공: '중소벤처기업진흥공단', 신보: '신용보증기금', 기보: '기술보증기금', 신용보증재단: '신용보증재단' }
 function orgText(item) {
   return `${item.jrsdInsttNm || ''} ${item.excInsttNm || ''} ${item.pblancNm || ''}`
 }
@@ -73,7 +77,26 @@ function PolicyCalendar() {
         })
       }
 
-      setItems(Array.isArray(list) ? list : [list])
+      // 관리자가 직접 입력한 접수일정(소진공·중진공 등)은 전국 대상이라 지역 필터와 무관하게 포함
+      let custom = []
+      try {
+        const sr = await fetch('/api/schedules')
+        if (sr.ok) {
+          const sd = await sr.json()
+          custom = (sd.schedules || []).map(s => ({
+            pblancNm: `[${s.org}] ${s.title}`,
+            jrsdInsttNm: ORG_FULL[s.org] || s.org,
+            excInsttNm: s.org,
+            reqstBeginEndDe: s.end_date ? `${s.start_date || s.end_date} ~ ${s.end_date}` : '예산 소진 시까지 상시',
+            pblancUrl: s.url || '',
+            hashtags: '',
+            bsnsSumryCn: s.note || '',
+            _custom: true,
+          }))
+        }
+      } catch (e) {}
+
+      setItems([...custom, ...(Array.isArray(list) ? list : [list])])
     } catch (e) {
       setItems([])
     }
@@ -277,7 +300,7 @@ function PolicyCalendar() {
 // 지원사업 캘린더 (전 카테고리, 전 지역, 전체 공고)
 // ────────────────────────────────────────────
 function SupportCalendar() {
-  const [selectedCategory, setSelectedCategory] = useState('경영')
+  const [selectedCategory, setSelectedCategory] = useState('소상공인')
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -292,9 +315,17 @@ function SupportCalendar() {
   const fetchData = async (category, region) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/bizinfo?category=${encodeURIComponent(category)}&pageUnit=100`)
+      // '소상공인' 탭은 카테고리 구분 없이 전체 공고에서 소상공인·요식업 대상 지원사업(스마트상점, 배달·키오스크 등)만 모아 보여줌
+      const isSmallBiz = category === '소상공인'
+      const res = await fetch(`/api/bizinfo?category=${isSmallBiz ? '' : encodeURIComponent(category)}&pageUnit=100`)
       const data = await res.json()
       let list = data?.jsonArray || []
+      if (isSmallBiz) {
+        list = list.filter(item => {
+          const t = `${item.pblancNm || ''} ${item.hashtags || ''}`
+          return SMALLBIZ_KEYWORDS.some(k => t.includes(k)) && !LOAN_KEYWORDS.some(k => (item.pblancNm || '').includes(k))
+        })
+      }
 
       // 지원사업 캘린더: 정책자금 캘린더와 겹치지 않게, 금융 카테고리에서는 융자·보증 등 정책자금성 공고를 뺌
       if (category === '금융') {

@@ -16,6 +16,7 @@ const TRIAL_ALLOWED_PREFIXES = [
   '/api/bizinfo',
   '/api/reports/summary',
   '/api/trial/inquiry',
+  '/api/schedules',
 ]
 // /api/customers 중에서 체험 계정이 쓸 수 있는 것(기본 CRUD·진행현황·신청이력). 파일/계정정보/발송/서류발급 계열은 제외.
 const TRIAL_CUSTOMER_PATTERNS = [
