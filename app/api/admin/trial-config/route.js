@@ -30,7 +30,8 @@ export async function GET(request) {
     FROM accounts a WHERE a.role = 'trial' ORDER BY a.created_at DESC LIMIT 500
   `
   await sql`CREATE TABLE IF NOT EXISTS trial_inquiries (id SERIAL PRIMARY KEY, username TEXT NOT NULL, name TEXT, phone TEXT NOT NULL, message TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`
-  const inquiries = await sql`SELECT id, username, name, phone, message, created_at FROM trial_inquiries ORDER BY created_at DESC LIMIT 100`
+  await sql`ALTER TABLE trial_inquiries ADD COLUMN IF NOT EXISTS sms_status TEXT`
+  const inquiries = await sql`SELECT id, username, name, phone, message, sms_status, created_at FROM trial_inquiries ORDER BY created_at DESC LIMIT 100`
   return NextResponse.json({ config: cfg || null, stats, accounts, inquiries })
 }
 

@@ -16,6 +16,7 @@ async function ensure() {
     )
   `
   await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS alert_phone TEXT`
+  await sql`ALTER TABLE trial_inquiries ADD COLUMN IF NOT EXISTS sms_status TEXT`
 }
 
 export async function POST(request) {
@@ -32,16 +33,21 @@ export async function POST(request) {
 
   const [acc] = await sql`SELECT name FROM accounts WHERE username = ${username}`
   const text = String(message || '').slice(0, 500)
-  await sql`INSERT INTO trial_inquiries (username, name, phone, message) VALUES (${username}, ${acc?.name || null}, ${digits}, ${text || null})`
+  const [row] = await sql`INSERT INTO trial_inquiries (username, name, phone, message) VALUES (${username}, ${acc?.name || null}, ${digits}, ${text || null}) RETURNING id`
 
-  // 알림 번호를 등록한 관리자에게 문자(실패해도 접수는 유지)
+  // 알림 번호를 등록한 관리자에게 문자(실패해도 접수는 유지). 결과를 문의 행에 기록해 관리자 화면에서 바로 보이게.
+  let smsStatus = ''
   try {
     const admins = await sql`SELECT alert_phone FROM accounts WHERE role = 'admin' AND alert_phone IS NOT NULL`
+    if (admins.length === 0) smsStatus = '미발송: 알림 번호를 등록한 관리자 계정 없음'
     for (const a of admins) {
       await sendSMS({ phone: a.alert_phone, message: `[자금비서] 체험 이용자 문의\n${acc?.name || username} ${digits}\n${text || '(내용 없음)'}` })
+      smsStatus = `발송됨 → ${a.alert_phone}`
     }
   } catch (e) {
     console.error('체험 문의 알림 문자 실패:', e.message)
+    smsStatus = `발송 실패: ${e.message}`.slice(0, 300)
   }
-  return NextResponse.json({ ok: true })
+  await sql`UPDATE trial_inquiries SET sms_status = ${smsStatus} WHERE id = ${row.id}`.catch(() => {})
+  return NextResponse.json({ ok: true, smsStatus })
 }

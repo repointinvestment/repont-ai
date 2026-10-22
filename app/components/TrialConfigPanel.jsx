@@ -90,6 +90,7 @@ export default function TrialConfigPanel({ user }) {
             <div key={q.id} style={{ fontSize: 12.5, padding: '6px 0', borderTop: '1px solid #F3E7C2' }}>
               <b>{q.name || q.username}</b> · <a href={`tel:${q.phone}`} style={{ color: '#0f3460' }}>{q.phone}</a> · <span style={{ color: '#888' }}>{fmt(q.created_at)}</span>
               {q.message && <div style={{ color: '#555', marginTop: 2 }}>{q.message}</div>}
+              {q.sms_status && <div style={{ color: q.sms_status.startsWith('발송됨') ? '#2A7D46' : '#C0392B', marginTop: 2, fontSize: 11.5 }}>📲 알림 문자: {q.sms_status}</div>}
             </div>
           ))}
         </div>
