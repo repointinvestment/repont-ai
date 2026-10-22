@@ -114,6 +114,15 @@ export default function ResourcesPage() {
   }
 
   // 파일명 클릭 = 다운로드 버튼과 동일하게 실제 저장 (미리보기로 열리기만 하고 안 받아지던 문제 방지)
+  async function toggleTrialVisible(f) {
+    const res = await fetch(`/api/resources/${f.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-consultant-id': user.username, 'x-consultant-role': user.role },
+      body: JSON.stringify({ trialVisible: !f.trial_visible }),
+    });
+    if (res.ok) setFiles((prev) => prev.map((x) => (x.id === f.id ? { ...x, trial_visible: !f.trial_visible } : x)));
+  }
+
   async function handleDownload(f) {
     try {
       const res = await fetch(`/api/resources/${f.id}/download`, { headers: { 'x-consultant-id': user.username } });
@@ -201,7 +210,7 @@ export default function ResourcesPage() {
         {loading ? (
           <p style={{ fontSize: 13, color: '#B0AEA5' }}>불러오는 중...</p>
         ) : files.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#B0AEA5' }}>아직 올라온 자료가 없습니다.</p>
+          <p style={{ fontSize: 13, color: '#B0AEA5' }}>{user.role === 'trial' ? '체험 계정에 공개된 자료가 아직 없습니다. 정규 수강생에게는 강의자료·양식이 모두 제공됩니다.' : '아직 올라온 자료가 없습니다.'}</p>
         ) : (
           <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 12px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             {files.map((f, i) => (
@@ -213,6 +222,15 @@ export default function ResourcesPage() {
                   </button>
                   <span style={{ fontSize: 11.5, color: '#B0AEA5', flexShrink: 0 }}>{formatSize(f.size_bytes)}</span>
                   <button onClick={() => handleDownload(f)} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>다운로드</button>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => toggleTrialVisible(f)}
+                      title="체험(1주일) 계정에게도 이 자료를 보여줄지"
+                      style={{ padding: '6px 10px', borderRadius: 7, border: `1px solid ${f.trial_visible ? '#0B2440' : '#D3D1C7'}`, background: f.trial_visible ? '#0B2440' : '#fff', color: f.trial_visible ? '#E9C979' : '#8A8A85', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      {f.trial_visible ? '체험 공개 중' : '체험 비공개'}
+                    </button>
+                  )}
                   {user.role === 'admin' && (
                     <button onClick={() => handleDelete(f)} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #C0392B', background: '#fff', color: '#C0392B', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>삭제</button>
                   )}

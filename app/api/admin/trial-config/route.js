@@ -46,6 +46,7 @@ export async function POST(request) {
     const expired = await sql`SELECT username FROM accounts WHERE role = 'trial' AND expires_at < NOW() - INTERVAL '1 day'`
     for (const { username } of expired) {
       await sql`DELETE FROM customers WHERE consultant_id = ${username}`
+      await sql`DELETE FROM materials WHERE consultant_username = ${username}`.catch(() => {})
       await sql`DELETE FROM accounts WHERE username = ${username} AND role = 'trial'`
     }
     return NextResponse.json({ ok: true, deleted: expired.length })
@@ -58,6 +59,7 @@ export async function POST(request) {
   }
   if (body.action === 'delete' && body.username) {
     await sql`DELETE FROM customers WHERE consultant_id = ${body.username}`
+    await sql`DELETE FROM materials WHERE consultant_username = ${body.username}`.catch(() => {})
     await sql`DELETE FROM accounts WHERE username = ${body.username} AND role = 'trial'`
     return NextResponse.json({ ok: true })
   }

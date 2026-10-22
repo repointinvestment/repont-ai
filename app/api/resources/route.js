@@ -33,12 +33,16 @@ async function ensureSchema() {
     )
   `
   await sql`ALTER TABLE resource_files ADD COLUMN IF NOT EXISTS description TEXT`
+  await sql`ALTER TABLE resource_files ADD COLUMN IF NOT EXISTS trial_visible BOOLEAN DEFAULT FALSE` // 체험 계정에게도 보여줄 자료인지(관리자가 파일별로 켬)
   schemaReady = true
 }
 
-export async function GET() {
+export async function GET(request) {
   await ensureSchema()
-  const rows = await sql`SELECT id, file_name, blob_url, size_bytes, description, uploaded_by, created_at FROM resource_files ORDER BY created_at DESC`
+  const isTrial = request.headers.get('x-consultant-role') === 'trial'
+  const rows = isTrial
+    ? await sql`SELECT id, file_name, blob_url, size_bytes, description, uploaded_by, created_at, trial_visible FROM resource_files WHERE trial_visible = TRUE ORDER BY created_at DESC`
+    : await sql`SELECT id, file_name, blob_url, size_bytes, description, uploaded_by, created_at, trial_visible FROM resource_files ORDER BY created_at DESC`
   return NextResponse.json({ files: rows })
 }
 

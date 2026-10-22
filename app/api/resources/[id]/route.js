@@ -21,7 +21,10 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: '관리자만 수정할 수 있습니다.' }, { status: 403 })
   }
   const body = await request.json().catch(() => ({}))
-  const [row] = await sql`UPDATE resource_files SET description = ${body.description ?? null} WHERE id = ${params.id} RETURNING *`
+  await sql`ALTER TABLE resource_files ADD COLUMN IF NOT EXISTS trial_visible BOOLEAN DEFAULT FALSE`
+  const [row] = typeof body.trialVisible === 'boolean'
+    ? await sql`UPDATE resource_files SET trial_visible = ${body.trialVisible} WHERE id = ${params.id} RETURNING *`
+    : await sql`UPDATE resource_files SET description = ${body.description ?? null} WHERE id = ${params.id} RETURNING *`
   if (!row) return NextResponse.json({ error: '자료를 찾을 수 없습니다.' }, { status: 404 })
   return NextResponse.json({ file: row })
 }

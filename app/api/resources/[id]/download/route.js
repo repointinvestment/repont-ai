@@ -9,9 +9,12 @@ export async function GET(request, { params }) {
   if (!request.headers.get('x-consultant-id')) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
   }
-  const rows = await sql`SELECT file_name, blob_url FROM resource_files WHERE id = ${params.id}`
+  const rows = await sql`SELECT file_name, blob_url, trial_visible FROM resource_files WHERE id = ${params.id}`
   if (rows.length === 0) return NextResponse.json({ error: '자료를 찾을 수 없습니다.' }, { status: 404 })
   const file = rows[0]
+  if (request.headers.get('x-consultant-role') === 'trial' && !file.trial_visible) {
+    return NextResponse.json({ error: '체험 계정에는 공개되지 않은 자료입니다.' }, { status: 403 })
+  }
 
   const result = await get(file.blob_url, { access: 'private' })
   if (result?.statusCode !== 200) return new NextResponse('Not found', { status: 404 })

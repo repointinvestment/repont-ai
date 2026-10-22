@@ -17,6 +17,9 @@ const TRIAL_ALLOWED_PREFIXES = [
   '/api/reports/summary',
   '/api/trial',          // 체험 가입·문의 (이미 체험 계정으로 로그인된 상태에서 다시 가입해도 막히지 않게)
   '/api/schedules',
+  '/api/board',        // 학습센터(공지·게시판·QnA) — 체험 계정도 질문 남길 수 있게
+  '/api/resources',    // 자료실 — GET은 trial_visible 자료만 내려줌(아래 라우트에서 필터)
+  '/api/materials',    // 안내자료 만들기 — 만료 시 계정 데이터와 함께 삭제
 ]
 // /api/customers 중에서 체험 계정이 쓸 수 있는 것(기본 CRUD·진행현황·신청이력). 파일/계정정보/발송/서류발급 계열은 제외.
 const TRIAL_CUSTOMER_PATTERNS = [
