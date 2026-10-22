@@ -292,7 +292,7 @@ export default function NewCustomerPage() {
 
         <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
         <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
-          특허·대표자 동종업 경력·연구소·인증 같은 기술·비재무 요소를 재무보다 더 봅니다. 경력 연수에 정해진 기준은 없고, 기업부설연구소·벤처인증은 가점이라 없어도 신청할 수 있습니다.
+          특허(등록 특허 또는 최소 출원서)는 필수입니다. 대표자 동종업 경력·연구소·인증은 추가 강점이며, 경력 연수에 정해진 기준은 없습니다.
         </p>
         <label style={labelStyle}>
           대표자 경력(년)
@@ -300,7 +300,7 @@ export default function NewCustomerPage() {
         </label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-            <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유
+            <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유 (등록 또는 출원서 · 기보 필수)
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
             <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소 (중진공·신보·기보 가점)
