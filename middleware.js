@@ -15,7 +15,7 @@ const TRIAL_ALLOWED_PREFIXES = [
   '/api/policy-funds',
   '/api/bizinfo',
   '/api/reports/summary',
-  '/api/trial/inquiry',
+  '/api/trial',          // 체험 가입·문의 (이미 체험 계정으로 로그인된 상태에서 다시 가입해도 막히지 않게)
   '/api/schedules',
 ]
 // /api/customers 중에서 체험 계정이 쓸 수 있는 것(기본 CRUD·진행현황·신청이력). 파일/계정정보/발송/서류발급 계열은 제외.
