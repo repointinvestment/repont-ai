@@ -171,13 +171,13 @@ ${paragraph}
 [경영진] — 대표자·실제경영자 제외 (표: 성명 | 연령 | 최종직위 | 대표자·실제경영자와의 관계 | 주요경력 | 근무년수)
 해당 없으면 공란으로 제출
 
-3. 자금집행계획 (1개 이상 필수 입력 — 합계는 대출신청 금액과 반드시 동일해야 함)${customer.loanAmount ? ` — 대출신청 금액 ${(Number(customer.loanAmount) * 10000).toLocaleString()}원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 용도·세부용도·금액을 수정하세요.` : ' — 신청 금액을 입력하지 않아 배분 초안을 만들지 못했습니다. 다시 작성하며 신청 금액을 입력해주세요.'}
+3. 자금집행계획 (1개 이상 필수 입력 — 합계는 대출신청 금액과 반드시 동일해야 함)${customer.loanAmount ? ` — 대출신청 금액 ${(Number(customer.loanAmount) * 10000).toLocaleString()}원 기준 통상 배분 비율로 작성. 실제 집행계획에 맞춰 용도·세부용도·금액을 수정하세요.` : ' — 신청 금액을 입력하지 않아 배분표를 만들지 못했습니다. 다시 작성하며 신청 금액을 입력해주세요.'}
 표: 용도(대분류) | 세부용도(30자 이내) | 금액(원)
 ${budget ? budget.map(([label, amt]) => `${label} | ________ | ${(amt * 10000).toLocaleString()}원`).join('\n') : '________ | ________ | ________'}
 ${budget ? `합계: ${(Number(customer.loanAmount) * 10000).toLocaleString()}원` : ''}
 
 ※ 온라인 신청 화면 하단 "유의사항" 동의 체크박스는 컨설턴트/고객이 직접 내용을 읽고 체크해야 합니다(자동 대체 불가).
-※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
+※ 이 사업계획서는 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
     return saveAndRespond(draft)
   }
@@ -238,7 +238,7 @@ ${field('인증·수상', null)}
 ◦ 필수사업내용 (100자~3,000자)
 ${paragraph}
 
-◦ 필수자금집행계획${customer.loanAmount ? ` — 대출신청 금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준 통상 배분 비율로 초안 작성. 실제 집행계획에 맞춰 수정하세요.` : ''}
+◦ 필수자금집행계획${customer.loanAmount ? ` — 대출신청 금액 ${Number(customer.loanAmount).toLocaleString()}만원 기준 통상 배분 비율로 작성. 실제 집행계획에 맞춰 수정하세요.` : ''}
 ${budget ? budget.map(([label, amt]) => field(label, `${amt.toLocaleString()}만원`)).join('\n') : [
   field('원부자재 구입비', null),
   field('생산·판매 및 부대비용', null),
@@ -252,7 +252,7 @@ ${field('업체명', null)}
 ${field('폐업일자', null)}
 ${field('폐업사유', null)}` : ''}
 
-※ 이 초안은 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
+※ 이 사업계획서는 참고용이며, 실제 제출 전 소상공인시장진흥공단 최신 공고문의 서식과 요건을 다시 확인해주세요.`
 
     return saveAndRespond(draft)
   }
@@ -300,7 +300,7 @@ ${field('폐업사유', null)}` : ''}
 - 제공된 정보 범위 안에서만 구체화하고, 없는 사실(거래처명, 수치, 수상 등)은 지어내지 마세요. 정보가 부족한 부분은 일반적으로 타당한 서술을 하되 단정하지 말고, 문장 끝에 [확인필요]를 붙여 컨설턴트가 채우게 하세요
 - 컨설턴트가 추가로 알려준 사항(아래 [추가 정보])이 있으면 최우선으로 반영
 - 구체적인 숫자(매출, 신용점수, 직원수)는 반드시 인용
-- 마지막 줄에 "※ 이 초안은 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."를 추가`
+- 마지막 줄에 "※ 이 사업계획서는 참고용이며, 이 기관은 아직 공식 서식이 등록되지 않아 일반 형식으로 작성되었습니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요."를 추가`
 
   const customerSummary = `
 - 대표자명: ${customer.ownerName || '미입력'}
@@ -325,7 +325,7 @@ ${field('폐업사유', null)}` : ''}
     : ''
   const extraHint = extra ? `\n\n[추가 정보 - 컨설턴트가 상담에서 확인한 내용]\n${String(extra).slice(0, 1500)}` : ''
 
-  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서 초안을 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}${budgetHint}${extraHint}`
+  const userMessage = `아래 고객 정보로 "${fundName}" 신청용 사업계획서를 작성해주세요.\n\n${customerSummary}\n\n[이 자금 작성 시 강조할 점]\n${guidance}${budgetHint}${extraHint}`
 
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
@@ -338,8 +338,8 @@ ${field('폐업사유', null)}` : ''}
 
   let body = response.choices[0].message.content.trim()
   // 안내 문구는 표 뒤에 오도록 분리
-  const noteIdx = body.lastIndexOf('※ 이 초안은')
-  const note = noteIdx >= 0 ? body.slice(noteIdx) : '※ 이 초안은 참고용입니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요.'
+  const noteIdx = body.lastIndexOf('※ 이 사업계획서는')
+  const note = noteIdx >= 0 ? body.slice(noteIdx) : '※ 이 사업계획서는 참고용입니다. 실제 제출 전 해당 기관의 최신 공고문 요건과 서식을 다시 확인해주세요.'
   if (noteIdx >= 0) body = body.slice(0, noteIdx).trim()
 
   const tables = []

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../../components/AppHeader';
+import PlanDocument from '../../components/PlanDocument';
 import DonutGauge from '../../components/DonutGauge';
 import CodefDocumentIssuance from '../../components/CodefDocumentIssuance';
 import { estimateInstitutionLimits } from '@/lib/policyFundEstimate';
@@ -454,13 +455,13 @@ export default function CustomerDashboardPage() {
                     disabled={planLoading[i]}
                     style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
                   >
-                    {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '초안 작성'}
+                    {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '사업계획서 작성'}
                   </button>
                 </div>
               ))}
             </div>
             {analysis.results.some((_, i) => planDrafts[i]) && (
-              <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>작성된 초안은 아래 "신청 가능한 자금 상세"를 펼치면 전체 내용을 볼 수 있습니다.</p>
+              <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>작성된 사업계획서는 아래 "신청 가능한 자금 상세"를 펼치면 전체 내용을 볼 수 있습니다.</p>
             )}
           </div>
         )}
@@ -532,17 +533,8 @@ export default function CustomerDashboardPage() {
                         </button>
                       </div>
                       {planDrafts[i] && (
-                        <div style={{ marginTop: 12, background: '#FAF9F6', border: '1px solid #E4E2DB', borderRadius: 8, padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                            <button
-                              type="button"
-                              onClick={() => copyPlan(i)}
-                              style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: planCopyState[i] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 12, cursor: 'pointer' }}
-                            >
-                              {planCopyState[i] || '전체 복사'}
-                            </button>
-                          </div>
-                          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7, color: '#2A2925', margin: 0 }}>{planDrafts[i]}</pre>
+                        <div style={{ marginTop: 12 }}>
+                          <PlanDocument content={planDrafts[i]} fundName={r.name} ownerName={customer?.owner_name} businessName={customer?.business_name} author={user?.name} />
                         </div>
                       )}
                     </div>
@@ -778,7 +770,7 @@ export default function CustomerDashboardPage() {
               />
               <span style={{ fontSize: 13, color: '#5F5E5A' }}>만원</span>
             </div>
-            <p style={{ fontSize: 12, color: '#5F5E5A', margin: '0 0 6px', fontWeight: 600 }}>상담에서 알게 된 내용 (선택) — 적을수록 초안이 구체적이에요</p>
+            <p style={{ fontSize: 12, color: '#5F5E5A', margin: '0 0 6px', fontWeight: 600 }}>상담에서 알게 된 내용 (선택) — 적을수록 사업계획서가 구체적이에요</p>
             <textarea
               value={planExtra}
               onChange={(e) => setPlanExtra(e.target.value)}
@@ -788,7 +780,7 @@ export default function CustomerDashboardPage() {
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setPlanAmountPrompt(null)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #2A2925', background: '#fff', color: '#2A2925', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>취소</button>
-              <button onClick={confirmPlanAmount} style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>초안 작성</button>
+              <button onClick={confirmPlanAmount} style={{ padding: '9px 14px', borderRadius: 8, border: 'none', background: '#2A2925', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>사업계획서 작성</button>
             </div>
           </div>
         </div>

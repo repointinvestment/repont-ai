@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSession } from '@/lib/session';
 import AppHeader from '../components/AppHeader';
+import PlanDocument from '../components/PlanDocument';
 
 export default function BusinessPlansPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function BusinessPlansPage() {
   if (!user) return null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F5F0' }}>
       <AppHeader user={user} />
       <div style={{ padding: '32px 40px', maxWidth: 880, margin: '0 auto' }}>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>작성 서비스</p>
@@ -85,17 +86,8 @@ export default function BusinessPlansPage() {
                   </div>
                 </div>
                 {isOpen && (
-                  <div style={{ borderTop: '1px solid #E4E2DB', padding: '16px 20px', background: '#FAF9F6' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => copyPlan(plan)}
-                        style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #D3D1C7', background: copyState[plan.id] === '복사됨' ? '#E6F1FB' : '#fff', fontSize: 12, cursor: 'pointer' }}
-                      >
-                        {copyState[plan.id] || '전체 복사'}
-                      </button>
-                    </div>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7, color: '#2A2925', margin: 0 }}>{plan.content}</pre>
+                  <div style={{ borderTop: '1px solid #E4E2DB', padding: '18px 20px 22px', background: '#EFEDE6' }}>
+                    <PlanDocument content={plan.content} fundName={plan.fund_name} ownerName={plan.owner_name} businessName={plan.business_name} createdAt={plan.created_at} author={user.name} />
                   </div>
                 )}
               </div>
