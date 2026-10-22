@@ -34,6 +34,8 @@ export default function CustomerDashboardPage() {
   const [files, setFiles] = useState([]);
   const [statusHistory, setStatusHistory] = useState([]);
   const [planDrafts, setPlanDrafts] = useState({});
+  const [savedPlans, setSavedPlans] = useState([]); // 이 고객의 저장된 사업계획서(보관함과 동일 데이터) — 새로고침해도 "보기" 가능
+  const [openPlan, setOpenPlan] = useState(null); // 위 "사업계획서 작성" 박스에서 펼쳐 보고 있는 자금 인덱스
   const [planLoading, setPlanLoading] = useState({});
   const [planCopyState, setPlanCopyState] = useState({});
   const [planExtra, setPlanExtra] = useState('');
@@ -80,6 +82,11 @@ export default function CustomerDashboardPage() {
     const session = getSession();
     if (!session) { router.push('/'); return; }
     setUser(session);
+    // 이 고객의 저장된 사업계획서 — 작성 직후가 아니어도 이 화면에서 바로 열어볼 수 있게
+    fetch('/api/business-plans', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
+      .then((r) => r.json())
+      .then((d) => setSavedPlans((d.plans || []).filter((pl) => String(pl.customer_id) === String(params.id))))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -216,6 +223,8 @@ export default function CustomerDashboardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error();
       setPlanDrafts((s) => ({ ...s, [index]: data.draft }));
+      setSavedPlans((s) => [{ id: `local-${Date.now()}`, customer_id: params.id, fund_name: fundName, content: data.draft, created_at: new Date().toISOString() }, ...s]);
+      setOpenPlan(index);
     } catch (err) {
       setError('사업계획서 생성 중 오류가 발생했습니다.');
     } finally {
@@ -443,26 +452,49 @@ export default function CustomerDashboardPage() {
           <div style={{ background: '#fff', borderRadius: 14, padding: '18px 22px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
             <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px', color: '#2A2925' }}>📝 사업계획서 작성</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {analysis.results.map((r, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', background: '#FAF9F6', borderRadius: 8 }}>
-                  <div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#2A2925' }}>{r.name}</span>
-                    <span style={{ fontSize: 12, color: '#8A8A85', marginLeft: 8 }}>{r.limit}</span>
+              {analysis.results.map((r, i) => {
+                const saved = savedPlans.find((pl) => pl.fund_name === r.name);
+                const draft = planDrafts[i] || saved?.content || null;
+                const isOpen = openPlan === i && !!draft;
+                return (
+                  <div key={i} style={{ background: '#FAF9F6', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#2A2925' }}>{r.name}</span>
+                        <span style={{ fontSize: 12, color: '#8A8A85', marginLeft: 8 }}>{r.limit}</span>
+                        {draft && !planDrafts[i] && saved?.created_at && (
+                          <span style={{ fontSize: 11.5, color: '#8A8A85', marginLeft: 8 }}>작성됨 · {new Date(saved.created_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {draft && (
+                          <button
+                            type="button"
+                            onClick={() => setOpenPlan(isOpen ? null : i)}
+                            style={{ padding: '7px 12px', borderRadius: 6, border: 'none', background: '#0B2440', color: '#E9C979', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {isOpen ? '접기 ▲' : '📄 보기'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openPlanAmountPrompt(r.name, i, fundAmounts[i])}
+                          disabled={planLoading[i]}
+                          style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer' }}
+                        >
+                          {planLoading[i] ? '작성 중...' : draft ? '다시 작성' : '사업계획서 작성'}
+                        </button>
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <div style={{ padding: '4px 12px 14px' }}>
+                        <PlanDocument content={draft} fundName={r.name} ownerName={customer?.owner_name} businessName={customer?.business_name} author={user?.name} createdAt={planDrafts[i] ? undefined : saved?.created_at} />
+                      </div>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => openPlanAmountPrompt(r.name, i, fundAmounts[i])}
-                    disabled={planLoading[i]}
-                    style={{ padding: '7px 12px', borderRadius: 6, border: `1px solid ${r.color}55`, background: '#fff', color: r.color, fontSize: 12, fontWeight: 600, cursor: planLoading[i] ? 'default' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-                  >
-                    {planLoading[i] ? '작성 중...' : planDrafts[i] ? '다시 작성' : '사업계획서 작성'}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {analysis.results.some((_, i) => planDrafts[i]) && (
-              <p style={{ fontSize: 11.5, color: '#B0AEA5', margin: '10px 0 0' }}>작성된 사업계획서는 아래 "신청 가능한 자금 상세"를 펼치면 전체 내용을 볼 수 있습니다.</p>
-            )}
           </div>
         )}
 
