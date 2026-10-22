@@ -134,6 +134,24 @@ function buildAttrYearRange(n) {
 //   customers: customerPicker=true일 때 목록
 //   defaultUserName, defaultPhoneNo: 미리 채워둘 값 (고객 상세 페이지에서 넘겨줌)
 //   onSaved: 발급 성공 + 파일함 저장까지 끝났을 때 호출 (파일 목록 새로고침용)
+// 화면 표시용 설명(정책자금 심사에서 이 서류가 왜 필요한지). 발급 로직과 무관.
+const DOC_DESC = {
+  'corporate-registration': '사업자 상태·개업일·업종 확인. 업력 계산의 기준',
+  'additional-tax-standard': '신고 매출 확인. 한도 추정과 매출 요건 판단에 사용',
+  'tax-payment-certificate': '국세 체납 여부. 체납이 있으면 대부분의 자금이 막힘',
+  'financial-statement': '자본잠식·부채비율 확인 (복식부기 대상자)',
+  'localtax-payment-certificate': '지방세 체납 여부 (정부24 · 별도 인증 1회)',
+}
+function SectionTitle({ no, title, sub }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 2px' }}>
+      <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#0B2440', color: '#E9C979', fontSize: 12, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Serif KR', serif" }}>{no}</span>
+      <span style={{ fontSize: 14.5, fontWeight: 700, color: '#0B2440' }}>{title}</span>
+      {sub && <span style={{ fontSize: 12, color: '#8A8A85' }}>{sub}</span>}
+    </div>
+  )
+}
+
 export default function CodefDocumentIssuance({
   consultantUsername,
   customerId: fixedCustomerId,
@@ -395,37 +413,33 @@ export default function CodefDocumentIssuance({
 
   return (
     <div>
+      <style>{CD_CSS}</style>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Field label="발급 서류 (여러 개 선택 가능 — 인증 한 번으로 함께 발급을 시도합니다)">
-          <div style={{ border: '1px solid #E0DFDA', borderRadius: 10, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#F8F7F4' }}>
-                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, color: '#8A8272', fontWeight: 600, width: 90 }}>수집기관</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11.5, color: '#8A8272', fontWeight: 600 }}>요청서류</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11.5, color: '#8A8272', fontWeight: 600, width: 60 }}>선택</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(DOCUMENTS).map(([key, d], i) => (
-                  <tr
-                    key={key}
-                    onClick={() => toggleDoc(key)}
-                    style={{ cursor: 'pointer', borderTop: i === 0 ? 'none' : '1px solid #F0EFEA', background: selectedDocs.includes(key) ? '#FFF6F2' : '#fff' }}
-                  >
-                    <td style={{ padding: '11px 14px', fontSize: 13, color: '#5A5952', whiteSpace: 'nowrap' }}>{d.institutionIcon} {d.institution}</td>
-                    <td style={{ padding: '11px 14px', fontSize: 14, color: '#2A2925', fontWeight: selectedDocs.includes(key) ? 700 : 400 }}>{d.label}</td>
-                    <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                      <input type="checkbox" checked={selectedDocs.includes(key)} onChange={() => toggleDoc(key)} onClick={(e) => e.stopPropagation()} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Field>
+        <SectionTitle no="1" title="발급할 서류" sub="여러 개를 골라도 인증은 한 번" />
+        <div className="cd-grid">
+          {Object.entries(DOCUMENTS).map(([key, d]) => {
+            const on = selectedDocs.includes(key)
+            const gov24 = d.institution !== '홈택스'
+            return (
+              <div
+                key={key}
+                role="checkbox"
+                aria-checked={on}
+                onClick={() => toggleDoc(key)}
+                className={`cd-doc${on ? ' on' : ''}`}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span className={`cd-pill${gov24 ? ' gov' : ''}`}>{d.institution}</span>
+                  <span className={`cd-check${on ? ' on' : ''}`}>{on ? '✓' : ''}</span>
+                </div>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#1d2733', lineHeight: 1.35 }}>{d.label}</div>
+                <div style={{ fontSize: 12, color: '#6B7480', marginTop: 4, lineHeight: 1.5 }}>{DOC_DESC[key] || ''}</div>
+              </div>
+            )
+          })}
+        </div>
         {(anyMemberOnly || selectedDocs.length > 1 || hasSoloDoc) && (
-          <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 0' }}>
+          <p className="cd-hint">
             ※ {hasSoloDoc
               ? '이 서류는 로그인 대상 기관이 달라(정부24 vs 홈택스) 다른 서류와 인증을 묶을 수 없어 단독으로만 진행됩니다.'
               : selectedDocs.length > 1
@@ -434,9 +448,11 @@ export default function CodefDocumentIssuance({
           </p>
         )}
 
+        <div style={{ height: 6 }} />
+        <SectionTitle no="2" title="고객 정보 · 본인 인증" sub="고객 휴대폰으로 인증 요청이 갑니다" />
         {customerPicker && (
           <Field label="고객 선택 (선택 — 고르면 성공 시 그 고객 파일함에 저장됩니다)">
-            <select value={form.customerId} onChange={(e) => update('customerId', e.target.value)} style={inputStyle}>
+            <select value={form.customerId} onChange={(e) => update('customerId', e.target.value)} className="cd-input" style={inputStyle}>
               <option value="">저장 없이 결과만 표시</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -446,23 +462,27 @@ export default function CodefDocumentIssuance({
             </select>
           </Field>
         )}
-        <Field label="이름">
-          <input value={form.userName} onChange={(e) => update('userName', e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="주민등록번호 (13자리)">
-          <input value={form.residentNo} onChange={(e) => update('residentNo', e.target.value)} placeholder="900101-1234567" style={inputStyle} />
-        </Field>
-        <Field label="휴대폰 번호">
-          <input value={form.phoneNo} onChange={(e) => update('phoneNo', e.target.value)} placeholder="01012345678" style={inputStyle} />
-        </Field>
-        <Field label="인증 방식">
-          <select value={form.loginTypeLevel} onChange={(e) => update('loginTypeLevel', e.target.value)} style={inputStyle}>
-            {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
-          </select>
-        </Field>
+        <div className="cd-two">
+          <Field label="이름">
+            <input value={form.userName} onChange={(e) => update('userName', e.target.value)} className="cd-input" style={inputStyle} />
+          </Field>
+          <Field label="휴대폰 번호">
+            <input value={form.phoneNo} onChange={(e) => update('phoneNo', e.target.value)} placeholder="01012345678" className="cd-input" style={inputStyle} />
+          </Field>
+        </div>
+        <div className="cd-two">
+          <Field label="주민등록번호 (13자리)">
+            <input value={form.residentNo} onChange={(e) => update('residentNo', e.target.value)} placeholder="900101-1234567" className="cd-input" style={inputStyle} />
+          </Field>
+          <Field label="인증 방식">
+            <select value={form.loginTypeLevel} onChange={(e) => update('loginTypeLevel', e.target.value)} className="cd-input" style={inputStyle}>
+              {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+            </select>
+          </Field>
+        </div>
         {form.loginTypeLevel === '5' && (
           <Field label="통신사 (PASS)">
-            <select value={form.telecom} onChange={(e) => update('telecom', e.target.value)} style={inputStyle}>
+            <select value={form.telecom} onChange={(e) => update('telecom', e.target.value)} className="cd-input" style={inputStyle}>
               <option value="0">SKT</option>
               <option value="1">KT</option>
               <option value="2">LG U+</option>
@@ -478,7 +498,7 @@ export default function CodefDocumentIssuance({
                 const [s, en] = e.target.value.split('-');
                 setForm((f) => ({ ...f, startDate: s, endDate: en }));
               }}
-              style={inputStyle}
+              className="cd-input" style={inputStyle}
             >
               <option value="">자동 (최근 완료된 반기 1건)</option>
               <optgroup label="여러 해 한 번에 (매출 추이 확인용)">
@@ -498,7 +518,7 @@ export default function CodefDocumentIssuance({
         {anyNeedsAttrYear && (
           <>
             <Field label="사업자 유형 (재무제표용)">
-              <select value={form.businessType} onChange={(e) => update('businessType', e.target.value)} style={inputStyle}>
+              <select value={form.businessType} onChange={(e) => update('businessType', e.target.value)} className="cd-input" style={inputStyle}>
                 <option value="individual">개인사업자</option>
                 <option value="corporate" disabled>법인사업자 (인증 방식 확인 중 — 준비중)</option>
               </select>
@@ -507,14 +527,14 @@ export default function CodefDocumentIssuance({
               </p>
             </Field>
             <Field label="조회 방식 (재무제표용)">
-              <select value={form.attrYearMode} onChange={(e) => update('attrYearMode', e.target.value)} style={inputStyle}>
+              <select value={form.attrYearMode} onChange={(e) => update('attrYearMode', e.target.value)} className="cd-input" style={inputStyle}>
                 <option value="single">특정 연도 1건만</option>
                 <option value="range">최근 N년 한 번에 (인증은 1번만)</option>
               </select>
             </Field>
             {form.attrYearMode === 'range' ? (
               <Field label="최근 몇 년 (재무제표용)">
-                <select value={form.attrYearRangeCount} onChange={(e) => update('attrYearRangeCount', e.target.value)} style={inputStyle}>
+                <select value={form.attrYearRangeCount} onChange={(e) => update('attrYearRangeCount', e.target.value)} className="cd-input" style={inputStyle}>
                   {[2, 3, 5].map((n) => {
                     const years = buildAttrYearRange(n);
                     return (
@@ -527,7 +547,7 @@ export default function CodefDocumentIssuance({
               </Field>
             ) : (
               <Field label="귀속연도 (재무제표용)">
-                <select value={form.attrYear} onChange={(e) => update('attrYear', e.target.value)} style={inputStyle}>
+                <select value={form.attrYear} onChange={(e) => update('attrYear', e.target.value)} className="cd-input" style={inputStyle}>
                   <option value="">자동 (최근 신고 완료된 연도)</option>
                   {buildAttrYearOptions().map((y) => (
                     <option key={y} value={y}>{y}년</option>
@@ -537,7 +557,7 @@ export default function CodefDocumentIssuance({
             )}
             {form.businessType === 'corporate' && (
               <Field label="사업연도 종료월 (법인만)">
-                <select value={form.attrMonth} onChange={(e) => update('attrMonth', e.target.value)} style={inputStyle}>
+                <select value={form.attrMonth} onChange={(e) => update('attrMonth', e.target.value)} className="cd-input" style={inputStyle}>
                   {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
                     <option key={m} value={m}>{m}월</option>
                   ))}
@@ -571,7 +591,7 @@ export default function CodefDocumentIssuance({
               </div>
             </Field>
             <Field label="상세주소 (필수 — 동/호수 등)">
-              <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} placeholder="예: 3층 301호" style={inputStyle} />
+              <input value={form.addrDetail} onChange={(e) => update('addrDetail', e.target.value)} placeholder="예: 3층 301호" className="cd-input" style={inputStyle} />
             </Field>
           </>
         )}
@@ -579,10 +599,12 @@ export default function CodefDocumentIssuance({
         <button
           onClick={startBatch}
           disabled={selectedDocs.length === 0 || phase === 'requesting' || phase === 'confirming'}
+          className="cd-primary"
           style={btnStyle}
         >
-          {phase === 'requesting' ? '요청 중...' : `인증 요청 (${selectedDocs.length}건)`}
+          {phase === 'requesting' ? '요청 중...' : `🔐 고객 인증 요청 (${selectedDocs.length}건)`}
         </button>
+        <p className="cd-hint" style={{ margin: '-2px 0 0' }}>고객 휴대폰에 인증 알림이 가고, 승인하면 선택한 서류가 PDF로 발급돼 고객 파일함에 저장됩니다. 홈택스 서류는 08:00~22:00에만 발급됩니다.</p>
 
         {phase === 'pending' && (
           <button onClick={confirmBatch} disabled={phase === 'confirming'} style={{ ...btnStyle, background: '#2A7D46' }}>
@@ -607,7 +629,8 @@ export default function CodefDocumentIssuance({
       )}
 
       {doneCount > 0 && (
-        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SectionTitle no="3" title="발급 결과" sub={`${doneCount}건 발급 완료`} />
           {(() => {
             const regRaw = Object.values(docStates).filter((s) => s.docKey === 'corporate-registration' && s.status === 'done').flatMap((s) => s.items || []);
             const vatRaw = Object.values(docStates).filter((s) => s.docKey === 'additional-tax-standard' && s.status === 'done').flatMap((s) => s.items || []);
@@ -1005,7 +1028,7 @@ function DocCard({ docType, item, file, customerId }) {
 
 function Field({ label, children }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13, color: '#5A5952' }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12.5, color: '#0B2440', fontWeight: 600 }}>
       {label}
       {children}
     </label>
@@ -1013,10 +1036,27 @@ function Field({ label, children }) {
 }
 
 const inputStyle = {
-  padding: '10px 12px', borderRadius: 8, border: '1px solid #E0DFDA', fontSize: 14,
+  padding: '11px 13px', borderRadius: 10, border: '1px solid #D9D3C4', fontSize: 14, background: '#fff', color: '#1d2733', fontWeight: 400,
 };
 
 const btnStyle = {
-  marginTop: 8, padding: '12px 16px', borderRadius: 8, border: 'none',
-  background: '#2A2925', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+  marginTop: 10, padding: '14px 16px', borderRadius: 12, border: 'none',
+  background: 'linear-gradient(135deg, #0B2440 0%, #12345c 100%)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+  boxShadow: '0 6px 18px rgba(11,36,64,.18)', letterSpacing: '.01em',
 };
+
+const CD_CSS = `
+.cd-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.cd-doc{border:1.5px solid #E4E2DB;border-radius:12px;padding:12px 14px;background:#fff;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}
+.cd-doc:hover{border-color:#B4923F}
+.cd-doc.on{border-color:#0B2440;background:#FBF8EE;box-shadow:0 0 0 3px rgba(11,36,64,.06)}
+.cd-pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#EAF1F8;color:#0B2440}
+.cd-pill.gov{background:#EEF6EE;color:#2A7D46}
+.cd-check{width:20px;height:20px;border-radius:50%;border:1.5px solid #D9D3C4;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:#fff}
+.cd-check.on{background:#0B2440;border-color:#0B2440}
+.cd-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cd-hint{font-size:12px;color:#6B7480;margin:0;line-height:1.6}
+.cd-primary:disabled{opacity:.45;cursor:default;box-shadow:none}
+input.cd-input:focus,select.cd-input:focus{outline:none;border-color:#0B2440;box-shadow:0 0 0 3px rgba(11,36,64,.08)}
+@media (max-width:640px){.cd-grid,.cd-two{grid-template-columns:1fr}}
+`;
