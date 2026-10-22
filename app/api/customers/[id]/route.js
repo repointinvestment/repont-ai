@@ -56,6 +56,13 @@ function blankToNull(v) {
   if (typeof v === 'string' && v.trim() === '') return null
   return v
 }
+// integer 컬럼용: "6.4" 같은 소수가 들어와도 내림한 정수로 저장 (업력 6.4년 → 6년)
+function intOrNull(v) {
+  const x = blankToNull(v)
+  if (x === null) return null
+  const n = Number(String(x).replace(/,/g, ''))
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null
+}
 
 // 고객 정보 수정
 export async function PATCH(request, { params }) {
@@ -101,7 +108,7 @@ export async function PATCH(request, { params }) {
       owner_career_years = ${blankToNull(body.ownerCareerYears)},
       has_woman_biz_cert = ${!!body.hasWomanBizCert},
       has_sojinkong_good_repayment = ${!!body.hasSojinkongGoodRepayment},
-      business_age_years = ${blankToNull(body.businessAgeYears)},
+      business_age_years = ${intOrNull(body.businessAgeYears)},
       policy_fund_details = ${JSON.stringify(body.policyFundDetails || {})},
       marketing_consent = ${!!body.marketingConsent},
       marketing_consent_at = ${nextConsentAt},

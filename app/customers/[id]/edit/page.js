@@ -14,7 +14,7 @@ function yearsSince(dateStr) {
   const then = new Date(dateStr);
   if (Number.isNaN(then.getTime())) return null;
   const years = (Date.now() - then.getTime()) / (365.25 * 24 * 3600 * 1000);
-  return Math.round(years * 10) / 10;
+  return Math.max(0, Math.floor(years)); // 업력은 정수(년) — 공고의 '업력 7년 미만' 같은 기준과 DB 컬럼(integer)에 맞춤
 }
 
 const OWNERSHIP_OPTIONS = ['자가', '임대', '가족소유'];
@@ -378,7 +378,7 @@ export default function CustomerDetailPage() {
 
       <p style={sectionTitle}>기보(기술보증기금) 자격 확인</p>
       <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
-        핵심 조건은 특허보유 또는 대표자 경력 10년 이상입니다. 노란우산공제·기업부설연구소·벤처인증은 직접 자격요건은 아니고, 심사 시 가점요소로 참고됩니다.
+        특허·대표자 동종업 경력·연구소·인증 같은 기술·비재무 요소를 재무보다 더 봅니다. 경력 연수에 정해진 기준은 없고, 기업부설연구소·벤처인증은 가점이라 없어도 신청할 수 있습니다.
       </p>
       <label style={labelStyle}>
         대표자 경력(년)
@@ -389,19 +389,26 @@ export default function CustomerDetailPage() {
           <input type="checkbox" name="hasPatent" checked={form.hasPatent} onChange={handleChange} /> 특허보유
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제 (소진공 가점)
+          <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소 (중진공·신보·기보 가점)
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" name="hasWomanBizCert" checked={form.hasWomanBizCert} onChange={handleChange} /> 여성기업확인서 (소진공 가점)
+          <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증 (중진공·신보·기보 가점)
+        </label>
+      </div>
+
+      <p style={sectionTitle}>소진공 정책우선도 (가점)</p>
+      <p style={{ fontSize: 12, color: '#8A8A85', margin: '-4px 0 8px' }}>
+        소진공 직접대출 심사에서 가점이 붙는 항목입니다. 자격 요건은 아닙니다.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginBottom: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+          <input type="checkbox" name="hasYellowUmbrella" checked={form.hasYellowUmbrella} onChange={handleChange} /> 노란우산공제
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" name="hasSojinkongGoodRepayment" checked={form.hasSojinkongGoodRepayment} onChange={handleChange} /> 소진공 직접대출 성실상환 이력 (소진공 가점)
+          <input type="checkbox" name="hasWomanBizCert" checked={form.hasWomanBizCert} onChange={handleChange} /> 여성기업확인서
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" name="hasRndCenter" checked={form.hasRndCenter} onChange={handleChange} /> 기업부설연구소 (가점)
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
-          <input type="checkbox" name="hasVentureCert" checked={form.hasVentureCert} onChange={handleChange} /> 벤처인증 (가점)
+          <input type="checkbox" name="hasSojinkongGoodRepayment" checked={form.hasSojinkongGoodRepayment} onChange={handleChange} /> 소진공 직접대출 성실상환 이력
         </label>
       </div>
 

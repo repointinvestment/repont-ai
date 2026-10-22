@@ -49,6 +49,13 @@ function blankToNull(v) {
   if (typeof v === 'string' && v.trim() === '') return null
   return v
 }
+// integer 컬럼용: "6.4" 같은 소수가 들어와도 내림한 정수로 저장 (업력 6.4년 → 6년)
+function intOrNull(v) {
+  const x = blankToNull(v)
+  if (x === null) return null
+  const n = Number(String(x).replace(/,/g, ''))
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null
+}
 
 export async function POST(request) {
   await ensureRecheckSchema()
@@ -82,7 +89,7 @@ export async function POST(request) {
         ${blankToNull(body.businessContent)}, ${blankToNull(body.employeeCount) ?? 0}, ${blankToNull(body.lastYearSales)}, ${blankToNull(body.creditNice)}, ${blankToNull(body.creditKcb)},
         ${blankToNull(body.revenueAmount)}, ${blankToNull(body.addressOwnership)}, ${blankToNull(body.residenceAddress)}, ${blankToNull(body.residenceOwnership)},
         ${blankToNull(body.loanStatus)}, ${blankToNull(body.memo)}, ${!!body.hasPatent}, ${!!body.hasYellowUmbrella}, ${!!body.hasRndCenter}, ${!!body.hasVentureCert}, ${blankToNull(body.ownerCareerYears)},
-        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${blankToNull(body.businessAgeYears)}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'},
+        ${!!body.hasWomanBizCert}, ${!!body.hasSojinkongGoodRepayment}, ${intOrNull(body.businessAgeYears)}, ${JSON.stringify(body.policyFundDetails || {})}, ${body.status || '상담중'},
         ${!!body.marketingConsent}, ${body.marketingConsent ? new Date().toISOString() : null}
       )
       RETURNING *
