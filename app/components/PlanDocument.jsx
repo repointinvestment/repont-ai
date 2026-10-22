@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 // 사업계획서 본문(텍스트)을 "제출 서류" 모양으로 렌더링.
 // 생성 API가 내는 형식을 그대로 해석: **굵은 제목**, "1. 제목"/"필수10. 제목", [별첨1]·[공동대표자] 같은 꺾쇠 소제목,
@@ -94,6 +94,9 @@ const CSS = `
 .pd-foot{display:flex;justify-content:space-between;align-items:center;padding:12px 34px;border-top:1px solid #EEE9DA;background:#FAF9F6;font-size:11.5px;color:#8A8A85}
 .pd-foot b{color:#0B2440;font-family:'Noto Serif KR',serif}
 .pd-tools{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px}
+.pd-exporting .pd-paper{border:none;box-shadow:none;border-radius:0}
+.pd-p,.pd-h2,.pd-h3,.pd-note,.pd-list li,.pd-total,tr{page-break-inside:avoid;break-inside:avoid}
+.pd-h2,.pd-h3{page-break-after:avoid;break-after:avoid}
 .pd-btn{padding:6px 13px;border-radius:7px;border:1px solid #D3D1C7;background:#fff;font-size:12px;cursor:pointer;color:#2A2925}
 .pd-btn.primary{background:#0B2440;color:#fff;border-color:#0B2440}
 @media (max-width:640px){.pd-head{padding:20px 18px 16px}.pd-body{padding:20px 18px}.pd-foot{padding:10px 18px}.pd-title{font-size:19px}}
@@ -131,19 +134,45 @@ function Block({ b }) {
 
 export default function PlanDocument({ content, fundName, ownerName, businessName, createdAt, author, showTools = true }) {
   const [copied, setCopied] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const rootRef = useRef(null)
   const blocks = parsePlan(content)
   const date = createdAt ? new Date(createdAt) : new Date()
   const dateStr = date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
   const copy = async () => {
     try { await navigator.clipboard.writeText(String(content || '')); setCopied('복사됨'); setTimeout(() => setCopied(''), 2000) } catch { setCopied('복사 실패') }
   }
+  // PDF 파일로 바로 다운로드(브라우저 다운로드 목록에 뜨므로 폴더를 찾아갈 필요 없음). 화면 그대로 렌더링.
+  const downloadPdf = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const html2pdf = (await import('html2pdf.js')).default
+      if (document.fonts?.ready) await document.fonts.ready
+      const el = rootRef.current?.querySelector('.pd-paper')
+      const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const filename = `사업계획서_${(businessName || ownerName || '').replace(/[\\/:*?"<>|]/g, '')}_${ymd}.pdf`.replace(/__/g, '_')
+      await html2pdf().set({
+        margin: [10, 10, 12, 10],
+        filename,
+        image: { type: 'jpeg', quality: 0.96 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.pd-h2', '.pd-h3', '.pd-note', '.pd-p', '.pd-list li'] },
+      }).from(el).save()
+    } catch (e) {
+      alert('PDF 생성에 실패했습니다. 잠시 후 다시 시도해주세요. (' + (e?.message || e) + ')')
+    }
+    setExporting(false)
+  }
   return (
-    <div className="pd-wrap pd-print">
+    <div ref={rootRef} className={`pd-wrap pd-print${exporting ? ' pd-exporting' : ''}`}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap');${CSS}`}</style>
       {showTools && (
         <div className="pd-tools">
           <button type="button" className="pd-btn" onClick={copy}>{copied || '전체 복사'}</button>
-          <button type="button" className="pd-btn primary" onClick={() => window.print()}>인쇄 · PDF 저장</button>
+          <button type="button" className="pd-btn" onClick={() => window.print()}>인쇄</button>
+          <button type="button" className="pd-btn primary" onClick={downloadPdf} disabled={exporting}>{exporting ? 'PDF 만드는 중…' : 'PDF 다운로드'}</button>
         </div>
       )}
       <div className="pd-paper">
