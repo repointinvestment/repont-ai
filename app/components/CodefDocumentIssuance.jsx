@@ -186,6 +186,10 @@ export default function CodefDocumentIssuance({
   const [docStates, setDocStates] = useState({});
   const [phase, setPhase] = useState(''); // '', 'requesting', 'pending', 'confirming', 'done', 'error'
   const [selectedIdx, setSelectedIdx] = useState({}); // { [docKey]: 사업장 인덱스 } — 문서별 다건일 때
+  // 시연·화면공유용 개인정보 가리기: 입력칸(주민번호·휴대폰)은 ●●●로, 결과 카드의 사업자번호·주소·금액은 일부만 표시. 발급 로직엔 영향 없음.
+  const [privacy, setPrivacy] = useState(false);
+  useEffect(() => { try { setPrivacy(localStorage.getItem('cd_privacy') === '1'); } catch {} }, []);
+  function togglePrivacy() { setPrivacy((v) => { const nv = !v; try { localStorage.setItem('cd_privacy', nv ? '1' : '0'); } catch {} return nv; }); }
   // CODEF 다건요청 방식: 맨 처음 문서(리더)만 실제 카카오 인증을 타고, 나머지(팔로워)는 리더와 거의 동시에
   // (0.5~1초 간격) 미리 요청을 걸어둔 채 CODEF 서버가 응답을 붙잡고 있다가, 리더가 승인되는 순간
   // 같은 로그인 세션으로 자동 처리되어 응답이 옴. 그 "아직 안 끝난 요청"들을 여기 보관해뒀다가
@@ -449,7 +453,12 @@ export default function CodefDocumentIssuance({
         )}
 
         <div style={{ height: 6 }} />
-        <SectionTitle no="2" title="고객 정보 · 본인 인증" sub="고객 휴대폰으로 인증 요청이 갑니다" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <SectionTitle no="2" title="고객 정보 · 본인 인증" sub="고객 휴대폰으로 인증 요청이 갑니다" />
+          <button type="button" onClick={togglePrivacy} className={`cd-priv${privacy ? ' on' : ''}`} title="화면공유·시연 시 주민번호·휴대폰·금액을 가립니다">
+            {privacy ? '🙈 개인정보 가림 중' : '👁 개인정보 가리기'}
+          </button>
+        </div>
         {customerPicker && (
           <Field label="고객 선택 (선택 — 고르면 성공 시 그 고객 파일함에 저장됩니다)">
             <select value={form.customerId} onChange={(e) => update('customerId', e.target.value)} className="cd-input" style={inputStyle}>
@@ -467,12 +476,12 @@ export default function CodefDocumentIssuance({
             <input value={form.userName} onChange={(e) => update('userName', e.target.value)} className="cd-input" style={inputStyle} />
           </Field>
           <Field label="휴대폰 번호">
-            <input value={form.phoneNo} onChange={(e) => update('phoneNo', e.target.value)} placeholder="01012345678" className="cd-input" style={inputStyle} />
+            <input type={privacy ? 'password' : 'text'} value={form.phoneNo} onChange={(e) => update('phoneNo', e.target.value)} placeholder="01012345678" className="cd-input" style={inputStyle} />
           </Field>
         </div>
         <div className="cd-two">
           <Field label="주민등록번호 (13자리)">
-            <input value={form.residentNo} onChange={(e) => update('residentNo', e.target.value)} placeholder="900101-1234567" className="cd-input" style={inputStyle} />
+            <input type={privacy ? 'password' : 'text'} value={form.residentNo} onChange={(e) => update('residentNo', e.target.value)} placeholder="900101-1234567" className="cd-input" style={inputStyle} />
           </Field>
           <Field label="인증 방식">
             <select value={form.loginTypeLevel} onChange={(e) => update('loginTypeLevel', e.target.value)} className="cd-input" style={inputStyle}>
@@ -691,7 +700,7 @@ export default function CodefDocumentIssuance({
                     })}
                   </select>
                 )}
-                {item && <DocCard docType={docKey} item={item} file={file} customerId={form.customerId} />}
+                {item && <DocCard docType={docKey} item={item} file={file} customerId={form.customerId} privacy={privacy} />}
               </div>
             );
           })}
@@ -841,6 +850,18 @@ function PaperIcon() {
   );
 }
 
+// 개인정보 가리기 모드에서 결과 카드 값 마스킹 (화면 표시만 바뀌고 저장·다운로드 원본은 그대로)
+function maskValue(label, value) {
+  const v = value == null ? '' : String(value);
+  if (!v || v === '-') return v;
+  if (label === '사업자등록번호') return v.replace(/^(\d{3})-?\d{2}-?\d{5}$/, '$1-**-*****');
+  if (label === '주소') { const parts = v.split(' '); return parts.slice(0, 2).join(' ') + ' ●●●'; }
+  if (/금액|세액|소득금액/.test(label)) return '●●●,●●●원';
+  if (label === '발급번호') return '●●●●-●●●●';
+  if (label === '체납 내역') return v.length > 12 ? v.slice(0, 12) + '…' : v;
+  return v;
+}
+
 function buildRows(docType, item) {
   const fmtDate = (d) => (d && d.length === 8 ? `${d.slice(0, 4)}.${d.slice(4, 6)}.${d.slice(6, 8)}` : d);
   const fmtAmt = (n) => (n ? `${Number(n).toLocaleString('ko-KR')}원` : n);
@@ -947,8 +968,8 @@ function FinancialTable({ title, rows }) {
   );
 }
 
-function DocCard({ docType, item, file, customerId }) {
-  const rows = buildRows(docType, item);
+function DocCard({ docType, item, file, customerId, privacy = false }) {
+  const rows = buildRows(docType, item).map(([label, value]) => [label, privacy ? maskValue(label, value) : value]);
   const doc = DOCUMENTS[docType];
   const periods = item._periods; // 부가세과세표준증명 합산 항목일 때만 존재 — 반기별 원본이 각각 들어있음
   const serverDownloadUrl = !periods && file && customerId ? `/api/customers/${customerId}/files/${file.id}/download` : null;
@@ -1057,6 +1078,8 @@ const CD_CSS = `
 .cd-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .cd-hint{font-size:12px;color:#6B7480;margin:0;line-height:1.6}
 .cd-primary:disabled{opacity:.45;cursor:default;box-shadow:none}
+.cd-priv{border:1px solid #D9D3C4;background:#fff;color:#5F5E5A;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.cd-priv.on{background:#0B2440;border-color:#0B2440;color:#E9C979}
 input.cd-input:focus,select.cd-input:focus{outline:none;border-color:#0B2440;box-shadow:0 0 0 3px rgba(11,36,64,.08)}
 @media (max-width:640px){.cd-grid,.cd-two{grid-template-columns:1fr}}
 `;
