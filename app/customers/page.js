@@ -16,6 +16,8 @@ function CustomersPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const consultantFilter = searchParams.get('consultant'); // admin이 특정 컨설턴트의 고객만 보고 싶을 때(?consultant=아이디)
+  // 관리자도 기본은 "내 고객"만. 전체는 scope=all 로 명시해서 따로 봄 (다른 컨설턴트 고객이 내 명단에 섞이지 않게).
+  const [scope, setScope] = useState(searchParams.get('scope') === 'all' || !!consultantFilter ? 'all' : 'mine');
   const [user, setUser] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ function CustomersPageInner() {
 
     async function loadCustomers() {
       try {
-        const res = await fetch('/api/customers', {
+        const res = await fetch(scope === 'all' && session.role === 'admin' ? '/api/customers?scope=all' : '/api/customers', {
           headers: {
             'x-consultant-id': session.username,
             'x-consultant-role': session.role,
@@ -43,7 +45,7 @@ function CustomersPageInner() {
       }
     }
     loadCustomers();
-  }, []);
+  }, [scope]);
 
   if (!user) return null;
 
@@ -87,8 +89,18 @@ function CustomersPageInner() {
             {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })} · 실시간 갱신
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>
-            {consultantFilter ? `${consultantFilter}님의 고객명단` : `${user.name} 컨설턴트님의 고객명단`}
+            {consultantFilter ? `${consultantFilter}님의 고객명단` : scope === 'all' ? '전체 컨설턴트 고객명단 (관리자 보기)' : `${user.name} 컨설턴트님의 고객명단`}
           </h1>
+          {user.role === 'admin' && !consultantFilter && (
+            <div style={{ display: 'inline-flex', border: '1px solid #D9D3C4', borderRadius: 999, overflow: 'hidden', marginBottom: 8 }}>
+              {[['mine', '내 고객'], ['all', '전체 컨설턴트 (관리자)']].map(([k, label]) => (
+                <button key={k} type="button" onClick={() => { setLoading(true); setScope(k); }}
+                  style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: scope === k ? '#0B2440' : '#fff', color: scope === k ? '#E9C979' : '#5F5E5A' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           <p style={{ fontSize: 14, color: '#5F5E5A', margin: 0 }}>
             이번 달 신규 상담 {visibleCustomers.length}건 · 아래에서 고객 상세와 계정정보까지 바로 확인하세요
           </p>
@@ -204,6 +216,11 @@ function CustomersPageInner() {
                     <div>
                       <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>
                         {c.owner_name || '이름 미입력'} {c.business_name ? `· ${c.business_name}` : ''}
+                        {scope === 'all' && c.consultant_id && (
+                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999, background: c.consultant_role === 'trial' ? '#FFF3CD' : '#EAF1F8', color: c.consultant_role === 'trial' ? '#8A6D1A' : '#0B2440', verticalAlign: 'middle' }}>
+                            담당 {c.consultant_name || c.consultant_id}{c.consultant_role === 'trial' ? ' · 체험' : ''}
+                          </span>
+                        )}
                       </p>
                       <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
                         {c.industry || ''}

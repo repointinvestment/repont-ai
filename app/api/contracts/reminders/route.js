@@ -10,6 +10,7 @@ export async function GET(request) {
   const username = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
   const all = await listExpiringSoon({ withinDays })
-  const contracts = role === 'admin' ? all : all.filter((c) => c.consultant_username === username)
+  const scopeAll = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all'
+  const contracts = scopeAll ? all : all.filter((c) => c.consultant_username === username)
   return NextResponse.json({ contracts })
 }

@@ -30,7 +30,7 @@ export default function AdminPage() {
     setUser(session)
     loadAccounts(session)
     // 가벼운 활동 현황용 — 이미 있는 고객 목록 API를 그대로 재사용(추가 API 없음), 컨설턴트별로 묶어서 개수·최근활동만 계산
-    fetch('/api/customers', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
+    fetch('/api/customers?scope=all', { headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role } })
       .then((r) => r.json()).then((d) => setCustomers(d.customers || []))
   }, [])
 

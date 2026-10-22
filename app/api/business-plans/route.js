@@ -14,12 +14,14 @@ export async function GET(request) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
   }
 
-  const rows = role === 'admin'
+  const scopeAll = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all'
+  const rows = scopeAll
     ? await sql`
         SELECT bp.id, bp.customer_id, bp.fund_name, bp.content, bp.created_at,
-               c.owner_name, c.business_name
+               c.owner_name, c.business_name, c.consultant_id, a.name AS consultant_name
         FROM business_plans bp
         JOIN customers c ON c.id = bp.customer_id
+        LEFT JOIN accounts a ON a.username = c.consultant_id
         ORDER BY bp.created_at DESC
       `
     : await sql`

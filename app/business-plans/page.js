@@ -13,20 +13,22 @@ export default function BusinessPlansPage() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
   const [copyState, setCopyState] = useState({});
+  const [scope, setScope] = useState('mine'); // 관리자만 'all' 선택 가능 — 기본은 내 고객의 계획서만
 
   useEffect(() => {
     const session = getSession();
     if (!session) { router.push('/'); return; }
     setUser(session);
 
-    fetch('/api/business-plans', {
+    setLoading(true);
+    fetch(scope === 'all' && session.role === 'admin' ? '/api/business-plans?scope=all' : '/api/business-plans', {
       headers: { 'x-consultant-id': session.username, 'x-consultant-role': session.role },
     })
       .then((r) => r.json())
       .then((d) => setPlans(d.plans || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [scope]);
 
   async function copyPlan(plan) {
     try {
@@ -46,9 +48,19 @@ export default function BusinessPlansPage() {
       <div style={{ padding: '32px 40px', maxWidth: 880, margin: '0 auto' }}>
         <p style={{ fontSize: 13, color: '#8A8A85', margin: '0 0 4px' }}>작성 서비스</p>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: '#2A2925' }}>사업계획서 보관함</h1>
-        <p style={{ fontSize: 14, color: '#8A8A85', margin: '0 0 24px' }}>
+        <p style={{ fontSize: 14, color: '#8A8A85', margin: '0 0 12px' }}>
           고객 대시보드에서 생성한 사업계획서가 모두 여기 모입니다.
         </p>
+        {user.role === 'admin' && (
+          <div style={{ display: 'inline-flex', border: '1px solid #D9D3C4', borderRadius: 999, overflow: 'hidden', marginBottom: 20 }}>
+            {[['mine', '내 고객'], ['all', '전체 컨설턴트 (관리자)']].map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setScope(k)}
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: scope === k ? '#0B2440' : '#fff', color: scope === k ? '#E9C979' : '#5F5E5A' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading && <p style={{ fontSize: 14, color: '#8A8A85' }}>불러오는 중...</p>}
         {!loading && plans.length === 0 && (
@@ -72,6 +84,7 @@ export default function BusinessPlansPage() {
                     </p>
                     <p style={{ fontSize: 13, color: '#8A8A85', margin: 0 }}>
                       {plan.fund_name} · {new Date(plan.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                      {scope === 'all' && plan.consultant_id ? ` · 담당 ${plan.consultant_name || plan.consultant_id}` : ''}
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

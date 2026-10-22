@@ -11,7 +11,7 @@ export async function GET(request) {
   if (!username) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
   const { searchParams } = new URL(request.url)
   const withinDays = Number(searchParams.get('within')) || 14
-  const scopeUsername = role === 'admin' ? null : username
+  const scopeUsername = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all' ? null : username
   const [dated, announcement] = await Promise.all([
     listReapplyReminders({ withinDays, consultantUsername: scopeUsername }),
     listAwaitingAnnouncement(scopeUsername),

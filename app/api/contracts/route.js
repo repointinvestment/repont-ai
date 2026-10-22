@@ -13,6 +13,7 @@ export async function GET(request) {
   if (!username) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
   }
-  const contracts = await listContracts({ consultantUsername: role === 'admin' ? null : username })
+  const scopeAll = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all'
+  const contracts = await listContracts({ consultantUsername: scopeAll ? null : username })
   return NextResponse.json({ contracts })
 }

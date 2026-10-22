@@ -1,5 +1,5 @@
 // app/api/customers/route.js
-// 담당 컨설턴트 본인 고객만 조회. role='admin'이면 전체 조회.
+// 담당 컨설턴트 본인 고객만 조회. 관리자도 기본은 본인 고객만 — ?scope=all 을 명시했을 때만 전체(컨설턴트 이름 포함) 조회.
 import { sql } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
 import { ensureSchema as ensureRecheckSchema } from '@/lib/customerRecheckStore'
@@ -16,10 +16,12 @@ export async function GET(request) {
     return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 })
   }
 
-  const rows = role === 'admin'
+  const scopeAll = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all'
+  const rows = scopeAll
     ? await sql`
-        SELECT c.*, h.first_consulted_at
+        SELECT c.*, h.first_consulted_at, a.name AS consultant_name, a.role AS consultant_role
         FROM customers c
+        LEFT JOIN accounts a ON a.username = c.consultant_id
         LEFT JOIN (
           SELECT customer_id, MIN(changed_at) AS first_consulted_at
           FROM customer_status_history

@@ -20,7 +20,7 @@ export default function CodefTestPage() {
     if (!s) { router.push('/'); return; }
     if (s.role !== 'admin') { router.push('/menu'); return; }
     setUser(s);
-    fetch('/api/customers', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
+    fetch('/api/customers?scope=all', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
       .then((r) => r.json())
       .then((d) => setCustomers(d.customers || []))
       .catch(() => {});

@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 export async function GET(request) {
   const consultantId = request.headers.get('x-consultant-id')
   const role = request.headers.get('x-consultant-role')
-  const scoped = role !== 'admin' && consultantId
+  const scopeAll = role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all'
+  const scoped = !scopeAll && consultantId
 
   const customerFilter = scoped ? sql`WHERE c.consultant_id = ${consultantId}` : sql``
   // 두 번째 쿼리는 이미 자기 WHERE(h.status = '완료')가 있어서, 같은 WHERE 조각을 그대로 못 씀 —

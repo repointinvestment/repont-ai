@@ -18,7 +18,7 @@ export async function POST(request) {
     const rulesByKey = {}
     for (const r of rules) rulesByKey[r.key] = r
 
-    const results = await recheckAll({ consultantUsername: role === 'admin' ? null : username, fundsByKey, rulesByKey })
+    const results = await recheckAll({ consultantUsername: role === 'admin' && new URL(request.url).searchParams.get('scope') === 'all' ? null : username, fundsByKey, rulesByKey })
     return NextResponse.json({ results })
   } catch (err) {
     console.error('구DB 재검토 실패:', err)

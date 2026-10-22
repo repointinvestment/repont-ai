@@ -27,7 +27,7 @@ export default function AdminContractsOverviewPage() {
     if (!s) { router.push('/'); return }
     if (s.role !== 'admin') { router.push('/menu'); return }
     setUser(s)
-    fetch('/api/contracts', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
+    fetch('/api/contracts?scope=all', { headers: { 'x-consultant-id': s.username, 'x-consultant-role': s.role } })
       .then((r) => r.json()).then((d) => setContracts(d.contracts || []))
   }, [])
 
